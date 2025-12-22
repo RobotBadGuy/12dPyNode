@@ -5,14 +5,14 @@ from typing import List, Tuple
 
 
 def create_view_command(
-    modified_variable: str,
+    view_name: str,
     coordinates: Tuple[int, int, int, int] = None
 ) -> List[str]:
     """
     Generate Create_view XML command
     
     Args:
-        modified_variable: View name (variable with spaces instead of hyphens)
+        view_name: View name (variable with spaces instead of hyphens)
         coordinates: Tuple of (Top, Left, Bot, Right). Defaults to Model coordinates (40, 30, 565, 715)
                     For TIN, use (130, 120, 640, 790)
     
@@ -27,14 +27,14 @@ def create_view_command(
     
     return [
         '      <Create_view>',
-        f'        <Name>Create view {modified_variable}</Name>',
+        f'        <Name>Create view {view_name}</Name>',
         '        <Active>true</Active>',
         '        <Continue_on_failure>true</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
         '        <Comments>',
         '        </Comments>',
-        f'        <View>{modified_variable}</View>',
+        f'        <View>{view_name}</View>',
         '        <View_Type>2010</View_Type>',
         '        <View_Engine>GDI_legacy</View_Engine>',
         '        <Favourite_File></Favourite_File>',

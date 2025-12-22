@@ -1,595 +1,548 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-  Upload,
-  FileText,
-  Download,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Play,
-  RefreshCw,
-  Settings,
-} from 'lucide-react';
+  Node,
+  Edge,
+  Connection,
+  addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
+  NodeChange,
+  EdgeChange,
+  ReactFlowProvider,
+} from '@xyflow/react';
+import { TopBar } from '@/components/workflow/TopBar';
+import { LeftSidebar } from '@/components/workflow/LeftSidebar';
+import { RightSidebar } from '@/components/workflow/RightSidebar';
+import { WorkspaceCanvas } from '@/components/workflow/WorkspaceCanvas';
+import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
+import { compileWorkflow, validateWorkflow } from '@/lib/workflow/compile';
+import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
 import {
-  uploadFiles,
-  getDownloadUrl,
-  processFiles,
-  getSessionStatus,
-  ModelTypeMapping,
-} from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+  saveTemplate,
+  loadAllTemplates,
+  exportTemplate,
+  importTemplate,
+} from '@/lib/workflow/templates';
+import * as XLSX from 'xlsx';
 
-interface ProcessingSession {
-  session_id: string;
-  status: string;
-  excel_file: string;
-  dwg_ifc_count: number;
-}
-
-interface FileDetail {
-  filename: string;
-  project_folder: string;
-  output_path?: string;
-}
-
-interface ProcessingResults {
-  summary: {
-    total_files: number;
-    project_folder: string;
-  };
-  files: string[];
-  file_details?: FileDetail[];
-  zip_path: string;
-}
-
-const PyChainApp = () => {
+export default function WorkspacePage() {
+  const [nodes, setNodes] = useState<WorkflowNode[]>([]);
+  const [edges, setEdges] = useState<WorkflowEdge[]>([]);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [excelFile, setExcelFile] = useState<File | null>(null);
-  const [dwgIfcFiles, setDwgIfcFiles] = useState<File[]>([]);
-  const [modelTypes, setModelTypes] = useState<Map<string, 'Model' | 'TIN'>>(
-    new Map()
-  );
-  const [processing, setProcessing] = useState(false);
-  const [currentSession, setCurrentSession] =
-    useState<ProcessingSession | null>(null);
-  const [results, setResults] = useState<ProcessingResults | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState<'excel' | 'dwg' | null>(null);
+  const [modelFiles, setModelFiles] = useState<File[]>([]);
+  const [isRunning, setIsRunning] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-detect model types when files are uploaded
-  useEffect(() => {
-    if (dwgIfcFiles.length > 0) {
-      const newModelTypes = new Map<string, 'Model' | 'TIN'>();
-      dwgIfcFiles.forEach((file) => {
-        const filename = file.name;
-        const stem = filename.substring(0, filename.lastIndexOf('.')) || filename;
-        // Auto-detect: if filename contains '-TR', suggest TIN
-        const suggestedType = filename.includes('-TR') ? 'TIN' : 'Model';
-        newModelTypes.set(filename, suggestedType);
-        newModelTypes.set(stem, suggestedType);
-      });
-      setModelTypes(newModelTypes);
-    }
-  }, [dwgIfcFiles]);
+  // Undo/redo history
+  const [history, setHistory] = useState<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] }[]>([]);
+  const [future, setFuture] = useState<{ nodes: WorkflowNode[]; edges: WorkflowEdge[] }[]>([]);
 
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: 'excel' | 'dwg'
-  ) => {
-    const files = Array.from(e.target.files || []);
-    if (type === 'excel') {
-      if (files.length > 0) {
-        setExcelFile(files[0]);
-      }
-    } else {
-      setDwgIfcFiles(files);
-    }
-    setError(null);
-    setResults(null);
-    setCurrentSession(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent, type: 'excel' | 'dwg') => {
-    e.preventDefault();
-    setDragOver(type);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, type: 'excel' | 'dwg') => {
-    e.preventDefault();
-    setDragOver(null);
-
-    const files = Array.from(e.dataTransfer.files);
-    const validFiles = files.filter((file) => {
-      if (type === 'excel') {
-        return file.name.toLowerCase().endsWith('.xlsx');
-      } else {
-        return (
-          file.name.toLowerCase().endsWith('.dwg') ||
-          file.name.toLowerCase().endsWith('.dgn') ||
-          file.name.toLowerCase().endsWith('.ifc')
-        );
-      }
+  const handleUndo = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+      const previous = prev[prev.length - 1];
+      const remaining = prev.slice(0, -1);
+      setFuture((f) => [{ nodes, edges }, ...f]);
+      setNodes(previous.nodes);
+      setEdges(previous.edges);
+      return remaining;
     });
+  }, [nodes, edges]);
 
-    if (validFiles.length > 0) {
-      if (type === 'excel') {
-        setExcelFile(validFiles[0]);
-      } else {
-        setDwgIfcFiles(validFiles);
-      }
-      setError(null);
-      setResults(null);
-      setCurrentSession(null);
-    }
-  };
+  const handleRedo = useCallback(() => {
+    setFuture((prev) => {
+      if (prev.length === 0) return prev;
+      const [next, ...rest] = prev;
+      setHistory((h) => [...h, { nodes, edges }]);
+      setNodes(next.nodes);
+      setEdges(next.edges);
+      return rest;
+    });
+  }, [nodes, edges]);
 
-  const updateModelType = (filename: string, modelType: 'Model' | 'TIN') => {
-    const newModelTypes = new Map(modelTypes);
-    newModelTypes.set(filename, modelType);
-    const stem = filename.substring(0, filename.lastIndexOf('.')) || filename;
-    newModelTypes.set(stem, modelType);
-    setModelTypes(newModelTypes);
-  };
+  // Keyboard shortcuts: Ctrl+Z / Ctrl+Y
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInputLike =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.getAttribute('contenteditable') === 'true');
 
-  const processFilesAndGenerate = async () => {
-    if (!excelFile) {
-      setError('Please upload the model_naming.xlsx file');
-      return;
-    }
+      if (isInputLike) return;
 
-    if (dwgIfcFiles.length === 0) {
-      setError('Please upload at least one DWG/DGN/IFC file');
-      return;
-    }
-
-    setProcessing(true);
-    setError(null);
-    setResults(null);
-
-    try {
-      let session = currentSession;
-      if (!session) {
-        session = await uploadFiles(excelFile, dwgIfcFiles);
-        setCurrentSession(session);
-      }
-
-      // Build model type mappings
-      const modelTypeMappings: ModelTypeMapping[] = dwgIfcFiles.map((file) => ({
-        filename: file.name,
-        model_type: modelTypes.get(file.name) || 'Model',
-      }));
-
-      await processFiles(session.session_id, modelTypeMappings);
-
-      pollForResults(session.session_id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      setProcessing(false);
-    }
-  };
-
-  const pollForResults = async (sessionId: string) => {
-    const maxAttempts = 100; // 5 minutes max
-    let attempts = 0;
-
-    const poll = async () => {
-      try {
-        const response = await getSessionStatus(sessionId);
-
-        if (response.status === 'completed') {
-          setResults(response.results!);
-          setProcessing(false);
-        } else if (response.status === 'error') {
-          setError(response.error || 'Processing failed');
-          setProcessing(false);
-        } else if (attempts < maxAttempts) {
-          // Still processing, continue polling
-          attempts++;
-          setTimeout(poll, 3000); // Poll every 3 seconds
-        } else {
-          setError('Processing timed out');
-          setProcessing(false);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error checking status');
-        setProcessing(false);
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        handleRedo();
       }
     };
 
-    poll();
-  };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
 
-  const downloadResults = () => {
-    if (currentSession) {
-      window.open(getDownloadUrl(currentSession.session_id), '_blank');
+  const onConnect = useCallback(
+    (params: Connection) => {
+      // Check if this is a parameter wiring edge
+      if (params.targetHandle?.startsWith('param:')) {
+        // Extract parameter key from target handle
+        const paramKey = params.targetHandle.substring(6); // Remove 'param:' prefix
+
+        // Extract token from source handle (value:token or just token)
+        let token: string | null = null;
+
+        // Special case: per-model outputs from ExcelModels node
+        if (params.source && params.sourceHandle?.startsWith('value:model:')) {
+          const indexStr = params.sourceHandle.split(':')[2];
+          const index = Number(indexStr);
+          const sourceNode = nodes.find((n) => n.id === params.source);
+          if (
+            sourceNode &&
+            sourceNode.type === 'excelModels' &&
+            Array.isArray((sourceNode.data as any).modelNames) &&
+            index >= 0 &&
+            index < (sourceNode.data as any).modelNames.length
+          ) {
+            token = String((sourceNode.data as any).modelNames[index]);
+          }
+        }
+
+        // Default: use token from handle id
+        if (!token) {
+          if (params.sourceHandle?.startsWith('value:')) {
+            token = params.sourceHandle.substring(6); // Remove 'value:' prefix
+          } else if (params.sourceHandle) {
+            token = params.sourceHandle;
+          }
+        }
+
+        if (token && params.target) {
+          // Update the target node's data field with the token/variable name
+          setNodes((nds) =>
+            nds.map((node) => {
+              if (node.id === params.target) {
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    [paramKey]: token,
+                  },
+                };
+              }
+              return node;
+            })
+          );
+        }
+      }
+
+      // Record history and then add the new edge
+      setEdges((eds) => {
+        const nextEdges = addEdge(params, eds);
+        setHistory((prev) => [...prev, { nodes, edges: eds }]);
+        setFuture([]);
+        return nextEdges as WorkflowEdge[];
+      });
+    },
+    [nodes]
+  );
+
+  // Wrap React Flow node/edge change handlers to capture history
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      setNodes((nds) => {
+        const nextNodes = applyNodeChanges(changes, nds as any[]) as unknown as WorkflowNode[];
+        setHistory((prev) => [...prev, { nodes: nds as WorkflowNode[], edges }]);
+        setFuture([]);
+        return nextNodes;
+      });
+    },
+    [edges]
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      setEdges((eds) => {
+        const nextEdges = applyEdgeChanges(changes, eds) as WorkflowEdge[];
+        setHistory((prev) => [...prev, { nodes, edges: eds as WorkflowEdge[] }]);
+        setFuture([]);
+        return nextEdges;
+      });
+    },
+    [nodes]
+  );
+
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    // Simple selection only; deletion is handled via Delete/Backspace keys in the canvas
+    setSelectedNode(node);
+  }, []);
+
+  const handleAddNode = useCallback(
+    (type: string, position: { x: number; y: number }) => {
+      // Initialize node data based on type
+      let nodeData: any = {};
+
+      if (type === 'excelModels') {
+        nodeData = { file: excelFile, columnName: '', modelNames: [] };
+      } else if (type === 'foreachModel') {
+        nodeData = { currentModel: null };
+      } else if (type === 'setVariable') {
+        nodeData = { variables: [] };
+      } else if (type === 'import') {
+        nodeData = { fileType: 'dwg', actualFilePath: '' };
+      } else if (type === 'cleanModel') {
+        nodeData = {
+          discipline: '',
+          prefix: '',
+          description: '',
+          objectDimension: '',
+          fileExt: '',
+          variable: '',
+        };
+      } else if (type === 'createView') {
+        nodeData = { modifiedVariable: '', coordinates: [40, 30, 565, 715] };
+      } else if (type === 'addModelToView') {
+        nodeData = { modifiedVariable: '' };
+      } else if (type === 'removeModelFromView') {
+        nodeData = { pattern: '*', modifiedVariable: '' };
+      } else if (type === 'deleteModelsFromView') {
+        nodeData = { modifiedVariable: '', coordinates: [497, 319], continueOnFailure: true };
+      } else if (type === 'createSharedModel') {
+        nodeData = {
+          discipline: '',
+          prefix: '',
+          description: '',
+          objectDimension: '',
+          fileExt: '',
+          variable: '',
+          modifiedVariable: '',
+        };
+      } else if (type === 'triangulateManualOption') {
+        nodeData = {
+          modifiedVariable: '',
+          prefix: '',
+          surfaceValue: '',
+          fileExt: '',
+          optionsExt: '',
+          discipline: '',
+        };
+      } else if (type === 'tinFunction') {
+        nodeData = { modifiedVariable: '' };
+      } else if (type === 'chainFileOutput') {
+        nodeData = { modelName: '', projectFolder: '', modelType: 'Model' };
+      }
+
+      const newNode: WorkflowNode = {
+        id: `${type}_${Date.now()}`,
+        type: type as any,
+        position,
+        data: nodeData,
+      };
+      setNodes((nds) => {
+        const nextNodes = [...nds, newNode];
+        setHistory((prev) => [...prev, { nodes: nds as WorkflowNode[], edges }]);
+        setFuture([]);
+        return nextNodes as WorkflowNode[];
+      });
+    },
+    [excelFile, edges]
+  );
+
+  const handleFileUpload = useCallback(
+    (type: 'excel' | 'model', files: File[]) => {
+      if (type === 'excel') {
+        setExcelFile(files[0]);
+        // Parse Excel and update ExcelModels node if it exists
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+          // Read sheet as raw rows so we don't depend on a header row
+          const rows = XLSX.utils.sheet_to_json<any[]>(firstSheet, {
+            header: 1,
+            defval: '',
+          }) as any[][];
+
+          // Take first column of each non-empty row as model name
+          const modelNames = rows
+            .map((row) => (Array.isArray(row) ? String((row[0] ?? '')).trim() : ''))
+            .filter((name) => !!name);
+
+          // Update existing ExcelModels node(s) or create one if none exist
+          setNodes((nds) => {
+            let updated = false;
+            const updatedNodes = nds.map((node) => {
+              if (node.type === 'excelModels') {
+                updated = true;
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    file: files[0],
+                    modelNames,
+                    // First row's first cell used as column name (or empty if none)
+                    columnName:
+                      rows.length > 0 && Array.isArray(rows[0])
+                        ? String((rows[0][0] ?? '')).trim()
+                        : '',
+                  },
+                };
+              }
+              return node;
+            });
+
+            if (!updated) {
+              // No ExcelModels node yet – create one automatically
+              const newNode: WorkflowNode = {
+                id: `excelModels_${Date.now()}`,
+                type: 'excelModels',
+                position: { x: 100, y: 100 },
+                data: {
+                  file: files[0],
+                  modelNames,
+                  columnName:
+                    rows.length > 0 && Array.isArray(rows[0])
+                      ? String((rows[0][0] ?? '')).trim()
+                      : '',
+                } as any,
+              };
+              return [...updatedNodes, newNode];
+            }
+
+            return updatedNodes;
+          });
+        };
+        reader.readAsArrayBuffer(files[0]);
+      } else {
+        setModelFiles((prev) => [...prev, ...files]);
+      }
+    },
+    []
+  );
+
+  const handleRunChain = useCallback(async () => {
+    const validation = validateWorkflow(nodes, edges);
+    if (!validation.valid) {
+      alert('Workflow validation failed:\n' + validation.errors.join('\n'));
+      return;
     }
-  };
 
-  const resetSession = () => {
-    setExcelFile(null);
-    setDwgIfcFiles([]);
-    setModelTypes(new Map());
-    setProcessing(false);
-    setCurrentSession(null);
-    setResults(null);
-    setError(null);
-  };
+    const compiled = compileWorkflow(nodes, edges);
+    if ('error' in compiled) {
+      alert('Compilation error: ' + compiled.error);
+      return;
+    }
+
+    setIsRunning(true);
+    try {
+      const response = await runWorkflow(compiled);
+      setSessionId(response.session_id);
+
+      // Poll for status
+      const pollStatus = async () => {
+        const maxAttempts = 100;
+        let attempts = 0;
+
+        const poll = async () => {
+          try {
+            const status = await getWorkflowStatus(response.session_id);
+            if (status.status === 'completed') {
+              setIsRunning(false);
+              try {
+                // Trigger download of the generated ZIP file
+                const downloadUrl = getWorkflowDownloadUrl(response.session_id);
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = `workflow_chain_files_${response.session_id}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } catch (_e) {
+                // Fallback to a simple message if automatic download fails
+                alert('Processing complete! Download available at the workflow download URL.');
+              }
+            } else if (status.status === 'error') {
+              setIsRunning(false);
+              alert('Processing failed: ' + (status.error || 'Unknown error'));
+            } else if (attempts < maxAttempts) {
+              attempts++;
+              setTimeout(poll, 3000);
+            } else {
+              setIsRunning(false);
+              alert('Processing timed out');
+            }
+          } catch (err) {
+            setIsRunning(false);
+            alert(
+              'Error checking status: ' +
+                (err instanceof Error ? err.message : 'Unknown error')
+            );
+          }
+        };
+
+        poll();
+      };
+
+      pollStatus();
+    } catch (err) {
+      setIsRunning(false);
+      alert(
+        'Error running workflow: ' +
+          (err instanceof Error ? err.message : 'Unknown error')
+      );
+    }
+  }, [nodes, edges]);
+
+  const handleSaveTemplate = useCallback(() => {
+    const name = prompt('Enter template name:');
+    if (!name) return;
+
+    const viewport = { x: 0, y: 0, zoom: 1 }; // TODO: capture actual viewport
+    saveTemplate(name, nodes as WorkflowNode[], edges as WorkflowEdge[], viewport);
+    alert('Template saved!');
+  }, [nodes, edges]);
+
+  const handleLoadTemplate = useCallback(() => {
+    const templates = loadAllTemplates();
+    if (templates.length === 0) {
+      alert('No templates found');
+      return;
+    }
+
+    const templateNames = templates.map((t, i) => `${i + 1}. ${t.name}`).join('\n');
+    const choice = prompt(`Select template (1-${templates.length}):\n${templateNames}`);
+    const index = parseInt(choice || '0') - 1;
+
+    if (index >= 0 && index < templates.length) {
+      const template = templates[index];
+      setNodes(template.nodes as WorkflowNode[]);
+      setEdges(template.edges as WorkflowEdge[]);
+      alert('Template loaded!');
+    }
+  }, []);
+
+  const handleExportTemplate = useCallback(() => {
+    const viewport = { x: 0, y: 0, zoom: 1 };
+    const template = {
+      id: 'export',
+      name: 'Exported Template',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      nodes: nodes as WorkflowNode[],
+      edges: edges as WorkflowEdge[],
+      viewport,
+    };
+    const json = exportTemplate(template);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'workflow-template.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
+
+  const handleImportTemplate = useCallback(() => {
+    if (!fileInputRef.current) return;
+    fileInputRef.current.click();
+  }, []);
+
+  const handleImportFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = event.target?.result as string;
+          const template = importTemplate(json);
+          setNodes(template.nodes as WorkflowNode[]);
+          setEdges(template.edges as WorkflowEdge[]);
+          alert('Template imported!');
+        } catch (err) {
+          alert(
+            'Error importing template: ' +
+              (err instanceof Error ? err.message : 'Unknown error')
+          );
+        }
+      };
+      reader.readAsText(file);
+    },
+    []
+  );
+
+  const canRun =
+    (nodes || []).some((n) => n.type === 'excelModels') &&
+    (nodes || []).some((n) => n.type === 'foreachModel') &&
+    (nodes || []).some((n) => n.type === 'chainFileOutput');
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 relative overflow-hidden'>
-      {/* Enhanced Gradient Background with Grid Pattern */}
-      <div className='absolute inset-0 overflow-hidden pointer-events-none'>
-        <div className='absolute inset-0 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900'></div>
-        <div
-          className='absolute inset-0 opacity-10'
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '50px 50px',
-          }}
-        ></div>
-      </div>
-
-      <div className='relative z-10 p-4 sm:p-6 lg:p-8'>
-        <div className='max-w-7xl mx-auto'>
-          <div className='max-w-6xl mx-auto px-4 sm:px-6 lg:px-8'>
-            {/* Header Section */}
-            <div className='text-center mb-16'>
-              <h1 className='text-6xl font-bold text-white mb-6'>
-                PyChain{' '}
-                <span className='bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent'>
-                  12d Model Chain Generator
-                </span>
-              </h1>
-              <p className='text-gray-300 text-xl mb-8 max-w-3xl mx-auto'>
-                Upload your Excel naming file and DWG/DGN/IFC files to generate
-                12d Model chain files
-              </p>
-            </div>
-
-            {/* Session Status */}
-            {currentSession && (
-              <div className='mb-8 backdrop-blur-xl border border-gray-700 rounded-2xl shadow-2xl bg-gray-900/95'>
-                <div className='p-6'>
-                  <div className='flex items-center gap-3'>
-                    <div className='w-3 h-3 bg-green-400 rounded-full animate-pulse'></div>
-                    <p className='text-sm text-gray-300'>
-                      <strong>Session Active:</strong>{' '}
-                      {currentSession.session_id.slice(0, 8)}...
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* File Upload Cards */}
-            <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8'>
-              {/* Excel File Upload Card */}
-              <div className='bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-[1.02]'>
-                <div className='p-6'>
-                  <div className='flex items-center gap-3 mb-4'>
-                    <div className='w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg'>
-                      <FileText className='w-5 h-5 text-white' />
-                    </div>
-                    <div>
-                      <h3 className='text-xl font-bold text-white'>
-                        Excel Naming File
-                      </h3>
-                      <p className='text-gray-400 text-sm'>
-                        Upload model_naming.xlsx
-                      </p>
-                    </div>
-                  </div>
-
-                  <label className='block cursor-pointer group'>
-                    <div
-                      className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
-                        dragOver === 'excel'
-                          ? 'border-emerald-500 bg-emerald-500/10'
-                          : 'border-gray-600/50 group-hover:border-emerald-500/70 group-hover:bg-gray-800/30'
-                      }`}
-                      onDragOver={(e) => handleDragOver(e, 'excel')}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, 'excel')}
-                    >
-                      <div className='w-16 h-16 bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg'>
-                        <Upload className='text-white w-8 h-8' />
-                      </div>
-                      <p className='text-white font-semibold mb-2 text-lg'>
-                        Drop Excel file here
-                      </p>
-                      <p className='text-gray-400 mb-6'>or click to browse</p>
-                      <Button
-                        variant='outline'
-                        className='border-gray-600/50 text-gray-300 hover:bg-gray-800/50 hover:border-emerald-500/50 px-6 py-2'
-                      >
-                        <FileText className='w-4 h-4 mr-2' />
-                        Choose File
-                      </Button>
-                      <input
-                        type='file'
-                        accept='.xlsx'
-                        onChange={(e) => handleFileChange(e, 'excel')}
-                        className='hidden'
-                        disabled={processing}
-                      />
-                    </div>
-                  </label>
-
-                  {excelFile && (
-                    <div className='mt-6'>
-                      <div className='flex items-center gap-2 mb-4'>
-                        <CheckCircle className='text-green-400 w-5 h-5' />
-                        <p className='font-semibold text-white'>
-                          {excelFile.name}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* DWG/DGN/IFC Files Upload Card */}
-              <div className='bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl hover:shadow-3xl transition-all duration-300 hover:scale-[1.02]'>
-                <div className='p-6'>
-                  <div className='flex items-center gap-3 mb-4'>
-                    <div className='w-10 h-10 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg'>
-                      <FileText className='w-5 h-5 text-white' />
-                    </div>
-                    <div>
-                      <h3 className='text-xl font-bold text-white'>
-                        DWG/DGN/IFC Files
-                      </h3>
-                      <p className='text-gray-400 text-sm'>
-                        Upload one or more files
-                      </p>
-                    </div>
-                  </div>
-
-                  <label className='block cursor-pointer group'>
-                    <div
-                      className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300 ${
-                        dragOver === 'dwg'
-                          ? 'border-indigo-500 bg-indigo-500/10'
-                          : 'border-gray-600/50 group-hover:border-indigo-500/70 group-hover:bg-gray-800/30'
-                      }`}
-                      onDragOver={(e) => handleDragOver(e, 'dwg')}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, 'dwg')}
-                    >
-                      <div className='w-16 h-16 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg'>
-                        <Upload className='text-white w-8 h-8' />
-                      </div>
-                      <p className='text-white font-semibold mb-2 text-lg'>
-                        Drop files here
-                      </p>
-                      <p className='text-gray-400 mb-6'>or click to browse</p>
-                      <Button
-                        variant='outline'
-                        className='border-gray-600/50 text-gray-300 hover:bg-gray-800/50 hover:border-indigo-500/50 px-6 py-2'
-                      >
-                        <FileText className='w-4 h-4 mr-2' />
-                        Choose Files
-                      </Button>
-                      <input
-                        type='file'
-                        multiple
-                        accept='.dwg,.dgn,.ifc'
-                        onChange={(e) => handleFileChange(e, 'dwg')}
-                        className='hidden'
-                        disabled={processing}
-                      />
-                    </div>
-                  </label>
-
-                  {dwgIfcFiles.length > 0 && (
-                    <div className='mt-6'>
-                      <div className='flex items-center gap-2 mb-4'>
-                        <CheckCircle className='text-green-400 w-5 h-5' />
-                        <p className='font-semibold text-white'>
-                          {dwgIfcFiles.length} file(s) selected
-                        </p>
-                      </div>
-                      <div className='space-y-2 max-h-32 overflow-y-auto'>
-                        {dwgIfcFiles.map((file, idx) => (
-                          <div
-                            key={idx}
-                            className='flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50'
-                          >
-                            <div className='w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center'>
-                              <CheckCircle className='text-white w-3 h-3' />
-                            </div>
-                            <span className='text-sm text-gray-300 font-medium truncate flex-1'>
-                              {file.name}
-                            </span>
-                            <select
-                              value={modelTypes.get(file.name) || 'Model'}
-                              onChange={(e) =>
-                                updateModelType(
-                                  file.name,
-                                  e.target.value as 'Model' | 'TIN'
-                                )
-                              }
-                              className='text-xs bg-gray-700 text-white border border-gray-600 rounded px-2 py-1 focus:ring-2 focus:ring-indigo-500'
-                              disabled={processing}
-                            >
-                              <option value='Model'>Model</option>
-                              <option value='TIN'>TIN</option>
-                            </select>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Error Display Card */}
-            {error && (
-              <div className='mb-8 bg-red-900/20 border border-red-500/50 rounded-2xl shadow-2xl'>
-                <div className='p-6'>
-                  <div className='flex items-center gap-4'>
-                    <div className='w-10 h-10 bg-gradient-to-r from-red-400 to-pink-500 rounded-full flex items-center justify-center'>
-                      <XCircle className='text-white w-5 h-5' />
-                    </div>
-                    <div>
-                      <h3 className='font-bold text-red-400 mb-1'>
-                        Oops! Something went wrong
-                      </h3>
-                      <p className='text-red-300'>{error}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Process Button Card */}
-            <div className='mb-8 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl text-center'>
-              <div className='py-8'>
-                <Button
-                  onClick={processFilesAndGenerate}
-                  disabled={
-                    processing ||
-                    !excelFile ||
-                    dwgIfcFiles.length === 0
-                  }
-                  size='lg'
-                  className='bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-lg font-bold px-12 py-4 h-auto disabled:opacity-50 shadow-lg'
-                >
-                  {processing ? (
-                    <>
-                      <Loader2 className='w-6 h-6 animate-spin mr-3' />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Play className='w-6 h-6 mr-3' />
-                      Generate Chain Files
-                    </>
-                  )}
-                </Button>
-
-                {(currentSession || results) && (
-                  <Button
-                    onClick={resetSession}
-                    variant='outline'
-                    size='lg'
-                    className='ml-4 border-gray-600/50 text-gray-300 hover:bg-gray-800/50 px-8 py-4 h-auto'
-                  >
-                    <RefreshCw className='w-5 h-5 mr-2' />
-                    Start Over
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {/* Results Card */}
-            {results && (
-              <div className='bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl'>
-                <div className='p-6'>
-                  <div className='text-center mb-8'>
-                    <div className='inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mb-4 shadow-lg'>
-                      <CheckCircle className='w-8 h-8 text-white' />
-                    </div>
-                    <h3 className='text-3xl font-bold text-white mb-2'>
-                      🎉 Processing Complete!
-                    </h3>
-                    <p className='text-gray-300 text-lg'>
-                      Your chain files have been successfully generated
-                    </p>
-                  </div>
-
-                  {/* Summary Cards */}
-                  <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8'>
-                    <div className='bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 text-center'>
-                      <div className='w-10 h-10 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg'>
-                        <FileText className='w-5 h-5 text-white' />
-                      </div>
-                      <p className='text-sm text-gray-400 mb-1'>Total Files</p>
-                      <p className='text-2xl font-bold text-blue-400'>
-                        {results.summary.total_files}
-                      </p>
-                    </div>
-                    <div className='bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 text-center'>
-                      <div className='w-10 h-10 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg'>
-                        <Settings className='w-5 h-5 text-white' />
-                      </div>
-                      <p className='text-sm text-gray-400 mb-1'>
-                        Project Folder
-                      </p>
-                      <p className='text-sm font-bold text-purple-400 truncate'>
-                        {results.summary.project_folder || 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* File List */}
-                  {(results.file_details && results.file_details.length > 0) && (
-                    <div className='bg-gray-800/50 border border-gray-700/50 rounded-xl mb-6'>
-                      <div className='p-6'>
-                        <h4 className='text-white text-lg font-bold mb-4'>
-                          Generated Chain Files
-                        </h4>
-                        <div className='space-y-2 max-h-48 overflow-y-auto'>
-                          {results.file_details!.map((detail, idx) => (
-                            <div
-                              key={idx}
-                              className='flex items-center gap-3 p-3 bg-gray-700/50 rounded-lg'
-                            >
-                              <FileText className='w-4 h-4 text-gray-400' />
-                              <div className='flex flex-col'>
-                                <span className='text-sm text-gray-300'>
-                                  {detail.filename}
-                                </span>
-                                {detail.project_folder && (
-                                  <span className='text-xs text-gray-400 break-all'>
-                                    {detail.project_folder}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Download Button */}
-                  <div className='text-center'>
-                    <Button
-                      onClick={downloadResults}
-                      size='lg'
-                      className='bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-lg font-bold px-12 py-4 h-auto shadow-lg'
-                    >
-                      <Download className='w-6 h-6 mr-3' />
-                      Download Chain Files
-                      <Badge
-                        variant='secondary'
-                        className='ml-3 bg-white/20 text-white'
-                      >
-                        ZIP
-                      </Badge>
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
+    <ReactFlowProvider>
+      <div className="h-screen w-screen flex flex-col bg-gray-900">
+        <TopBar
+          onRunChain={handleRunChain}
+          onSaveTemplate={handleSaveTemplate}
+          onLoadTemplate={handleLoadTemplate}
+          onExportTemplate={handleExportTemplate}
+          onImportTemplate={handleImportTemplate}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          canUndo={history.length > 0}
+          canRedo={future.length > 0}
+          isRunning={isRunning}
+          canRun={canRun}
+        />
+        <div className="flex-1 flex overflow-hidden">
+          <LeftSidebar
+            onAddNode={handleAddNode}
+            onFileUpload={handleFileUpload}
+            excelFile={excelFile}
+            modelFiles={modelFiles}
+          />
+          <div className="flex-1 relative">
+            <WorkspaceCanvas
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
+              onConnect={onConnect}
+              onNodeClick={onNodeClick}
+            />
           </div>
+          <RightSidebar
+            selectedNode={selectedNode}
+            nodes={nodes}
+            edges={edges}
+            onUpdateNode={(nodeId, data) => {
+              setNodes((nds) =>
+                nds.map((node) =>
+                  node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
+                )
+              );
+            }}
+          />
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImportFile}
+          className="hidden"
+        />
       </div>
-    </div>
+    </ReactFlowProvider>
   );
-};
+}
 
-export default PyChainApp;
+
 
