@@ -24,21 +24,35 @@ from commands.views import (
     add_model_to_view_command,
     remove_model_from_view_command,
 )
-from commands.models import clean_model_command
+from commands.models import clean_model_command, rename_model_command
 from commands.run_options import (
-    delete_models_from_view_command,
     create_shared_model_command,
+)
+from commands.views import (
+    delete_models_from_view_command,
 )
 from commands.functions import if_function_exists_command
 from commands.tin import (
     triangulate_manual_option_command,
     tin_function_command,
+    create_contour_smooth_label_command,
+    drape_strings_to_tin_command,
+    run_or_create_contours_command,
 )
 from commands.importers import (
     generate_ifc_xml_content,
     generate_dwg_xml_content,
     generate_dgn_xml_content,
 )
+from commands.quantities import (
+    get_total_surface_area_command,
+    trimesh_volume_report_command,
+    volume_tin_to_tin_command,
+)
+from commands.strings import convert_lines_to_variable_command
+from commands.trimesh import create_trimesh_from_tin_command
+from commands.conditionals import add_comment_command, add_label_command
+from commands.design import run_or_create_mtf_command, create_mtf_command
 
 
 def resolve_variable(
@@ -65,7 +79,8 @@ def resolve_variable(
     
     # Check variable bindings
     for var in variables:
-        if var.get('name') == var_name:
+        var_name_in_list = var.get('name', '')
+        if var_name_in_list == var_name:
             value = var.get('value', '')
             # If it's a per-model variable and contains {model_name}, substitute
             if var.get('scope') == 'per-model' and isinstance(value, str):
@@ -132,13 +147,13 @@ def execute_node(
         xml_content.extend(clean_model_command(discipline, prefix, description, object_dimension, file_ext, variable))
     
     elif node_type == 'createView':
-        modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
+        view_name = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         coordinates = data.get('coordinates', [40, 30, 565, 715])
-        xml_content.extend(create_view_command(modified_variable, coordinates=tuple(coordinates)))
+        xml_content.extend(create_view_command(view_name, coordinates=tuple(coordinates)))
     
     elif node_type == 'addModelToView':
-        modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
-        xml_content.extend(add_model_to_view_command(modified_variable))
+        model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
+        xml_content.extend(add_model_to_view_command(model_name))
     
     elif node_type == 'removeModelFromView':
         pattern = data.get('pattern', '*')
@@ -180,6 +195,83 @@ def execute_node(
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
         xml_content.extend(if_function_exists_command(modified_variable, function_name))
+    
+    elif node_type == 'renameModel':
+        pattern_replace_token = data.get('patternReplace', 'pattern_replace')
+        pattern_search_token = data.get('patternSearch', 'pattern_search')
+        pattern_replace = resolve_variable(pattern_replace_token, model_name, variables, per_run_vars)
+        pattern_search = resolve_variable(pattern_search_token, model_name, variables, per_run_vars)
+        # Debug logging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"RenameModel: patternSearch token='{pattern_search_token}', resolved='{pattern_search}', variables={[v.get('name') for v in variables]}, per_run_vars={list(per_run_vars.keys())}")
+        xml_content.extend(rename_model_command(pattern_replace, pattern_search))
+    
+    elif node_type == 'getTotalSurfaceArea':
+        export_location = resolve_variable(data.get('exportLocation', 'export_location'), model_name, variables, per_run_vars)
+        tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
+        polygon_name = resolve_variable(data.get('polygonName', 'polygon_name'), model_name, variables, per_run_vars)
+        xml_content.extend(get_total_surface_area_command(export_location, tin_name, polygon_name))
+    
+    elif node_type == 'trimeshVolumeReport':
+        trimesh_name = resolve_variable(data.get('trimeshName', 'trimesh_name'), model_name, variables, per_run_vars)
+        output_location = resolve_variable(data.get('outputLocation', 'output_location'), model_name, variables, per_run_vars)
+        filename = resolve_variable(data.get('filename', 'filename'), model_name, variables, per_run_vars)
+        xml_content.extend(trimesh_volume_report_command(trimesh_name, output_location, filename))
+    
+    elif node_type == 'volumeTinToTin':
+        original_tin_name = resolve_variable(data.get('originalTinName', 'original_tin_name'), model_name, variables, per_run_vars)
+        new_tin_name = resolve_variable(data.get('newTinName', 'new_tin_name'), model_name, variables, per_run_vars)
+        output_location = resolve_variable(data.get('outputLocation', 'output_location'), model_name, variables, per_run_vars)
+        filename = resolve_variable(data.get('filename', 'filename'), model_name, variables, per_run_vars)
+        xml_content.extend(volume_tin_to_tin_command(original_tin_name, new_tin_name, output_location, filename))
+    
+    elif node_type == 'convertLinesToVariable':
+        xml_content.extend(convert_lines_to_variable_command(model_name))
+    
+    elif node_type == 'createContourSmoothLabel':
+        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
+        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
+        xml_content.extend(create_contour_smooth_label_command(prefix, cell_value))
+    
+    elif node_type == 'drapeToTin':
+        data_to_drape = resolve_variable(data.get('dataToDrape', 'data_to_drape'), model_name, variables, per_run_vars)
+        z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
+        tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
+        xml_content.extend(drape_strings_to_tin_command(data_to_drape, z_offset, tin_name))
+    
+    elif node_type == 'runOrCreateContours':
+        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
+        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
+        xml_content.extend(run_or_create_contours_command(prefix, cell_value))
+    
+    elif node_type == 'createTrimeshFromTin':
+        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
+        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
+        trimesh_name = resolve_variable(data.get('trimeshName', 'trimesh_name'), model_name, variables, per_run_vars)
+        tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
+        z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
+        depth = resolve_variable(data.get('depth', '1'), model_name, variables, per_run_vars)
+        colour = resolve_variable(data.get('colour', 'colour'), model_name, variables, per_run_vars)
+        xml_content.extend(create_trimesh_from_tin_command(prefix, cell_value, trimesh_name, tin_name, z_offset, depth, colour))
+    
+    elif node_type == 'addComment':
+        comment_name = resolve_variable(data.get('commentName', 'comment_name'), model_name, variables, per_run_vars)
+        xml_content.extend(add_comment_command(comment_name))
+    
+    elif node_type == 'addLabel':
+        label_name = resolve_variable(data.get('labelName', 'label_name'), model_name, variables, per_run_vars)
+        xml_content.extend(add_label_command(label_name))
+    
+    elif node_type == 'runOrCreateMtf':
+        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
+        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
+        xml_content.extend(run_or_create_mtf_command(prefix, cell_value))
+    
+    elif node_type == 'createMtf':
+        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
+        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
+        xml_content.extend(create_mtf_command(prefix, cell_value))
 
 
 def build_command_chain(
@@ -384,13 +476,32 @@ def run_workflow(
         Tuple of (generated file paths, project folder, file details)
     """
     # Parse Excel to get model names
-    naming_data = load_naming_data(excel_file_path)
-    if naming_data is None:
-        raise ValueError("Error loading naming data from Excel file")
+    # Read Excel file directly without header to ensure we get ALL rows including first
+    # This prevents pandas from treating the first row as a header and losing it
+    try:
+        df_raw = pd.read_excel(excel_file_path, engine='openpyxl', header=None)
+        # Get all values from first column (index 0)
+        model_names_raw = df_raw.iloc[:, 0].astype(str).tolist()
+    except Exception as e:
+        # Fallback to using load_naming_data if direct read fails
+        naming_data = load_naming_data(excel_file_path)
+        if naming_data is None:
+            raise ValueError("Error loading naming data from Excel file")
+        model_names_raw = naming_data.iloc[:, 0].astype(str).tolist()
     
-    # Get model names from first column
-    model_names = naming_data.iloc[:, 0].astype(str).tolist()
-    model_names = [m for m in model_names if m and m != 'nan']
+    # Filter out empty strings and 'nan'
+    # Check if first value looks like a header (common header names)
+    common_headers = ['filename', 'name', 'model', 'model_name', 'model name']
+    model_names = []
+    for i, m in enumerate(model_names_raw):
+        m_clean = m.strip() if m else ''
+        # Skip if empty or 'nan'
+        if not m_clean or m_clean.lower() == 'nan':
+            continue
+        # Skip first row only if it matches a common header name
+        if i == 0 and m_clean.lower() in common_headers:
+            continue
+        model_names.append(m_clean)
     
     # Extract nodes and edges from graph
     nodes = workflow_graph.get('nodes', [])
@@ -407,9 +518,24 @@ def run_workflow(
     for var in variables:
         if var.get('scope') == 'per-run':
             per_run_vars[var.get('name')] = var.get('value')
-    
-    # Get project folder from variables or default
-    project_folder = per_run_vars.get('project_folder', '')
+
+    # Determine which variable should be used for the project folder.
+    # Prefer the variable selected on the Chain File Output node (projectFolder param),
+    # falling back to the legacy hard-coded name 'project_folder' for backwards compatibility.
+    chain_output_node = next(
+        (n for n in workflow_graph.get('nodes', []) if n.get('type') == 'chainFileOutput'),
+        None,
+    )
+    project_folder_var_name = None
+    if chain_output_node:
+        data = chain_output_node.get('data', {})
+        project_folder_var_name = data.get('projectFolder') or None
+
+    if not project_folder_var_name:
+        project_folder_var_name = 'project_folder'
+
+    # Get project folder value from per-run variables (may be empty if not set)
+    project_folder = per_run_vars.get(project_folder_var_name, '')
     
     generated_files = []
     file_details = []

@@ -8,7 +8,11 @@ import { Eye } from 'lucide-react';
 import { AddModelToViewNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function AddModelToViewNode({ data, selected }: NodeProps<{ data: AddModelToViewNodeData }>) {
+export function AddModelToViewNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: AddModelToViewNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.addModelToView;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function AddModelToViewNode({ data, selected }: NodeProps<{ data: AddMode
       color="from-violet-500 to-purple-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Ready</p>

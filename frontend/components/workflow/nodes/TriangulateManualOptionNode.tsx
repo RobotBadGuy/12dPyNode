@@ -8,7 +8,11 @@ import { Triangle } from 'lucide-react';
 import { TriangulateManualOptionNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function TriangulateManualOptionNode({ data, selected }: NodeProps<{ data: TriangulateManualOptionNodeData }>) {
+export function TriangulateManualOptionNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: TriangulateManualOptionNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.triangulateManualOption;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function TriangulateManualOptionNode({ data, selected }: NodeProps<{ data
       color="from-teal-500 to-cyan-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Ready</p>

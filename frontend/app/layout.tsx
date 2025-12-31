@@ -16,7 +16,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: 'PyChain - 12d Model Chain Generator',
+  title: '12d pynode',
   description:
     'Generate 12d Model chain files from DWG/DGN/IFC files with Excel naming conventions',
   keywords: [
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     'Survey',
     'Civil Engineering',
   ],
-  authors: [{ name: 'PyChain Team' }],
+  authors: [{ name: '12dPyChain Team' }],
   viewport: 'width=device-width, initial-scale=1',
   themeColor: '#667eea',
 };

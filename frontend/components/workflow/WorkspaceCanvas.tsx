@@ -1,7 +1,16 @@
 'use client';
 
-import React from 'react';
-import { ReactFlow, Background, Controls, MiniMap, Node, Connection } from '@xyflow/react';
+import React, { useMemo } from 'react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  Node,
+  Connection,
+  Viewport,
+  ReactFlowInstance,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { ExcelModelsNode } from './nodes/ExcelModelsNode';
@@ -17,6 +26,19 @@ import { DeleteModelsFromViewNode } from './nodes/DeleteModelsFromViewNode';
 import { CreateSharedModelNode } from './nodes/CreateSharedModelNode';
 import { TriangulateManualOptionNode } from './nodes/TriangulateManualOptionNode';
 import { TinFunctionNode } from './nodes/TinFunctionNode';
+import { RenameModelNode } from './nodes/RenameModelNode';
+import { GetTotalSurfaceAreaNode } from './nodes/GetTotalSurfaceAreaNode';
+import { TrimeshVolumeReportNode } from './nodes/TrimeshVolumeReportNode';
+import { VolumeTinToTinNode } from './nodes/VolumeTinToTinNode';
+import { ConvertLinesToVariableNode } from './nodes/ConvertLinesToVariableNode';
+import { CreateContourSmoothLabelNode } from './nodes/CreateContourSmoothLabelNode';
+import { DrapeToTinNode } from './nodes/DrapeToTinNode';
+import { RunOrCreateContoursNode } from './nodes/RunOrCreateContoursNode';
+import { RunOrCreateMtfNode } from './nodes/RunOrCreateMtfNode';
+import { CreateMtfNode } from './nodes/CreateMtfNode';
+import { CreateTrimeshFromTinNode } from './nodes/CreateTrimeshFromTinNode';
+import { AddCommentNode } from './nodes/AddCommentNode';
+import { AddLabelNode } from './nodes/AddLabelNode';
 
 interface WorkspaceCanvasProps {
   nodes: WorkflowNode[];
@@ -25,6 +47,7 @@ interface WorkspaceCanvasProps {
   onEdgesChange: (changes: any) => void;
   onConnect: (connection: Connection) => void;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
+  onViewportChange?: (viewport: Viewport) => void;
 }
 
 export function WorkspaceCanvas({
@@ -34,6 +57,7 @@ export function WorkspaceCanvas({
   onEdgesChange,
   onConnect,
   onNodeClick,
+  onViewportChange,
 }: WorkspaceCanvasProps) {
   const nodeTypes = {
     excelModels: ExcelModelsNode,
@@ -49,24 +73,73 @@ export function WorkspaceCanvas({
     createSharedModel: CreateSharedModelNode,
     triangulateManualOption: TriangulateManualOptionNode,
     tinFunction: TinFunctionNode,
+    renameModel: RenameModelNode,
+    getTotalSurfaceArea: GetTotalSurfaceAreaNode,
+    trimeshVolumeReport: TrimeshVolumeReportNode,
+    volumeTinToTin: VolumeTinToTinNode,
+    convertLinesToVariable: ConvertLinesToVariableNode,
+    createContourSmoothLabel: CreateContourSmoothLabelNode,
+    drapeToTin: DrapeToTinNode,
+    runOrCreateContours: RunOrCreateContoursNode,
+    runOrCreateMtf: RunOrCreateMtfNode,
+    createMtf: CreateMtfNode,
+    createTrimeshFromTin: CreateTrimeshFromTinNode,
+    addComment: AddCommentNode,
+    addLabel: AddLabelNode,
   };
+
+  // Generate a consistent random color for each edge based on its ID
+  const getEdgeColor = (edgeId: string): string => {
+    // Use a hash of the edge ID to generate a consistent color
+    let hash = 0;
+    for (let i = 0; i < edgeId.length; i++) {
+      hash = edgeId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Generate a bright, vibrant color
+    const hue = Math.abs(hash) % 360;
+    const saturation = 65 + (Math.abs(hash) % 20); // 65-85% saturation
+    const lightness = 50 + (Math.abs(hash) % 15); // 50-65% lightness
+    
+    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  };
+
+  // Apply colors to edges
+  const coloredEdges = useMemo(() => {
+    return edges.map((edge) => ({
+      ...edge,
+      style: {
+        stroke: getEdgeColor(edge.id),
+        strokeWidth: 2,
+      },
+    }));
+  }, [edges]);
 
   return (
     <div className="w-full h-full relative">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={nodes as Node[]}
+        edges={coloredEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onMoveEnd={(_, viewport) => {
+          if (onViewportChange) {
+            onViewportChange(viewport);
+          }
+        }}
+        onInit={(instance) => {
+          if (onViewportChange) {
+            onViewportChange(instance.getViewport());
+          }
+        }}
         deleteKeyCode={['Backspace', 'Delete']}
         nodeTypes={nodeTypes}
         fitView
         className="bg-gray-800"
       >
         <Background
-          patternId="grid"
           gap={20}
           size={1}
           lineWidth={0.5}

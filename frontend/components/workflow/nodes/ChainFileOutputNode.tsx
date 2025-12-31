@@ -8,7 +8,11 @@ import { FileCode } from 'lucide-react';
 import { ChainFileOutputNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function ChainFileOutputNode({ data, selected }: NodeProps<{ data: ChainFileOutputNodeData }>) {
+export function ChainFileOutputNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: ChainFileOutputNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.chainFileOutput;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function ChainFileOutputNode({ data, selected }: NodeProps<{ data: ChainF
       color="from-purple-500 to-pink-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Type: {data.modelType || 'Model'}</p>

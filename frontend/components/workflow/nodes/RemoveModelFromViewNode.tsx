@@ -8,7 +8,11 @@ import { EyeOff } from 'lucide-react';
 import { RemoveModelFromViewNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function RemoveModelFromViewNode({ data, selected }: NodeProps<{ data: RemoveModelFromViewNodeData }>) {
+export function RemoveModelFromViewNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: RemoveModelFromViewNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.removeModelFromView;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function RemoveModelFromViewNode({ data, selected }: NodeProps<{ data: Re
       color="from-violet-500 to-purple-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Pattern: {data.pattern || '*'}</p>

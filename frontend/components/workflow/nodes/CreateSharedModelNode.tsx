@@ -8,7 +8,11 @@ import { Share2 } from 'lucide-react';
 import { CreateSharedModelNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function CreateSharedModelNode({ data, selected }: NodeProps<{ data: CreateSharedModelNodeData }>) {
+export function CreateSharedModelNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: CreateSharedModelNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.createSharedModel;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function CreateSharedModelNode({ data, selected }: NodeProps<{ data: Crea
       color="from-indigo-500 to-blue-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Ready</p>

@@ -5,7 +5,7 @@ from typing import List
 
 
 def function_command(
-    name: str,
+    command_name: str,
     function_name: str
 ) -> List[str]:
     """
@@ -20,7 +20,7 @@ def function_command(
     """
     return [
         '      <Function>',
-        f'        <Name>{name}</Name>',
+        f'        <Name>{command_name}</Name>',
         '        <Active>true</Active>',
         '        <Continue_on_failure>false</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',

@@ -35,9 +35,9 @@ export function TopBar({
     <div className="h-16 bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/50 flex items-center justify-between px-6 shadow-lg">
       <div className="flex items-center gap-2">
         <h1 className="text-xl font-bold text-white">
-          PyChain{' '}
+          12d Pynode.{' '}
           <span className="bg-gradient-to-r from-green-400 to-blue-500 bg-clip-text text-transparent">
-            12d Workflow
+          Connect nodes. Create chains.
           </span>
         </h1>
       </div>

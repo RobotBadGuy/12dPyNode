@@ -12,11 +12,31 @@ def normalize_unicode_string(text):
         return normalized
     return text
 
-def load_naming_data(excel_path):
-    """Loads model naming data from an Excel file."""
+def load_naming_data(excel_path, header=None):
+    """Loads model naming data from an Excel file.
+    
+    Args:
+        excel_path: Path to Excel file
+        header: Row to use as column names. None means no header row (all rows are data).
+                Default None to ensure first row is included as data.
+    """
     try:
         # pip install openpyxl
-        df = pd.read_excel(excel_path, engine='openpyxl')
+        # Use header=None to read all rows as data (including first row)
+        # This ensures we don't lose the first model if there's no header row
+        df = pd.read_excel(excel_path, engine='openpyxl', header=header)
+        
+        # If no header was specified, create default column names
+        if header is None:
+            # Use first row values as column names, or default names if needed
+            if len(df) > 0:
+                # Check if first row looks like a header (all strings, no numbers)
+                first_row = df.iloc[0]
+                # If first row has mixed types or looks like data, use it as data
+                # Otherwise, we'll keep it as data and use default column names
+                df.columns = [f'col_{i}' for i in range(len(df.columns))]
+            else:
+                df.columns = [f'col_{i}' for i in range(len(df.columns))]
         
         # Normalize Unicode characters in all string columns
         for column in df.columns:

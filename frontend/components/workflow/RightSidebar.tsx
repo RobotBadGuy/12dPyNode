@@ -69,7 +69,9 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
     );
   }
 
-  const nodeData = selectedNode.data as any;
+  // Get the latest node data from nodes array to ensure we have the most up-to-date data
+  const currentNode = nodes.find((n) => n.id === selectedNode.id);
+  const nodeData = (currentNode?.data || selectedNode.data) as any;
 
   // Render SetVariable editor
   if (selectedNode.type === 'setVariable') {
@@ -169,6 +171,90 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render ExcelModels node editor
+  if (selectedNode.type === 'excelModels') {
+    // Get the freshest data for this node
+    const currentNode = nodes.find((n) => n.id === selectedNode.id);
+    const nodeData = (currentNode?.data || selectedNode.data) as any;
+    const currentFile = nodeData.file as File | null | undefined;
+
+    // All ExcelModels nodes that currently have a file loaded
+    const excelNodesWithFiles = nodes.filter(
+      (n) => n.type === 'excelModels' && (n.data as any)?.file
+    );
+
+    return (
+      <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
+        <div className="p-4 space-y-4">
+          <h3 className="text-lg font-bold text-white mb-2">Properties</h3>
+
+          <div>
+            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node Type</Label>
+            <p className="text-sm text-gray-400">{selectedNode.type}</p>
+          </div>
+
+          <div>
+            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node ID</Label>
+            <p className="text-sm text-gray-400 font-mono">{selectedNode.id}</p>
+          </div>
+
+          <div>
+            <Label className="text-sm font-semibold text-gray-300 mb-1 block">
+              Current Excel File
+            </Label>
+            <p className="text-sm text-gray-400">
+              {currentFile ? currentFile.name : 'No file loaded'}
+            </p>
+          </div>
+
+          {excelNodesWithFiles.length > 0 && (
+            <div>
+              <Label className="text-sm font-semibold text-gray-300 mb-1 block">
+                Change referenced file
+              </Label>
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  const sourceId = e.target.value;
+                  if (!sourceId) return;
+                  const sourceNode = nodes.find((n) => n.id === sourceId);
+                  if (!sourceNode) return;
+                  const sourceData = sourceNode.data as any;
+                  // Copy file + parsed Excel data from the chosen node
+                  onUpdateNode(selectedNode.id, {
+                    file: sourceData.file ?? null,
+                    modelNames: Array.isArray(sourceData.modelNames)
+                      ? sourceData.modelNames
+                      : [],
+                    columnName: sourceData.columnName ?? '',
+                  } as Partial<WorkflowNodeData>);
+                  // Reset back to placeholder
+                  e.currentTarget.value = '';
+                }}
+                className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-9 rounded-md px-3"
+              >
+                <option value="">-- Select loaded Excel file --</option>
+                {excelNodesWithFiles.map((n) => {
+                  const data = n.data as any;
+                  const file = data.file as File | undefined;
+                  const label = file?.name || `Excel node ${n.id}`;
+                  return (
+                    <option key={n.id} value={n.id}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Selecting a file will copy its loaded Excel data into this node.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );

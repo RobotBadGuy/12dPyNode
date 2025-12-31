@@ -8,17 +8,54 @@ import { Badge } from '@/components/ui/badge';
 interface LeftSidebarProps {
   onAddNode: (type: string, position: { x: number; y: number }) => void;
   onFileUpload: (type: 'excel' | 'model', files: File[]) => void;
-  excelFile: File | null;
+  excelNodes: Array<{ id: string; fileName: string }>;
   modelFiles: File[];
 }
 
 export function LeftSidebar({
   onAddNode,
   onFileUpload,
-  excelFile,
+  excelNodes,
   modelFiles,
 }: LeftSidebarProps) {
   const [dragOver, setDragOver] = useState<'excel' | 'model' | null>(null);
+  const [sectionsOpen, setSectionsOpen] = useState({
+    core: true,
+    models: true,
+    views: false,
+    tin: false,
+    design: false,
+    quantities: false,
+    strings: false,
+    conditionals: false,
+    output: true,
+  });
+
+  const toggleSection = (key: keyof typeof sectionsOpen) => {
+    setSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Section Header Component
+  const SectionHeader = ({
+    title,
+    sectionKey,
+  }: {
+    title: string;
+    sectionKey: keyof typeof sectionsOpen;
+  }) => {
+    return (
+      <button
+        type="button"
+        onClick={() => toggleSection(sectionKey)}
+        className="w-full flex items-center justify-between text-xs font-semibold text-gray-300 mt-4 mb-2 hover:text-gray-200 transition-colors"
+      >
+        <span>{title}</span>
+        <span className="text-gray-500 text-lg">
+          {sectionsOpen[sectionKey] ? '−' : '+'}
+        </span>
+      </button>
+    );
+  };
 
   const handleDragOver = (e: React.DragEvent, type: 'excel' | 'model') => {
     e.preventDefault();
@@ -36,7 +73,7 @@ export function LeftSidebar({
     if (type === 'excel') {
       const excelFiles = files.filter((f) => f.name.endsWith('.xlsx'));
       if (excelFiles.length > 0) {
-        onFileUpload('excel', [excelFiles[0]]);
+        onFileUpload('excel', excelFiles);
       }
     } else {
       const modelFiles = files.filter((f) =>
@@ -51,7 +88,7 @@ export function LeftSidebar({
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>, type: 'excel' | 'model') => {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
-      onFileUpload(type, type === 'excel' ? [files[0]] : files);
+      onFileUpload(type, files);
     }
   };
 
@@ -80,6 +117,7 @@ export function LeftSidebar({
             <input
               type="file"
               accept=".xlsx"
+              multiple
               onChange={(e) => handleFileInput(e, 'excel')}
               className="hidden"
               id="excel-upload"
@@ -95,12 +133,22 @@ export function LeftSidebar({
               </Button>
             </label>
           </div>
-          {excelFile && (
-            <div className="mt-2 flex items-center gap-2 p-2 bg-gray-800/50 rounded-lg">
-              <FileText className="w-4 h-4 text-green-400" />
-              <span className="text-sm text-gray-300 truncate flex-1">
-                {excelFile.name}
-              </span>
+          {excelNodes.length > 0 && (
+            <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+              <div className="text-xs text-gray-400 mb-1">
+                {excelNodes.length} Excel workflow{excelNodes.length !== 1 ? 's' : ''} loaded
+              </div>
+              {excelNodes.map((node) => (
+                <div
+                  key={node.id}
+                  className="flex items-center gap-2 p-2 bg-gray-800/50 rounded-lg"
+                >
+                  <FileText className="w-4 h-4 text-green-400" />
+                  <span className="text-xs text-gray-300 truncate flex-1">
+                    {node.fileName}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -162,123 +210,302 @@ export function LeftSidebar({
         <div className="border-t border-gray-700/50 pt-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Nodes</h3>
           <div className="space-y-2">
-            <Button
-              onClick={() => onAddNode('excelModels', { x: 100, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Excel Models
-            </Button>
-            <Button
-              onClick={() => onAddNode('foreachModel', { x: 300, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Foreach Model
-            </Button>
-            <Button
-              onClick={() => onAddNode('setVariable', { x: 500, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Set Variable
-            </Button>
-            <Button
-              onClick={() => onAddNode('import', { x: 700, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Import
-            </Button>
-            <Button
-              onClick={() => onAddNode('cleanModel', { x: 900, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Clean Model
-            </Button>
-            <Button
-              onClick={() => onAddNode('createView', { x: 1100, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Create View
-            </Button>
-            <Button
-              onClick={() => onAddNode('addModelToView', { x: 1300, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Add Model to View
-            </Button>
-            <Button
-              onClick={() => onAddNode('removeModelFromView', { x: 1500, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Remove Model from View
-            </Button>
-            <Button
-              onClick={() => onAddNode('deleteModelsFromView', { x: 1700, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Delete Models from View
-            </Button>
-            <Button
-              onClick={() => onAddNode('createSharedModel', { x: 1900, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Create Shared Model
-            </Button>
-            <Button
-              onClick={() => onAddNode('triangulateManualOption', { x: 2100, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Triangulate Manual
-            </Button>
-            <Button
-              onClick={() => onAddNode('tinFunction', { x: 2300, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              TIN Function
-            </Button>
-            <Button
-              onClick={() => onAddNode('chainFileOutput', { x: 2500, y: 100 })}
-              variant="outline"
-              size="sm"
-              className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Chain Output
-            </Button>
+            {/* Core Section */}
+            <SectionHeader title="Core" sectionKey="core" />
+            {sectionsOpen.core && (
+              <>
+                <Button
+                  onClick={() => onAddNode('excelModels', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Excel Models
+                </Button>
+                <Button
+                  onClick={() => onAddNode('foreachModel', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Foreach Model
+                </Button>
+                <Button
+                  onClick={() => onAddNode('setVariable', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Set Variable
+                </Button>
+              </>
+            )}
+
+            {/* Models Section */}
+            <SectionHeader title="Models" sectionKey="models" />
+            {sectionsOpen.models && (
+              <>
+                <Button
+                  onClick={() => onAddNode('import', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Import
+                </Button>
+                <Button
+                  onClick={() => onAddNode('cleanModel', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Clean Model
+                </Button>
+                <Button
+                  onClick={() => onAddNode('renameModel', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Rename Model
+                </Button>
+                <Button
+                  onClick={() => onAddNode('createSharedModel', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Shared Model
+                </Button>
+              </>
+            )}
+
+            {/* Views Section */}
+            <SectionHeader title="Views" sectionKey="views" />
+            {sectionsOpen.views && (
+              <>
+                <Button
+                  onClick={() => onAddNode('createView', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create View
+                </Button>
+                <Button
+                  onClick={() => onAddNode('addModelToView', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Add Model to View
+                </Button>
+                <Button
+                  onClick={() => onAddNode('removeModelFromView', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Remove Model from View
+                </Button>
+                <Button
+                  onClick={() => onAddNode('deleteModelsFromView', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Delete Models from View
+                </Button>
+              </>
+            )}
+
+            {/* TIN & Surface Section */}
+            <SectionHeader title="TIN & Surface" sectionKey="tin" />
+            {sectionsOpen.tin && (
+              <>
+                <Button
+                  onClick={() => onAddNode('triangulateManualOption', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Triangulate Manual
+                </Button>
+                <Button
+                  onClick={() => onAddNode('tinFunction', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  TIN Function
+                </Button>
+                <Button
+                  onClick={() => onAddNode('createContourSmoothLabel', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Contour Smooth Label
+                </Button>
+                <Button
+                  onClick={() => onAddNode('drapeToTin', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Drape to TIN
+                </Button>
+                <Button
+                  onClick={() => onAddNode('runOrCreateContours', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Run or Create Contours
+                </Button>
+                <Button
+                  onClick={() => onAddNode('createTrimeshFromTin', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Trimesh from TIN
+                </Button>
+              </>
+            )}
+
+            {/* Design Section */}
+            <SectionHeader title="Design" sectionKey="design" />
+            {sectionsOpen.design && (
+              <>
+                <Button
+                  onClick={() => onAddNode('runOrCreateMtf', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Run or Create MTF
+                </Button>
+                <Button
+                  onClick={() => onAddNode('createMtf', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create MTF
+                </Button>
+              </>
+            )}
+
+            {/* Quantities Section */}
+            <SectionHeader title="Quantities" sectionKey="quantities" />
+            {sectionsOpen.quantities && (
+              <>
+                <Button
+                  onClick={() => onAddNode('getTotalSurfaceArea', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Get Total Surface Area
+                </Button>
+                <Button
+                  onClick={() => onAddNode('trimeshVolumeReport', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Trimesh Volume Report
+                </Button>
+                <Button
+                  onClick={() => onAddNode('volumeTinToTin', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Volume TIN to TIN
+                </Button>
+              </>
+            )}
+
+            {/* Strings Section */}
+            <SectionHeader title="Strings" sectionKey="strings" />
+            {sectionsOpen.strings && (
+              <>
+                <Button
+                  onClick={() => onAddNode('convertLinesToVariable', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Convert Lines to Variable
+                </Button>
+              </>
+            )}
+
+            {/* Conditionals Section */}
+            <SectionHeader title="Conditionals" sectionKey="conditionals" />
+            {sectionsOpen.conditionals && (
+              <>
+                <Button
+                  onClick={() => onAddNode('addComment', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Add Comment
+                </Button>
+                <Button
+                  onClick={() => onAddNode('addLabel', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Add Label
+                </Button>
+              </>
+            )}
+
+            {/* Output Section */}
+            <SectionHeader title="Output" sectionKey="output" />
+            {sectionsOpen.output && (
+              <>
+                <Button
+                  onClick={() => onAddNode('chainFileOutput', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Chain Output
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

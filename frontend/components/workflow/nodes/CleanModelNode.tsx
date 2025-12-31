@@ -8,7 +8,11 @@ import { Sparkles } from 'lucide-react';
 import { CleanModelNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function CleanModelNode({ data, selected }: NodeProps<{ data: CleanModelNodeData }>) {
+export function CleanModelNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: CleanModelNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.cleanModel;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function CleanModelNode({ data, selected }: NodeProps<{ data: CleanModelN
       color="from-orange-500 to-red-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Ready</p>

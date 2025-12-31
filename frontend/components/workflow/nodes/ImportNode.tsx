@@ -8,7 +8,11 @@ import { Upload } from 'lucide-react';
 import { ImportNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function ImportNode({ data, selected }: NodeProps<{ data: ImportNodeData }>) {
+export function ImportNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: ImportNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.import;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function ImportNode({ data, selected }: NodeProps<{ data: ImportNodeData 
       color="from-cyan-500 to-blue-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Type: {data.fileType || 'dwg'}</p>

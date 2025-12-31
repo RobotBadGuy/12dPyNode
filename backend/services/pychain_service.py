@@ -36,8 +36,10 @@ from commands.views import (
 )
 from commands.models import clean_model_command
 from commands.run_options import (
-    delete_models_from_view_command,
     create_shared_model_command
+)
+from commands.views import (
+    delete_models_from_view_command
 )
 from commands.functions import (
     if_function_exists_command,

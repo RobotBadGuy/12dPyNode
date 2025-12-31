@@ -8,7 +8,11 @@ import { Trash2 } from 'lucide-react';
 import { DeleteModelsFromViewNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function DeleteModelsFromViewNode({ data, selected }: NodeProps<{ data: DeleteModelsFromViewNodeData }>) {
+export function DeleteModelsFromViewNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: DeleteModelsFromViewNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.deleteModelsFromView;
   
   const paramItems = schema.parameters.map((param) => ({
@@ -24,7 +28,7 @@ export function DeleteModelsFromViewNode({ data, selected }: NodeProps<{ data: D
       color="from-red-500 to-pink-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Ready</p>

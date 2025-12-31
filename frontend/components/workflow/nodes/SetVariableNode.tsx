@@ -8,12 +8,17 @@ import { Settings } from 'lucide-react';
 import { SetVariableNodeData } from '@/lib/workflow/types';
 import { nodeSchemas } from '@/lib/workflow/nodeSchemas';
 
-export function SetVariableNode({ data, selected }: NodeProps<{ data: SetVariableNodeData }>) {
+export function SetVariableNode(props: NodeProps) {
+  const { data, selected } = props as unknown as {
+    data: SetVariableNodeData;
+    selected?: boolean;
+  };
   const schema = nodeSchemas.setVariable;
   
   // Generate value outputs from variables array
-  const valueItems = (data.variables || []).map((varBinding) => ({
-    id: `value:${varBinding.name}`,
+  // Use a stable handle ID based on index so renaming the variable doesn't break existing connections
+  const valueItems = (data.variables || []).map((varBinding, index) => ({
+    id: `value:var:${index}`, // stable per-variable index
     label: varBinding.name,
     type: 'output' as const,
   }));
@@ -25,7 +30,7 @@ export function SetVariableNode({ data, selected }: NodeProps<{ data: SetVariabl
       color="from-yellow-500 to-amber-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
-      selected={selected}
+      selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">
