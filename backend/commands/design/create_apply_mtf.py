@@ -1,19 +1,19 @@
 """
-Generate Create MTF command
+Generate Create Apply MTF command
 """
 from typing import List
 
 
-def create_mtf_command(prefix: str, cell_value: str) -> List[str]:
+def create_apply_mtf_command(prefix: str, cell_value: str) -> List[str]:
     """
-    Generate Create MTF file XML command
+    Generate Create Apply MTF file XML command
     
     Args:
         prefix: Prefix for the model
         cell_value: Cell value (model name)
     
     Returns:
-        List of XML lines for Create MTF command
+        List of XML lines for Create Apply MTF command
     """
     return [
         '      <Manual_option>',
@@ -1152,3 +1152,4 @@ def create_mtf_command(prefix: str, cell_value: str) -> List[str]:
         '        </Parameter_Mappings>',
         '      </Manual_option>'
     ]
+

@@ -20,15 +20,16 @@ export function LeftSidebar({
 }: LeftSidebarProps) {
   const [dragOver, setDragOver] = useState<'excel' | 'model' | null>(null);
   const [sectionsOpen, setSectionsOpen] = useState({
-    core: true,
-    models: true,
+    core: false,
+    functions: false,
+    models: false,
     views: false,
     tin: false,
     design: false,
     quantities: false,
     strings: false,
     conditionals: false,
-    output: true,
+    output: false,
   });
 
   const toggleSection = (key: keyof typeof sectionsOpen) => {
@@ -405,13 +406,22 @@ export function LeftSidebar({
                   Run or Create MTF
                 </Button>
                 <Button
-                  onClick={() => onAddNode('createMtf', { x: 0, y: 0 })}
+                  onClick={() => onAddNode('applyMtf', { x: 0, y: 0 })}
                   variant="outline"
                   size="sm"
                   className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
                 >
                   <FileText className="w-4 h-4 mr-2" />
-                  Create MTF
+                  Apply MTF
+                </Button>
+                <Button
+                  onClick={() => onAddNode('createMtfFile', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create MTF File
                 </Button>
               </>
             )}
@@ -466,6 +476,22 @@ export function LeftSidebar({
               </>
             )}
 
+            {/* Functions Section */}
+            <SectionHeader title="Functions" sectionKey="functions" />
+            {sectionsOpen.functions && (
+              <>
+                <Button
+                  onClick={() => onAddNode('runFunction', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Run Function
+                </Button>
+              </>
+            )}
+
             {/* Conditionals Section */}
             <SectionHeader title="Conditionals" sectionKey="conditionals" />
             {sectionsOpen.conditionals && (
@@ -487,6 +513,15 @@ export function LeftSidebar({
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Add Label
+                </Button>
+                <Button
+                  onClick={() => onAddNode('ifFunctionExists', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  If Function Exists
                 </Button>
               </>
             )}

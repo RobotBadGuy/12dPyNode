@@ -5,15 +5,15 @@ import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
 import { GitBranch } from 'lucide-react';
-import { CreateMtfNodeData } from '@/lib/workflow/types';
+import { ApplyMtfNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function CreateMtfNode(props: NodeProps) {
+export function ApplyMtfNode(props: NodeProps) {
   const { data, selected } = props as unknown as {
-    data: CreateMtfNodeData;
+    data: ApplyMtfNodeData;
     selected?: boolean;
   };
-  const schema = nodeSchemas.createMtf;
+  const schema = nodeSchemas.applyMtf;
   
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
@@ -23,7 +23,7 @@ export function CreateMtfNode(props: NodeProps) {
 
   return (
     <BaseNode
-      title="Create MTF"
+      title="Apply MTF"
       icon={<GitBranch className="w-4 h-4 text-white" />}
       color="from-violet-500 to-purple-600"
       inputs={schema.flowInputs}
@@ -37,4 +37,6 @@ export function CreateMtfNode(props: NodeProps) {
     </BaseNode>
   );
 }
+
+
 

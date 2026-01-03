@@ -4,6 +4,7 @@ Workflow Runner - Executes node-based workflow graphs to generate chain files
 
 import os
 import json
+import re
 from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from datetime import datetime
@@ -31,7 +32,7 @@ from commands.run_options import (
 from commands.views import (
     delete_models_from_view_command,
 )
-from commands.functions import if_function_exists_command
+from commands.conditionals import if_function_exists_command
 from commands.tin import (
     triangulate_manual_option_command,
     tin_function_command,
@@ -52,7 +53,8 @@ from commands.quantities import (
 from commands.strings import convert_lines_to_variable_command
 from commands.trimesh import create_trimesh_from_tin_command
 from commands.conditionals import add_comment_command, add_label_command
-from commands.design import run_or_create_mtf_command, create_mtf_command
+from commands.design import run_or_create_mtf_command, create_apply_mtf_command, write_mtf_file
+from commands.functions import function_command
 
 
 def resolve_variable(
@@ -60,19 +62,84 @@ def resolve_variable(
     model_name: str,
     variables: List[Dict[str, Any]],
     per_run_vars: Dict[str, Any],
+    _visited: Optional[set] = None,
 ) -> str:
     """
     Resolve a variable reference to its actual value
     
+    Supports two modes:
+    1. Direct variable name: if var_name exactly matches a variable, return its value
+    2. Template substitution: if var_name contains {token} patterns, substitute them
+    
     Args:
-        var_name: Variable name to resolve
+        var_name: Variable name to resolve, or string containing {token} patterns
         model_name: Current model name (for per-model variables)
         variables: List of variable bindings
         per_run_vars: Per-run variable values
+        _visited: Internal set to prevent infinite recursion (do not pass manually)
     
     Returns:
         Resolved variable value as string
     """
+    if _visited is None:
+        _visited = set()
+    
+    # Prevent infinite recursion
+    if var_name in _visited:
+        return var_name
+    _visited.add(var_name)
+    
+    # Helper function to resolve a single token (without braces)
+    def resolve_token(token: str) -> str:
+        """Resolve a single variable token to its value"""
+        # Check per-run variables first
+        if token in per_run_vars:
+            return str(per_run_vars[token])
+        
+        # Check variable bindings
+        for var in variables:
+            var_name_in_list = var.get('name', '')
+            if var_name_in_list == token:
+                value = var.get('value', '')
+                # If it's a per-model variable and contains {model_name}, substitute
+                if var.get('scope') == 'per-model' and isinstance(value, str):
+                    # Recursively resolve {model_name} in the value
+                    return resolve_variable(value, model_name, variables, per_run_vars, _visited.copy())
+                return str(value)
+        
+        # Built-in variables
+        if token == 'model_name':
+            return model_name
+        if token == 'modified_variable':
+            return model_name.replace('-', ' ')
+        if token == 'variable':
+            return model_name
+        
+        # Unknown token - return as-is (will remain in braces)
+        return None
+    
+    # Check if string contains template tokens {token}
+    if '{' in var_name and '}' in var_name:
+        # Template substitution mode
+        # Pattern matches {token} where token doesn't contain braces
+        pattern = r'\{([^{}]+)\}'
+        result = var_name
+        # Find all matches and collect replacements
+        matches = list(re.finditer(pattern, var_name))
+        
+        # Replace from end to start to preserve positions
+        for match in reversed(matches):
+            token = match.group(1)
+            resolved = resolve_token(token)
+            if resolved is not None:
+                # Replace this specific occurrence
+                start, end = match.span()
+                result = result[:start] + resolved + result[end:]
+            # If resolved is None, leave {token} as-is (unknown variable)
+        
+        return result
+    
+    # Direct variable name mode (backward compatibility)
     # Check per-run variables first
     if var_name in per_run_vars:
         return str(per_run_vars[var_name])
@@ -84,7 +151,7 @@ def resolve_variable(
             value = var.get('value', '')
             # If it's a per-model variable and contains {model_name}, substitute
             if var.get('scope') == 'per-model' and isinstance(value, str):
-                return value.replace('{model_name}', model_name)
+                return resolve_variable(value, model_name, variables, per_run_vars, _visited.copy())
             return str(value)
     
     # Default transformations
@@ -190,11 +257,17 @@ def execute_node(
     elif node_type == 'tinFunction':
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         xml_content.extend(tin_function_command(modified_variable))
+
+    elif node_type == 'runFunction':
+        command_name = resolve_variable(data.get('commandName', 'command_name'), model_name, variables, per_run_vars)
+        function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
+        xml_content.extend(function_command(command_name, function_name))
     
     elif node_type == 'ifFunctionExists':
-        modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
-        xml_content.extend(if_function_exists_command(modified_variable, function_name))
+        pass_action_go_to_label = resolve_variable(data.get('passActionGoToLabel', 'pass_action_go_to_label'), model_name, variables, per_run_vars)
+        fail_action_go_to_label = resolve_variable(data.get('failActionGoToLabel', 'fail_action_go_to_label'), model_name, variables, per_run_vars)
+        xml_content.extend(if_function_exists_command(function_name, pass_action_go_to_label, fail_action_go_to_label))
     
     elif node_type == 'renameModel':
         pattern_replace_token = data.get('patternReplace', 'pattern_replace')
@@ -268,10 +341,10 @@ def execute_node(
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
         xml_content.extend(run_or_create_mtf_command(prefix, cell_value))
     
-    elif node_type == 'createMtf':
+    elif node_type == 'applyMtf':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        xml_content.extend(create_mtf_command(prefix, cell_value))
+        xml_content.extend(create_apply_mtf_command(prefix, cell_value))
 
 
 def build_command_chain(
@@ -539,6 +612,31 @@ def run_workflow(
     
     generated_files = []
     file_details = []
+    
+    # Execute createMtfFile nodes once per run (before processing models)
+    # These nodes generate standalone .mtf files that are included in the ZIP
+    for node in nodes:
+        if node.get('type') == 'createMtfFile':
+            data = node.get('data', {})
+            # Resolve parameters using variable resolution (supports {varName} tokens)
+            # Use empty string for model_name since this runs once per run, not per model
+            mtf_name = resolve_variable(data.get('mtfName', ''), '', variables, per_run_vars)
+            template_left_name = resolve_variable(data.get('templateLeftName', ''), '', variables, per_run_vars)
+            template_right_name = resolve_variable(data.get('templateRightName', ''), '', variables, per_run_vars)
+            
+            if mtf_name and template_left_name and template_right_name:
+                try:
+                    mtf_file_path = write_mtf_file(mtf_name, template_left_name, template_right_name, output_folder)
+                    generated_files.append(mtf_file_path)
+                    file_details.append({
+                        'filename': os.path.basename(mtf_file_path),
+                        'output_path': mtf_file_path,
+                        'project_folder': project_folder,
+                    })
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Error creating MTF file: {e}", exc_info=True)
     
     # Generate chain file for each model
     for model_name in model_names:

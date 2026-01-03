@@ -465,16 +465,22 @@ export default function WorkspacePage() {
         nodeData = { prefix: '', cellValue: '' };
       } else if (type === 'runOrCreateMtf') {
         nodeData = { prefix: '', cellValue: '' };
-      } else if (type === 'createMtf') {
+      } else if (type === 'applyMtf') {
         nodeData = { prefix: '', cellValue: '' };
+      } else if (type === 'createMtfFile') {
+        nodeData = { mtfName: '', templateLeftName: '', templateRightName: '' };
       } else if (type === 'createTrimeshFromTin') {
         nodeData = { prefix: '', cellValue: '', trimeshName: '', tinName: '', zOffset: '0', depth: '1', colour: '' };
       } else if (type === 'addComment') {
         nodeData = { commentName: '' };
       } else if (type === 'addLabel') {
         nodeData = { labelName: '' };
+      } else if (type === 'ifFunctionExists') {
+        nodeData = { functionName: '', passActionGoToLabel: '', failActionGoToLabel: '' };
       } else if (type === 'chainFileOutput') {
         nodeData = { modelName: '', projectFolder: '', modelType: 'Model' };
+      } else if (type === 'runFunction') {
+        nodeData = { commandName: '', functionName: '' };
       }
 
       const newNode: WorkflowNode = {

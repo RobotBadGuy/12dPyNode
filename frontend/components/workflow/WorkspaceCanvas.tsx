@@ -24,6 +24,7 @@ import { AddModelToViewNode } from './nodes/AddModelToViewNode';
 import { RemoveModelFromViewNode } from './nodes/RemoveModelFromViewNode';
 import { DeleteModelsFromViewNode } from './nodes/DeleteModelsFromViewNode';
 import { CreateSharedModelNode } from './nodes/CreateSharedModelNode';
+import { RunFunctionNode } from './nodes/RunFunctionNode';
 import { TriangulateManualOptionNode } from './nodes/TriangulateManualOptionNode';
 import { TinFunctionNode } from './nodes/TinFunctionNode';
 import { RenameModelNode } from './nodes/RenameModelNode';
@@ -35,10 +36,12 @@ import { CreateContourSmoothLabelNode } from './nodes/CreateContourSmoothLabelNo
 import { DrapeToTinNode } from './nodes/DrapeToTinNode';
 import { RunOrCreateContoursNode } from './nodes/RunOrCreateContoursNode';
 import { RunOrCreateMtfNode } from './nodes/RunOrCreateMtfNode';
-import { CreateMtfNode } from './nodes/CreateMtfNode';
+import { ApplyMtfNode } from './nodes/ApplyMtfNode';
+import { CreateMtfFileNode } from './nodes/CreateMtfFileNode';
 import { CreateTrimeshFromTinNode } from './nodes/CreateTrimeshFromTinNode';
 import { AddCommentNode } from './nodes/AddCommentNode';
 import { AddLabelNode } from './nodes/AddLabelNode';
+import { IfFunctionExistsNode } from './nodes/IfFunctionExistsNode';
 
 interface WorkspaceCanvasProps {
   nodes: WorkflowNode[];
@@ -71,6 +74,7 @@ export function WorkspaceCanvas({
     removeModelFromView: RemoveModelFromViewNode,
     deleteModelsFromView: DeleteModelsFromViewNode,
     createSharedModel: CreateSharedModelNode,
+    runFunction: RunFunctionNode,
     triangulateManualOption: TriangulateManualOptionNode,
     tinFunction: TinFunctionNode,
     renameModel: RenameModelNode,
@@ -82,10 +86,12 @@ export function WorkspaceCanvas({
     drapeToTin: DrapeToTinNode,
     runOrCreateContours: RunOrCreateContoursNode,
     runOrCreateMtf: RunOrCreateMtfNode,
-    createMtf: CreateMtfNode,
+    applyMtf: ApplyMtfNode,
+    createMtfFile: CreateMtfFileNode,
     createTrimeshFromTin: CreateTrimeshFromTinNode,
     addComment: AddCommentNode,
     addLabel: AddLabelNode,
+    ifFunctionExists: IfFunctionExistsNode,
   };
 
   // Generate a consistent random color for each edge based on its ID

@@ -4,16 +4,16 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
-import { Tag } from 'lucide-react';
-import { RenameModelNodeData } from '@/lib/workflow/types';
+import { CheckCircle2 } from 'lucide-react';
+import { IfFunctionExistsNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
-export function RenameModelNode(props: NodeProps) {
+export function IfFunctionExistsNode(props: NodeProps) {
   const { data, selected } = props as unknown as {
-    data: RenameModelNodeData;
+    data: IfFunctionExistsNodeData;
     selected?: boolean;
   };
-  const schema = nodeSchemas.renameModel;
+  const schema = nodeSchemas.ifFunctionExists;
   
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
@@ -23,9 +23,9 @@ export function RenameModelNode(props: NodeProps) {
 
   return (
     <BaseNode
-      title="Rename Model"
-      icon={<Tag className="w-4 h-4 text-white" />}
-      color="from-purple-500 to-indigo-600"
+      title="If Function Exists"
+      icon={<CheckCircle2 className="w-4 h-4 text-white" />}
+      color="from-purple-500 to-purple-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function RenameModelNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

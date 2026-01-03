@@ -322,9 +322,13 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                         value=""
                         onChange={(e) => {
                           if (e.target.value) {
+                            const currentValue = nodeData.actualFilePath || '';
+                            const varReference = `{${e.target.value}}`;
                             onUpdateNode(selectedNode.id, {
-                              actualFilePath: e.target.value,
+                              actualFilePath: currentValue + varReference,
                             } as Partial<WorkflowNodeData>);
+                            // Reset dropdown
+                            e.target.value = '';
                           }
                         }}
                         className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
@@ -336,6 +340,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                           </option>
                         ))}
                       </select>
+                      <p className="mt-1 text-xs text-gray-500">Inserts {'{'}varName{'}'} reference</p>
                     </div>
                   )}
                 </div>
@@ -426,9 +431,13 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                           value=""
                           onChange={(e) => {
                             if (e.target.value) {
+                              const currentValue = String(value || '');
+                              const varReference = `{${e.target.value}}`;
                               onUpdateNode(selectedNode.id, {
-                                [param.key]: e.target.value,
+                                [param.key]: currentValue + varReference,
                               } as Partial<WorkflowNodeData>);
+                              // Reset dropdown
+                              e.target.value = '';
                             }
                           }}
                           className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
@@ -440,6 +449,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                             </option>
                           ))}
                         </select>
+                        <p className="mt-1 text-xs text-gray-500">Inserts {'{'}varName{'}'} reference</p>
                       </div>
                     )}
                   </div>

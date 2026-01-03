@@ -20,6 +20,7 @@ export function AddLabelNode(props: NodeProps) {
     label: param.label,
     type: 'input' as const,
   }));
+  const labelName = data.labelName;
 
   return (
     <BaseNode
@@ -31,12 +32,14 @@ export function AddLabelNode(props: NodeProps) {
       selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
-        <p className="text-white/60">Ready</p>
+        <p className="text-white/60">{labelName}</p>
         <NodePortSection title="Parameters" items={paramItems} />
       </div>
     </BaseNode>
   );
 }
+
+
 
 
 

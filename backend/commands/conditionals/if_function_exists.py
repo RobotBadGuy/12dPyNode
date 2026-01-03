@@ -5,7 +5,6 @@ from typing import List
 
 
 def if_function_exists_command(
-    modified_variable: str,
     function_name: str,
     pass_action_go_to_label: str,
     fail_action_go_to_label: str
@@ -14,8 +13,7 @@ def if_function_exists_command(
     Generate If_function_exists XML command
     
     Args:
-        modified_variable: Variable name (with spaces instead of hyphens)
-        function_name: Function name to check (e.g., "{modified_variable} tin")
+        function_name: Function name to check (e.g., "{function_name} tin")
         pass_action_go_to_label: Label to go to if the function exists
         fail_action_go_to_label: Label to go to if the function does not exist
     
