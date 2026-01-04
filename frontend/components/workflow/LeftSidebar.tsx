@@ -412,7 +412,16 @@ export function LeftSidebar({
                   className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
                 >
                   <FileText className="w-4 h-4 mr-2" />
-                  Apply MTF
+                  Run Apply MTF
+                </Button>
+                <Button
+                  onClick={() => onAddNode('createApplyMtf', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Apply MTF File
                 </Button>
                 <Button
                   onClick={() => onAddNode('createMtfFile', { x: 0, y: 0 })}
@@ -421,7 +430,7 @@ export function LeftSidebar({
                   className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
                 >
                   <FileText className="w-4 h-4 mr-2" />
-                  Create MTF File
+                  Create .MTF File
                 </Button>
               </>
             )}

@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional
+from contextlib import asynccontextmanager
 import os
 import uuid
 import asyncio
@@ -23,10 +24,39 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Create necessary directories
+UPLOAD_DIR = Path("uploads")
+OUTPUT_DIR = Path("output")
+UPLOAD_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    # Startup
+    logger.info("Starting PyChain API")
+    
+    # Clean up old files (optional)
+    for directory in [UPLOAD_DIR, OUTPUT_DIR]:
+        for file_path in directory.glob("*"):
+            if file_path.is_file():
+                try:
+                    file_path.unlink()
+                except Exception:
+                    pass
+    
+    yield
+    
+    # Shutdown (if needed in the future)
+    # logger.info("Shutting down PyChain API")
+
+
 app = FastAPI(
     title="PyChain API",
     description="API for generating 12d Model chain files from DWG/DGN/IFC files",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configure CORS origins from environment variables
@@ -41,12 +71,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Create necessary directories
-UPLOAD_DIR = Path("uploads")
-OUTPUT_DIR = Path("output")
-UPLOAD_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR.mkdir(exist_ok=True)
 
 # In-memory storage for session management
 processing_sessions = {}
@@ -478,21 +502,6 @@ async def download_workflow_results(session_id: str):
         zip_path,
         headers={"Content-Disposition": f"attachment; filename=workflow_chain_files_{session_id}.zip"}
     )
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Cleanup old files on startup"""
-    logger.info("Starting PyChain API")
-    
-    # Clean up old files (optional)
-    for directory in [UPLOAD_DIR, OUTPUT_DIR]:
-        for file_path in directory.glob("*"):
-            if file_path.is_file():
-                try:
-                    file_path.unlink()
-                except Exception:
-                    pass
 
 
 if __name__ == "__main__":

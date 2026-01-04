@@ -25,7 +25,7 @@ export function AddCommentNode(props: NodeProps) {
     <BaseNode
       title="Add Comment"
       icon={<MessageSquare className="w-4 h-4 text-white" />}
-      color="from-blue-500 to-indigo-600"
+      color="from-yellow-500 to-amber-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function AddCommentNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

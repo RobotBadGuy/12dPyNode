@@ -23,7 +23,7 @@ export function ApplyMtfNode(props: NodeProps) {
 
   return (
     <BaseNode
-      title="Apply MTF"
+      title="Run Apply MTF"
       icon={<GitBranch className="w-4 h-4 text-white" />}
       color="from-violet-500 to-purple-600"
       inputs={schema.flowInputs}

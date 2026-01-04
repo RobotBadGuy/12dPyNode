@@ -50,26 +50,32 @@ export function ExcelModelsNode(props: NodeProps) {
                     {expanded ? 'Hide models' : 'Show models'} ({modelNames.length})
                   </span>
                 </button>
-                {expanded && (
-                  <div className="mt-1 max-h-24 overflow-y-auto space-y-0.5 pr-1">
-                    {modelNames.map((name: string, index: number) => (
-                      <div
-                        key={index}
-                        className="relative flex items-center text-[11px] text-white/80 truncate pr-4"
-                        title={name}
-                      >
-                        {index + 1}. {name}
-                        {/* Per-model output handle inside the models list */}
-                        <Handle
-                          type="source"
-                          position={Position.Right}
-                          id={`value:model:${index}`}
-                          className="w-3 h-3 bg-white border-2 border-green-600 absolute -right-1 top-1/2 -translate-y-1/2"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* Always render per-model handles so imported edges remain valid,
+                    but visually collapse the list when not expanded */}
+                <div
+                  className={
+                    expanded
+                      ? 'mt-1 max-h-24 overflow-y-auto space-y-0.5 pr-1'
+                      : 'mt-1 max-h-0 overflow-hidden space-y-0.5 pr-1'
+                  }
+                >
+                  {modelNames.map((name: string, index: number) => (
+                    <div
+                      key={index}
+                      className="relative flex items-center text-[11px] text-white/80 truncate pr-4"
+                      title={name}
+                    >
+                      {index + 1}. {name}
+                      {/* Per-model output handle for each model */}
+                      <Handle
+                        type="source"
+                        position={Position.Right}
+                        id={`value:model:${index}`}
+                        className="w-3 h-3 bg-white border-2 border-green-600 absolute -right-1 top-1/2 -translate-y-1/2"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </>

@@ -25,7 +25,7 @@ export function CreateTrimeshFromTinNode(props: NodeProps) {
     <BaseNode
       title="Create Trimesh from TIN"
       icon={<Box className="w-4 h-4 text-white" />}
-      color="from-slate-500 to-gray-600"
+      color="from-pink-500 to-rose-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function CreateTrimeshFromTinNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

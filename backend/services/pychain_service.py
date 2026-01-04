@@ -32,19 +32,19 @@ from commands.metadata import (
 from commands.views import (
     create_view_command,
     add_model_to_view_command,
-    remove_model_from_view_command
+    remove_model_from_view_command,
+    delete_models_from_view_command
 )
 from commands.models import clean_model_command
 from commands.run_options import (
     create_shared_model_command
 )
-from commands.views import (
-    delete_models_from_view_command
-)
 from commands.functions import (
     function_command
 )
-from commands.conditionals import if_function_exists_command
+from commands.conditionals import (
+    if_function_exists_command
+)
 from commands.tin import (
     triangulate_manual_option_command,
     tin_function_command
@@ -160,8 +160,7 @@ def process_file_with_custom_path(
                 print(f"Warning: failed to append attribute manipulator steps for '{modified_variable}': {_e}")
         
         # TIN function commands
-        # Note: Using empty strings for labels - may need to be updated with actual label names
-        xml_content.extend(if_function_exists_command(f"{modified_variable} tin", "", ""))
+        xml_content.extend(if_function_exists_command(modified_variable, f"{modified_variable} tin"))
         xml_content.extend(triangulate_manual_option_command(modified_variable, prefix, surface_value, file_ext, options_ext, discipline))
         xml_content.extend(tin_function_command(modified_variable))
         

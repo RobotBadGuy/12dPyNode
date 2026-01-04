@@ -1,15 +1,7 @@
-def create_mtf_file(template_left_name: str, template_right_name: str) -> str:
-    """
-    Generate MTF file content as a string
-    
-    Args:
-        template_left_name: Name of the left template
-        template_right_name: Name of the right template
-    
-    Returns:
-        MTF file content as a string
-    """
-    return rf"""left_side = {{
+def create_mtf_file(mtf_name, template_left_name, template_right_name):
+    with open(f'{mtf_name}.mtf', 'w') as file:
+        file.write(rf"""
+left_side = {{
   
 }}
 
@@ -26,6 +18,7 @@ hinge_modifier = {{
 }}
 
 left_side_modifier = {{
+
   insert_full_template start_ref 0 final_ref 0 "{template_right_name}" "Design<<" absolute extra_start extra_end
 }}
 
@@ -144,31 +137,4 @@ minimum_final_batter_length = 0.00000
 allow_links_modified_inwards = 0
 
 do_clear_output_window = 0
-"""
-
-
-def write_mtf_file(mtf_name: str, template_left_name: str, template_right_name: str, output_path: str) -> str:
-    """
-    Write an MTF file to the specified output path
-    
-    Args:
-        mtf_name: Name of the MTF file (without .mtf extension)
-        template_left_name: Name of the left template
-        template_right_name: Name of the right template
-        output_path: Directory where the MTF file should be written
-    
-    Returns:
-        Full path to the created MTF file
-    """
-    from pathlib import Path
-    
-    output_dir = Path(output_path)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    
-    mtf_file_path = output_dir / f"{mtf_name}.mtf"
-    content = create_mtf_file(template_left_name, template_right_name)
-    
-    with open(mtf_file_path, 'w') as file:
-        file.write(content)
-    
-    return str(mtf_file_path)
+""")

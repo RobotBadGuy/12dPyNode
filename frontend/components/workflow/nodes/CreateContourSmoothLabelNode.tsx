@@ -25,7 +25,7 @@ export function CreateContourSmoothLabelNode(props: NodeProps) {
     <BaseNode
       title="Create Contour Smooth Label"
       icon={<Waves className="w-4 h-4 text-white" />}
-      color="from-teal-500 to-cyan-600"
+      color="from-cyan-500 to-blue-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function CreateContourSmoothLabelNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

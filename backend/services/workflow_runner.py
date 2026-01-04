@@ -53,7 +53,9 @@ from commands.quantities import (
 from commands.strings import convert_lines_to_variable_command
 from commands.trimesh import create_trimesh_from_tin_command
 from commands.conditionals import add_comment_command, add_label_command
-from commands.design import run_or_create_mtf_command, create_apply_mtf_command, write_mtf_file
+from commands.design.create_apply_mtf import create_apply_mtf
+from commands.design import apply_mtf_command
+from commands.design.create_mtf_file import create_mtf_file
 from commands.functions import function_command
 
 
@@ -336,15 +338,102 @@ def execute_node(
         label_name = resolve_variable(data.get('labelName', 'label_name'), model_name, variables, per_run_vars)
         xml_content.extend(add_label_command(label_name))
     
-    elif node_type == 'runOrCreateMtf':
-        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
-        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        xml_content.extend(run_or_create_mtf_command(prefix, cell_value))
+    elif node_type in ('runOrCreateMtf', 'createApplyMtf'):
+        function_name = resolve_variable(
+            data.get('functionName', 'function_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        mtf_file_name = resolve_variable(
+            data.get('mtfFileName', 'mtf_file_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        reference_model_name = resolve_variable(
+            data.get('referenceModelName', 'reference_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        volumes_report_name = resolve_variable(
+            data.get('volumesReportName', 'volumes_report_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        String_Model_Name = resolve_variable(
+            data.get('stringModelName', 'string_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        Section_Model_Name = resolve_variable(
+            data.get('sectionModelName', 'section_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        Road_Tin_Model_Name = resolve_variable(
+            data.get('roadTinModelName', 'road_tin_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        model_for_tin_name = resolve_variable(
+            data.get('modelForTinName', 'model_for_tin_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        Tadpole_Model_Name = resolve_variable(
+            data.get('tadpoleModelName', 'tadpole_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+
+        xml_content.extend(
+            create_apply_mtf(
+                function_name,
+                mtf_file_name,
+                reference_model_name,
+                volumes_report_name,
+                String_Model_Name,
+                Section_Model_Name,
+                Road_Tin_Model_Name,
+                model_for_tin_name,
+                Tadpole_Model_Name,
+            )
+        )
     
     elif node_type == 'applyMtf':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        xml_content.extend(create_apply_mtf_command(prefix, cell_value))
+        xml_content.extend(apply_mtf_command(prefix, cell_value))
+
+    elif node_type == 'createMtfFile':
+        # Generate an .mtf file as a side-effect; this does not add XML commands.
+        mtf_name = resolve_variable(data.get('mtfName', 'mtf_name'), model_name, variables, per_run_vars)
+        template_left = resolve_variable(
+            data.get('templateLeftName', 'template_left_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        template_right = resolve_variable(
+            data.get('templateRightName', 'template_right_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        try:
+            create_mtf_file(mtf_name, template_left, template_right)
+        except Exception:
+            # Non-fatal: we don't want MTF generation failures to break the chain build
+            # Logging can be added here if needed.
+            pass
 
 
 def build_command_chain(
@@ -612,31 +701,6 @@ def run_workflow(
     
     generated_files = []
     file_details = []
-    
-    # Execute createMtfFile nodes once per run (before processing models)
-    # These nodes generate standalone .mtf files that are included in the ZIP
-    for node in nodes:
-        if node.get('type') == 'createMtfFile':
-            data = node.get('data', {})
-            # Resolve parameters using variable resolution (supports {varName} tokens)
-            # Use empty string for model_name since this runs once per run, not per model
-            mtf_name = resolve_variable(data.get('mtfName', ''), '', variables, per_run_vars)
-            template_left_name = resolve_variable(data.get('templateLeftName', ''), '', variables, per_run_vars)
-            template_right_name = resolve_variable(data.get('templateRightName', ''), '', variables, per_run_vars)
-            
-            if mtf_name and template_left_name and template_right_name:
-                try:
-                    mtf_file_path = write_mtf_file(mtf_name, template_left_name, template_right_name, output_folder)
-                    generated_files.append(mtf_file_path)
-                    file_details.append({
-                        'filename': os.path.basename(mtf_file_path),
-                        'output_path': mtf_file_path,
-                        'project_folder': project_folder,
-                    })
-                except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
-                    logger.error(f"Error creating MTF file: {e}", exc_info=True)
     
     # Generate chain file for each model
     for model_name in model_names:

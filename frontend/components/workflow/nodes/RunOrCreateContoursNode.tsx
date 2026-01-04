@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
-import { GitBranch } from 'lucide-react';
+import { Mountain } from 'lucide-react';
 import { RunOrCreateContoursNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
@@ -24,8 +24,8 @@ export function RunOrCreateContoursNode(props: NodeProps) {
   return (
     <BaseNode
       title="Run or Create Contours"
-      icon={<GitBranch className="w-4 h-4 text-white" />}
-      color="from-violet-500 to-purple-600"
+      icon={<Mountain className="w-4 h-4 text-white" />}
+      color="from-slate-500 to-gray-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function RunOrCreateContoursNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

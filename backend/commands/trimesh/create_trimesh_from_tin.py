@@ -18,7 +18,7 @@ def create_trimesh_from_tin_command(
     
     Args:
         prefix: Prefix for the model
-        cell_value: Cell value (model name)
+        cell_value: Cell value for naming
         trimesh_name: Name for the trimesh
         tin_name: Name of the TIN to convert
         z_offset: Z offset of trimesh

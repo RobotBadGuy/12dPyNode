@@ -38,11 +38,3 @@ export function RenameModelNode(props: NodeProps) {
   );
 }
 
-
-
-
-
-
-
-
-

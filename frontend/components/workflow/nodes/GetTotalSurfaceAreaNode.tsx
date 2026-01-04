@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
-import { Calculator } from 'lucide-react';
+import { Ruler } from 'lucide-react';
 import { GetTotalSurfaceAreaNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
@@ -23,9 +23,9 @@ export function GetTotalSurfaceAreaNode(props: NodeProps) {
 
   return (
     <BaseNode
-      title="Total Surface Area"
-      icon={<Calculator className="w-4 h-4 text-white" />}
-      color="from-amber-500 to-orange-600"
+      title="Get Total Surface Area"
+      icon={<Ruler className="w-4 h-4 text-white" />}
+      color="from-blue-500 to-cyan-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function GetTotalSurfaceAreaNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

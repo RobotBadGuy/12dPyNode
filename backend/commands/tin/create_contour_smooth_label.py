@@ -6,11 +6,11 @@ from typing import List
 
 def create_contour_smooth_label_command(prefix: str, cell_value: str) -> List[str]:
     """
-    Generate Tin: Contour, Smooth and Label XML command
+    Generate Create Contour Smooth Label XML command
     
     Args:
         prefix: Prefix for the model
-        cell_value: Cell value (model name)
+        cell_value: Cell value for naming
     
     Returns:
         List of XML lines for Create Contour Smooth Label command
@@ -205,7 +205,8 @@ def create_contour_smooth_label_command(prefix: str, cell_value: str) -> List[st
         '      <name>Process</name>',
         '    </run_button>',
         '  </panel>',
-        '</screen_layout></Panel_Data>',
+        '</screen_layout>',
+        '</Panel_Data>',
         '        <Panel_Name>Tin: Contour, Smooth and Label</Panel_Name>',
         '        <Clean_Up>1</Clean_Up>',
         '        <Buttons>',

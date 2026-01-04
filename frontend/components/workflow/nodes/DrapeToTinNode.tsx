@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
-import { Layers } from 'lucide-react';
+import { Map } from 'lucide-react';
 import { DrapeToTinNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
@@ -24,8 +24,8 @@ export function DrapeToTinNode(props: NodeProps) {
   return (
     <BaseNode
       title="Drape to TIN"
-      icon={<Layers className="w-4 h-4 text-white" />}
-      color="from-emerald-500 to-teal-600"
+      icon={<Map className="w-4 h-4 text-white" />}
+      color="from-amber-500 to-orange-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function DrapeToTinNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 

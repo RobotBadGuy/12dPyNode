@@ -4,12 +4,12 @@ Generate Convert Lines to Variable command
 from typing import List
 
 
-def convert_lines_to_variable_command(model_name: str) -> List[str]:
+def convert_lines_to_variable_command(prefix: str) -> List[str]:
     """
     Generate Change Super String Height XML command
     
     Args:
-        model_name: Model name to filter
+        prefix: Prefix for the model filter
     
     Returns:
         List of XML lines for Convert Lines to Variable command
@@ -47,7 +47,7 @@ def convert_lines_to_variable_command(model_name: str) -> List[str]:
         '                    <name>Model</name>',
         '                    <input_box>',
         '                      <name>Data to change - Model Name</name>',
-        f'                      <value>{model_name}</value>',
+        f'                      <value>{prefix}/*</value>',
         '                    </input_box>',
         '                    <input_box>',
         '                      <name>Data to change - Model ID Minimum</name>',

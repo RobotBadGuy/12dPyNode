@@ -37,8 +37,9 @@ import { DrapeToTinNode } from './nodes/DrapeToTinNode';
 import { RunOrCreateContoursNode } from './nodes/RunOrCreateContoursNode';
 import { RunOrCreateMtfNode } from './nodes/RunOrCreateMtfNode';
 import { ApplyMtfNode } from './nodes/ApplyMtfNode';
-import { CreateMtfFileNode } from './nodes/CreateMtfFileNode';
+import { CreateApplyMtfNode } from './nodes/CreateApplyMtfNode';
 import { CreateTrimeshFromTinNode } from './nodes/CreateTrimeshFromTinNode';
+import { CreateMtfFileNode } from './nodes/CreateMtfFileNode';
 import { AddCommentNode } from './nodes/AddCommentNode';
 import { AddLabelNode } from './nodes/AddLabelNode';
 import { IfFunctionExistsNode } from './nodes/IfFunctionExistsNode';
@@ -87,6 +88,7 @@ export function WorkspaceCanvas({
     runOrCreateContours: RunOrCreateContoursNode,
     runOrCreateMtf: RunOrCreateMtfNode,
     applyMtf: ApplyMtfNode,
+    createApplyMtf: CreateApplyMtfNode,
     createMtfFile: CreateMtfFileNode,
     createTrimeshFromTin: CreateTrimeshFromTinNode,
     addComment: AddCommentNode,

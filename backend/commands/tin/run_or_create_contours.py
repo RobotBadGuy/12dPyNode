@@ -6,11 +6,11 @@ from typing import List
 
 def run_or_create_contours_command(prefix: str, cell_value: str) -> List[str]:
     """
-    Generate If_function_exists with Create/Run Contours Function XML commands
+    Generate Run or Create Contours XML command
     
     Args:
         prefix: Prefix for the model
-        cell_value: Cell value (model name)
+        cell_value: Cell value for naming
     
     Returns:
         List of XML lines for Run or Create Contours command
@@ -230,7 +230,8 @@ def run_or_create_contours_command(prefix: str, cell_value: str) -> List[str]:
         '      <name>Process</name>',
         '    </run_button>',
         '  </panel>',
-        '</screen_layout></Panel_Data>',
+        '</screen_layout>',
+        '</Panel_Data>',
         '        <Panel_Name>Tin: Contour, Smooth and Label</Panel_Name>',
         '        <Clean_Up>1</Clean_Up>',
         '        <Buttons>',

@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
-import { Calculator } from 'lucide-react';
+import { FileBarChart } from 'lucide-react';
 import { TrimeshVolumeReportNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
@@ -24,8 +24,8 @@ export function TrimeshVolumeReportNode(props: NodeProps) {
   return (
     <BaseNode
       title="Trimesh Volume Report"
-      icon={<Calculator className="w-4 h-4 text-white" />}
-      color="from-blue-500 to-cyan-600"
+      icon={<FileBarChart className="w-4 h-4 text-white" />}
+      color="from-green-500 to-emerald-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,7 +37,4 @@ export function TrimeshVolumeReportNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
 

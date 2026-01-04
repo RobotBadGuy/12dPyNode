@@ -13,7 +13,7 @@ def volume_tin_to_tin_command(
     comments: str = ''
 ) -> List[str]:
     """
-    Generate Exact Volume Between Tins XML command
+    Generate Volume TIN to TIN XML command
     
     Args:
         original_tin_name: Name of the original TIN
@@ -99,7 +99,6 @@ def volume_tin_to_tin_command(
         '              </run_button>',
         '            </panel>',
         '          </screen_layout>',
-        '          ',
         '        </SLF_data>',
         '        <Parameter_Mappings>',
         '        </Parameter_Mappings>',

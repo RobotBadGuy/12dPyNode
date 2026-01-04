@@ -29,6 +29,7 @@ import {
   exportTemplate,
   importTemplate,
 } from '@/lib/workflow/templates';
+import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
@@ -467,8 +468,6 @@ export default function WorkspacePage() {
         nodeData = { prefix: '', cellValue: '' };
       } else if (type === 'applyMtf') {
         nodeData = { prefix: '', cellValue: '' };
-      } else if (type === 'createMtfFile') {
-        nodeData = { mtfName: '', templateLeftName: '', templateRightName: '' };
       } else if (type === 'createTrimeshFromTin') {
         nodeData = { prefix: '', cellValue: '', trimeshName: '', tinName: '', zOffset: '0', depth: '1', colour: '' };
       } else if (type === 'addComment') {
@@ -751,15 +750,27 @@ export default function WorkspacePage() {
 
     if (index >= 0 && index < templates.length) {
       const template = templates[index];
-      setNodes(template.nodes as WorkflowNode[]);
-      setEdges(template.edges as WorkflowEdge[]);
+      const loadedNodes = template.nodes as WorkflowNode[];
+      const loadedEdges = template.edges as WorkflowEdge[];
+      
+      // Filter out invalid edges
+      const validEdges = filterValidEdges(loadedEdges, loadedNodes);
+      
+      if (validEdges.length < loadedEdges.length) {
+        console.warn(
+          `Filtered out ${loadedEdges.length - validEdges.length} invalid edges when loading template "${template.name}"`
+        );
+      }
+      
+      setNodes(loadedNodes);
+      setEdges(validEdges as WorkflowEdge[]);
       
       // Show modern notification
       setTemplateNotification({
         isOpen: true,
         templateName: template.name,
-        nodeCount: template.nodes?.length,
-        edgeCount: template.edges?.length,
+        nodeCount: loadedNodes?.length,
+        edgeCount: validEdges?.length,
       });
     }
   }, []);
@@ -800,8 +811,20 @@ export default function WorkspacePage() {
         try {
           const json = event.target?.result as string;
           const template = importTemplate(json);
-          setNodes(template.nodes as WorkflowNode[]);
-          setEdges(template.edges as WorkflowEdge[]);
+          const loadedNodes = template.nodes as WorkflowNode[];
+          const loadedEdges = template.edges as WorkflowEdge[];
+          
+          // Filter out invalid edges
+          const validEdges = filterValidEdges(loadedEdges, loadedNodes);
+          
+          if (validEdges.length < loadedEdges.length) {
+            console.warn(
+              `Filtered out ${loadedEdges.length - validEdges.length} invalid edges when importing template`
+            );
+          }
+          
+          setNodes(loadedNodes);
+          setEdges(validEdges as WorkflowEdge[]);
           // Clear selections so future Excel uploads behave predictably
           setSelectedNode(null);
           setSelectedExcelNodeIds(new Set());
@@ -810,8 +833,8 @@ export default function WorkspacePage() {
           setTemplateNotification({
             isOpen: true,
             templateName: template.name || 'Imported Template',
-            nodeCount: template.nodes?.length,
-            edgeCount: template.edges?.length,
+            nodeCount: loadedNodes?.length,
+            edgeCount: validEdges?.length,
           });
         } catch (err) {
           alert(

@@ -4,7 +4,7 @@ import React from 'react';
 import { NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { NodePortSection } from './NodePortSection';
-import { ArrowRightLeft } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ConvertLinesToVariableNodeData } from '@/lib/workflow/types';
 import { nodeSchemas, getParamHandleId } from '@/lib/workflow/nodeSchemas';
 
@@ -24,8 +24,8 @@ export function ConvertLinesToVariableNode(props: NodeProps) {
   return (
     <BaseNode
       title="Convert Lines to Variable"
-      icon={<ArrowRightLeft className="w-4 h-4 text-white" />}
-      color="from-pink-500 to-rose-600"
+      icon={<ArrowRight className="w-4 h-4 text-white" />}
+      color="from-teal-500 to-cyan-600"
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
@@ -37,12 +37,4 @@ export function ConvertLinesToVariableNode(props: NodeProps) {
     </BaseNode>
   );
 }
-
-
-
-
-
-
-
-
 
