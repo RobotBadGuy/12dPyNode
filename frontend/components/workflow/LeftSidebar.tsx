@@ -432,6 +432,15 @@ export function LeftSidebar({
                   <FileText className="w-4 h-4 mr-2" />
                   Create .MTF File
                 </Button>
+                <Button
+                  onClick={() => onAddNode('createTemplateFile', { x: 0, y: 0 })}
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Template File
+                </Button>
               </>
             )}
 

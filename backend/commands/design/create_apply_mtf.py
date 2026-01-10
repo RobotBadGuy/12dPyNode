@@ -14,6 +14,8 @@ def create_apply_mtf(
     Road_Tin_Model_Name: str,
     model_for_tin_name: str,
     Tadpole_Model_Name: str,
+    Polygon_Model_Name: str = '',
+    Boundary_Model_Name: str = '',
 ) -> List[str]:
     """
     Generate If_function_exists with Create/Run MTF Function XML commands
@@ -28,6 +30,8 @@ def create_apply_mtf(
         Road_Tin_Model_Name: Road TIN model name
         model_for_tin_name: Model name for the generated TIN
         Tadpole_Model_Name: Model name for tadpoles
+        Polygon_Model_Name: Model name for polygons (optional, defaults to empty)
+        Boundary_Model_Name: Model name for road boundary (optional, defaults to empty)
     
     Returns:
         List of XML lines for Run or Create MTF command
@@ -896,7 +900,7 @@ def create_apply_mtf(
                 </file_box>
                 <input_box>
                   <name>Model for polygons</name>
-                  <value>{model_for_polygons_name}</value>
+                  <value>{Polygon_Model_Name}</value>
                 </input_box>
                 <grid_box>
                   <name>Additional road tin models</name>
@@ -905,7 +909,7 @@ def create_apply_mtf(
                   </columns>
                   <data>
                     <r>
-                      <c>{additional_Road_tin_Model}</c>
+                      <c></c>
                     </r>
                   </data>
                 </grid_box>

@@ -227,7 +227,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                       } as Partial<WorkflowNodeData>)
                     }
                     className="bg-gray-800 border-gray-700 text-white text-sm h-9"
-                    placeholder="Enter file path or variable name"
+                    placeholder="Enter file path or {varName}"
                   />
                   {allVariables.length > 0 && (
                     <div>
@@ -237,7 +237,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                         onChange={(e) => {
                           if (e.target.value) {
                             onUpdateNode(selectedNode.id, {
-                              actualFilePath: e.target.value,
+                              actualFilePath: `{${e.target.value}}`,
                             } as Partial<WorkflowNodeData>);
                           }
                         }}
@@ -331,7 +331,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                         } as Partial<WorkflowNodeData>)
                       }
                       className="bg-gray-800 border-gray-700 text-white text-sm h-9"
-                      placeholder={param.label}
+                      placeholder={param.kind === 'string' ? `Enter value or {varName}` : param.label}
                     />
                     {allVariables.length > 0 && param.kind === 'string' && (
                       <div>
@@ -341,7 +341,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                           onChange={(e) => {
                             if (e.target.value) {
                               onUpdateNode(selectedNode.id, {
-                                [param.key]: e.target.value,
+                                [param.key]: `{${e.target.value}}`,
                               } as Partial<WorkflowNodeData>);
                             }
                           }}

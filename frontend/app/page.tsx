@@ -197,7 +197,7 @@ export default function WorkspacePage() {
       selected: true,
     }));
 
-    // Create new edges with remapped source/target IDs
+    // Create new edges with remapped source/target IDs (edges between pasted nodes)
     const newEdges: WorkflowEdge[] = clipboard.edges.map((edge, index) => ({
       ...edge,
       id: `edge_${timestamp}_${index}_${Math.random().toString(36).substr(2, 9)}`,
@@ -214,10 +214,33 @@ export default function WorkspacePage() {
       return nextNodes;
     });
 
-    // Deselect all existing edges and add new edges
+    // Update existing edges that reference pasted nodes AND add new edges
     setEdges((eds) => {
       const deselectedEdges = eds.map((e) => ({ ...e, selected: false }));
-      return [...deselectedEdges, ...newEdges];
+      
+      // Update existing edges that reference any pasted node (either source or target)
+      const updatedExistingEdges = deselectedEdges.map((edge) => {
+        const oldSourceId = edge.source;
+        const oldTargetId = edge.target;
+        
+        // Check if this edge references a pasted node
+        const newSourceId = idMap.get(oldSourceId);
+        const newTargetId = idMap.get(oldTargetId);
+        
+        // If either source or target was pasted, update the edge
+        if (newSourceId || newTargetId) {
+          return {
+            ...edge,
+            source: newSourceId || oldSourceId,
+            target: newTargetId || oldTargetId,
+          };
+        }
+        
+        // Edge doesn't reference any pasted node, keep as-is
+        return edge;
+      });
+      
+      return [...updatedExistingEdges, ...newEdges];
     });
   }, [viewport, nodes, edges]);
 
@@ -467,7 +490,11 @@ export default function WorkspacePage() {
       } else if (type === 'runOrCreateMtf') {
         nodeData = { prefix: '', cellValue: '' };
       } else if (type === 'applyMtf') {
-        nodeData = { prefix: '', cellValue: '' };
+        nodeData = { functionName: 'function_name' };
+      } else if (type === 'createMtfFile') {
+        nodeData = { mtfName: '', templateLeftName: '', templateRightName: '' };
+      } else if (type === 'createTemplateFile') {
+        nodeData = { templateName: '', finalCutSlope: '2', finalFillSlope: '2', finalSearchDistance: '100' };
       } else if (type === 'createTrimeshFromTin') {
         nodeData = { prefix: '', cellValue: '', trimeshName: '', tinName: '', zOffset: '0', depth: '1', colour: '' };
       } else if (type === 'addComment') {

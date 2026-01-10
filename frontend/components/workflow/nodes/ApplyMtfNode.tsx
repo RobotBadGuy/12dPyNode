@@ -31,7 +31,7 @@ export function ApplyMtfNode(props: NodeProps) {
       selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
-        <p className="text-white/60">Ready</p>
+        <p className="text-white/60">Runs apply mtf function</p>
         <NodePortSection title="Parameters" items={paramItems} />
       </div>
     </BaseNode>

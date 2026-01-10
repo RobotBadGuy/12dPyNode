@@ -40,6 +40,7 @@ import { ApplyMtfNode } from './nodes/ApplyMtfNode';
 import { CreateApplyMtfNode } from './nodes/CreateApplyMtfNode';
 import { CreateTrimeshFromTinNode } from './nodes/CreateTrimeshFromTinNode';
 import { CreateMtfFileNode } from './nodes/CreateMtfFileNode';
+import { CreateTemplateFileNode } from './nodes/CreateTemplateFileNode';
 import { AddCommentNode } from './nodes/AddCommentNode';
 import { AddLabelNode } from './nodes/AddLabelNode';
 import { IfFunctionExistsNode } from './nodes/IfFunctionExistsNode';
@@ -90,6 +91,7 @@ export function WorkspaceCanvas({
     applyMtf: ApplyMtfNode,
     createApplyMtf: CreateApplyMtfNode,
     createMtfFile: CreateMtfFileNode,
+    createTemplateFile: CreateTemplateFileNode,
     createTrimeshFromTin: CreateTrimeshFromTinNode,
     addComment: AddCommentNode,
     addLabel: AddLabelNode,

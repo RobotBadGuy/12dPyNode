@@ -56,6 +56,7 @@ from commands.conditionals import add_comment_command, add_label_command
 from commands.design.create_apply_mtf import create_apply_mtf
 from commands.design import apply_mtf_command
 from commands.design.create_mtf_file import create_mtf_file
+from commands.design.create_template_file import create_template
 from commands.functions import function_command
 
 
@@ -174,6 +175,7 @@ def execute_node(
     variables: List[Dict[str, Any]],
     per_run_vars: Dict[str, Any],
     xml_content: List[str],
+    output_folder: str = '',
 ) -> None:
     """
     Execute a single node and append XML commands to xml_content
@@ -222,6 +224,7 @@ def execute_node(
     
     elif node_type == 'addModelToView':
         model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
+        view_name = resolve_variable(data.get('viewName', 'view_name'), model_name, variables, per_run_vars)
         xml_content.extend(add_model_to_view_command(model_name))
     
     elif node_type == 'removeModelFromView':
@@ -393,6 +396,18 @@ def execute_node(
             variables,
             per_run_vars,
         )
+        Polygon_Model_Name = resolve_variable(
+            data.get('polygonModelName', 'polygon_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        Boundary_Model_Name = resolve_variable(
+            data.get('boundaryModelName', 'boundary_model_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
 
         xml_content.extend(
             create_apply_mtf(
@@ -405,13 +420,19 @@ def execute_node(
                 Road_Tin_Model_Name,
                 model_for_tin_name,
                 Tadpole_Model_Name,
+                Polygon_Model_Name,
+                Boundary_Model_Name,
             )
         )
     
     elif node_type == 'applyMtf':
-        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
-        cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        xml_content.extend(apply_mtf_command(prefix, cell_value))
+        function_name = resolve_variable(
+            data.get('functionName', 'function_name'),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        xml_content.extend(apply_mtf_command(function_name))
 
     elif node_type == 'createMtfFile':
         # Generate an .mtf file as a side-effect; this does not add XML commands.
@@ -434,6 +455,19 @@ def execute_node(
             # Non-fatal: we don't want MTF generation failures to break the chain build
             # Logging can be added here if needed.
             pass
+    
+    elif node_type == 'createTemplateFile':
+        # Generate a .tpl file as a side-effect; this does not add XML commands.
+        template_name = resolve_variable(data.get('templateName', 'template_name'), model_name, variables, per_run_vars)
+        final_cut_slope = resolve_variable(data.get('finalCutSlope', '2'), model_name, variables, per_run_vars)
+        final_fill_slope = resolve_variable(data.get('finalFillSlope', '2'), model_name, variables, per_run_vars)
+        final_search_distance = resolve_variable(data.get('finalSearchDistance', '100'), model_name, variables, per_run_vars)
+        try:
+            create_template(template_name, final_cut_slope, final_fill_slope, final_search_distance, output_dir=output_folder)
+        except Exception:
+            # Non-fatal: we don't want template generation failures to break the chain build
+            # Logging can be added here if needed.
+            pass
 
 
 def build_command_chain(
@@ -443,6 +477,7 @@ def build_command_chain(
     variables: List[Dict[str, Any]],
     per_run_vars: Dict[str, Any],
     model_type: str = 'Model',
+    output_folder: str = '',
 ) -> List[str]:
     """
     Build the command chain XML for a single model
@@ -475,51 +510,71 @@ def build_command_chain(
     
     # Try the original foreach → chainFileOutput path first (for classic graphs)
     foreach_node = next((n for n in nodes if n.get('type') == 'foreachModel'), None)
-    chain_output_node = next((n for n in nodes if n.get('type') == 'chainFileOutput'), None)
+    chain_output_nodes = [n for n in nodes if n.get('type') == 'chainFileOutput']
     
-    if foreach_node and chain_output_node:
-        foreach_id = foreach_node.get('id')
-        chain_output_id = chain_output_node.get('id')
-
+    if foreach_node and chain_output_nodes:
+        foreach_id = str(foreach_node.get('id'))
         execution_order: List[str] = []
         visited: set[str] = set()
 
-        def find_path(current_id: str, path: List[str]) -> None:
+        def find_path(current_id: str, path: List[str]) -> bool:
             """
             Depth-first search from foreach node to chainFileOutput node following
             only flow edges. When we reach the chainFileOutput node, record all
             nodes in the path *before* the chain output as the execution order.
+            Returns True if target was found, False otherwise.
             """
-            if current_id in visited:
-                return
+            current_id_str = str(current_id)
+            
+            # Check if we've reached any chainFileOutput node BEFORE checking visited
+            for chain_output_node in chain_output_nodes:
+                chain_output_id_str = str(chain_output_node.get('id'))
+                if current_id_str == chain_output_id_str:
+                    # path includes the chain output as the last element; we only want
+                    # to execute nodes leading up to it.
+                    if path:
+                        execution_order.extend(path[:-1])
+                    return True
 
-            if current_id == chain_output_id:
-                # path includes the chain output as the last element; we only want
-                # to execute nodes leading up to it.
-                if path:
-                    execution_order.extend(path[:-1])
-                return
+            # Prevent cycles by checking visited AFTER target check
+            if current_id_str in visited:
+                return False
 
-            visited.add(current_id)
+            visited.add(current_id_str)
 
             # Find all nodes connected from current (only flow edges)
             for edge in edges:
-                if edge.get('source') == current_id and is_flow_edge(edge):
+                if str(edge.get('source')) == current_id_str and is_flow_edge(edge):
                     target_id = edge.get('target')
                     if target_id:
-                        find_path(target_id, path + [target_id])
+                        if find_path(str(target_id), path + [str(target_id)]):
+                            return True
 
-        # Start from foreach and search for a path to chainFileOutput
-        if foreach_id and chain_output_id:
-            find_path(str(foreach_id), [str(foreach_id)])
+            return False
 
-        # Execute nodes in the discovered order
-        for node_id in execution_order:
-            node = next((n for n in nodes if str(n.get('id')) == str(node_id)), None)
-            if node:
-                execute_node(node, model_name, variables, per_run_vars, xml_content)
-
-        return xml_content
+        # Start from foreach and search for a path to any chainFileOutput
+        if foreach_id:
+            found = find_path(foreach_id, [foreach_id])
+            if not found:
+                # Log warning if no path found (but don't fail - fall through to topological sort)
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(f"No path found from foreachModel node {foreach_id} to any chainFileOutput node. Falling back to topological sort.")
+            else:
+                # Execute nodes in the discovered order
+                # Filter out control-flow nodes that don't generate commands
+                control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
+                for node_id in execution_order:
+                    node = next((n for n in nodes if str(n.get('id')) == str(node_id)), None)
+                    if node:
+                        node_type = node.get('type')
+                        # Only execute nodes that generate commands (skip control-flow nodes)
+                        if node_type not in control_flow_types:
+                            execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
+                
+                # If we found a path and executed nodes, return the XML content
+                if execution_order:
+                    return xml_content
     
     # Fallback: no foreach node – build a generic topological order using flow edges only
     # This allows workflows that don't use the Foreach Model node.
@@ -531,14 +586,24 @@ def build_command_chain(
     adjacency: Dict[str, List[str]] = {node_id: [] for node_id in node_ids}
     
     # Build adjacency and indegree from flow edges
+    # Only include edges where both source and target nodes exist
+    import logging
+    logger = logging.getLogger(__name__)
     for edge in edges:
         if not is_flow_edge(edge):
             continue
         source_id = str(edge.get('source'))
         target_id = str(edge.get('target'))
+        # Only add edge if both nodes exist in our node set
         if source_id in adjacency and target_id in adjacency:
             adjacency[source_id].append(target_id)
             indegree[target_id] += 1
+        else:
+            # Log warning if edge references non-existent node (helps debug paste issues)
+            if source_id not in adjacency:
+                logger.warning(f"Edge references non-existent source node: {source_id}")
+            if target_id not in adjacency:
+                logger.warning(f"Edge references non-existent target node: {target_id}")
     
     # Kahn's algorithm for topological sort
     queue: List[str] = [node_id for node_id, deg in indegree.items() if deg == 0]
@@ -553,10 +618,15 @@ def build_command_chain(
                 queue.append(neighbor)
     
     # Execute nodes in computed order
+    # Filter out control-flow nodes that don't generate commands
+    control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
     for node_id in execution_order:
         node = id_to_node.get(node_id)
         if node:
-            execute_node(node, model_name, variables, per_run_vars, xml_content)
+            node_type = node.get('type')
+            # Only execute nodes that generate commands (skip control-flow nodes)
+            if node_type not in control_flow_types:
+                execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
     
     return xml_content
 
@@ -605,7 +675,7 @@ def generate_chain_file(
     xml_content.extend(generate_chain_settings())
     
     # Build command chain from graph
-    command_xml = build_command_chain(nodes, edges, model_name, variables, per_run_vars, model_type)
+    command_xml = build_command_chain(nodes, edges, model_name, variables, per_run_vars, model_type, output_folder)
     xml_content.extend(command_xml)
     
     # Always add closing scaffolding
