@@ -225,7 +225,7 @@ def execute_node(
     elif node_type == 'addModelToView':
         model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
         view_name = resolve_variable(data.get('viewName', 'view_name'), model_name, variables, per_run_vars)
-        xml_content.extend(add_model_to_view_command(model_name))
+        xml_content.extend(add_model_to_view_command(model_name, view_name))
     
     elif node_type == 'removeModelFromView':
         pattern = data.get('pattern', '*')

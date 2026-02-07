@@ -51,6 +51,7 @@ Thumbs.db
 # Project specific
 *.chain
 ~$*.xlsx
+Design Data Mapping Modal/
 
 # Backend generated/user data
 backend/uploads/

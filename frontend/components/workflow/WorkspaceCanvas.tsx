@@ -52,6 +52,7 @@ interface WorkspaceCanvasProps {
   onEdgesChange: (changes: any) => void;
   onConnect: (connection: Connection) => void;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
+  onNodeDoubleClick?: (event: React.MouseEvent, node: Node) => void;
   onViewportChange?: (viewport: Viewport) => void;
 }
 
@@ -62,6 +63,7 @@ export function WorkspaceCanvas({
   onEdgesChange,
   onConnect,
   onNodeClick,
+  onNodeDoubleClick,
   onViewportChange,
 }: WorkspaceCanvasProps) {
   const nodeTypes = {
@@ -105,12 +107,12 @@ export function WorkspaceCanvas({
     for (let i = 0; i < edgeId.length; i++) {
       hash = edgeId.charCodeAt(i) + ((hash << 5) - hash);
     }
-    
+
     // Generate a bright, vibrant color
     const hue = Math.abs(hash) % 360;
     const saturation = 65 + (Math.abs(hash) % 20); // 65-85% saturation
     const lightness = 50 + (Math.abs(hash) % 15); // 50-65% lightness
-    
+
     return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
   };
 
@@ -134,6 +136,7 @@ export function WorkspaceCanvas({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onMoveEnd={(_, viewport) => {
           if (onViewportChange) {
             onViewportChange(viewport);

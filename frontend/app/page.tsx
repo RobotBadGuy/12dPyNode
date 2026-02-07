@@ -20,7 +20,8 @@ import { SuccessCelebration } from '@/components/workflow/SuccessCelebration';
 import { ErrorModal } from '@/components/workflow/ErrorModal';
 import { TemplateNotification } from '@/components/workflow/TemplateNotification';
 import { SaveTemplateModal } from '@/components/workflow/SaveTemplateModal';
-import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
+import { DataMappingModal } from '@/components/workflow/DataMappingModal';
+import { WorkflowNode, WorkflowEdge, ExcelModelsNodeData } from '@/lib/workflow/types';
 import { compileWorkflow, validateWorkflow } from '@/lib/workflow/compile';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
 import {
@@ -58,6 +59,10 @@ export default function WorkspacePage() {
     isOpen: false,
   });
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [mappingModal, setMappingModal] = useState<{ isOpen: boolean; nodeId: string | null }>({
+    isOpen: false,
+    nodeId: null,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Clipboard for copy/paste
@@ -103,8 +108,8 @@ export default function WorkspacePage() {
   const handleCopy = useCallback(() => {
     // Get selected nodes (React Flow's selected property or fallback to selectedNode)
     const selectedNodes = nodes.filter((n) => n.selected);
-    const nodesToCopy = selectedNodes.length > 0 
-      ? selectedNodes 
+    const nodesToCopy = selectedNodes.length > 0
+      ? selectedNodes
       : (selectedNode ? [selectedNode as WorkflowNode] : []);
 
     if (nodesToCopy.length === 0) return;
@@ -217,16 +222,16 @@ export default function WorkspacePage() {
     // Update existing edges that reference pasted nodes AND add new edges
     setEdges((eds) => {
       const deselectedEdges = eds.map((e) => ({ ...e, selected: false }));
-      
+
       // Update existing edges that reference any pasted node (either source or target)
       const updatedExistingEdges = deselectedEdges.map((edge) => {
         const oldSourceId = edge.source;
         const oldTargetId = edge.target;
-        
+
         // Check if this edge references a pasted node
         const newSourceId = idMap.get(oldSourceId);
         const newTargetId = idMap.get(oldTargetId);
-        
+
         // If either source or target was pasted, update the edge
         if (newSourceId || newTargetId) {
           return {
@@ -235,11 +240,11 @@ export default function WorkspacePage() {
             target: newTargetId || oldTargetId,
           };
         }
-        
+
         // Edge doesn't reference any pasted node, keep as-is
         return edge;
       });
-      
+
       return [...updatedExistingEdges, ...newEdges];
     });
   }, [viewport, nodes, edges]);
@@ -409,6 +414,27 @@ export default function WorkspacePage() {
     }
   }, []);
 
+  const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setMappingModal({ isOpen: true, nodeId: node.id });
+  }, []);
+
+  const handleSaveMapping = useCallback((nodeId: string, updates: { data: any }) => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === nodeId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...updates.data
+            }
+          };
+        }
+        return node;
+      })
+    );
+  }, []);
+
   const handleAddNode = useCallback(
     (type: string, _position: { x: number; y: number }) => {
       // Compute a position roughly at the center of the current viewport
@@ -480,7 +506,7 @@ export default function WorkspacePage() {
       } else if (type === 'volumeTinToTin') {
         nodeData = { originalTinName: '', newTinName: '', outputLocation: '', filename: '' };
       } else if (type === 'convertLinesToVariable') {
-        nodeData = {modelName: 'model_name'};
+        nodeData = { modelName: 'model_name' };
       } else if (type === 'createContourSmoothLabel') {
         nodeData = { prefix: '', cellValue: '' };
       } else if (type === 'drapeToTin') {
@@ -592,14 +618,16 @@ export default function WorkspacePage() {
 
   const handleRunChain = useCallback(async () => {
     // Get selected ExcelModels nodes (or default to first one if none selected)
-    const excelNodes = nodes.filter((n) => n.type === 'excelModels' && n.data?.file);
+    const excelNodes = nodes.filter((n): n is WorkflowNode & { data: ExcelModelsNodeData } =>
+      n.type === 'excelModels' && 'file' in n.data && !!(n.data as any).file
+    );
     const selectedExcelIds = selectedExcelNodeIds.size > 0
-      ? Array.from(selectedExcelNodeIds).filter((id) => 
-          excelNodes.some((n) => n.id === id && n.data?.file)
-        )
+      ? Array.from(selectedExcelNodeIds).filter((id) =>
+        excelNodes.some((n) => n.id === id)
+      )
       : excelNodes.length > 0
-      ? [excelNodes[0].id]
-      : [];
+        ? [excelNodes[0].id]
+        : [];
 
     if (selectedExcelIds.length === 0) {
       setErrorModal({
@@ -637,7 +665,7 @@ export default function WorkspacePage() {
           const downloadUrl = getWorkflowDownloadUrl(sessionId);
           const zipResponse = await fetch(downloadUrl);
           const zipBlob = await zipResponse.blob();
-          
+
           // Generate folder name from Excel filename
           const excelNode = nodes.find((n) => n.id === excelNodeId);
           const excelFile = (excelNode?.data as any)?.file as File | undefined;
@@ -752,7 +780,7 @@ export default function WorkspacePage() {
     (name: string) => {
       const viewport = { x: 0, y: 0, zoom: 1 }; // TODO: capture actual viewport
       saveTemplate(name, nodes as WorkflowNode[], edges as WorkflowEdge[], viewport);
-      
+
       // Show success notification
       setTemplateNotification({
         isOpen: true,
@@ -779,19 +807,19 @@ export default function WorkspacePage() {
       const template = templates[index];
       const loadedNodes = template.nodes as WorkflowNode[];
       const loadedEdges = template.edges as WorkflowEdge[];
-      
+
       // Filter out invalid edges
       const validEdges = filterValidEdges(loadedEdges, loadedNodes);
-      
+
       if (validEdges.length < loadedEdges.length) {
         console.warn(
           `Filtered out ${loadedEdges.length - validEdges.length} invalid edges when loading template "${template.name}"`
         );
       }
-      
+
       setNodes(loadedNodes);
       setEdges(validEdges as WorkflowEdge[]);
-      
+
       // Show modern notification
       setTemplateNotification({
         isOpen: true,
@@ -840,22 +868,22 @@ export default function WorkspacePage() {
           const template = importTemplate(json);
           const loadedNodes = template.nodes as WorkflowNode[];
           const loadedEdges = template.edges as WorkflowEdge[];
-          
+
           // Filter out invalid edges
           const validEdges = filterValidEdges(loadedEdges, loadedNodes);
-          
+
           if (validEdges.length < loadedEdges.length) {
             console.warn(
               `Filtered out ${loadedEdges.length - validEdges.length} invalid edges when importing template`
             );
           }
-          
+
           setNodes(loadedNodes);
           setEdges(validEdges as WorkflowEdge[]);
           // Clear selections so future Excel uploads behave predictably
           setSelectedNode(null);
           setSelectedExcelNodeIds(new Set());
-          
+
           // Show modern notification
           setTemplateNotification({
             isOpen: true,
@@ -866,7 +894,7 @@ export default function WorkspacePage() {
         } catch (err) {
           alert(
             'Error importing template: ' +
-              (err instanceof Error ? err.message : 'Unknown error')
+            (err instanceof Error ? err.message : 'Unknown error')
           );
         }
       };
@@ -916,6 +944,7 @@ export default function WorkspacePage() {
               onEdgesChange={handleEdgesChange}
               onConnect={onConnect}
               onNodeClick={onNodeClick}
+              onNodeDoubleClick={onNodeDoubleClick}
               onViewportChange={setViewport}
             />
           </div>
@@ -970,6 +999,14 @@ export default function WorkspacePage() {
           onClose={() => setShowSaveTemplateModal(false)}
           onSave={handleSaveTemplateConfirm}
           existingTemplateNames={loadAllTemplates().map((t) => t.name)}
+        />
+        <DataMappingModal
+          isOpen={mappingModal.isOpen}
+          onClose={() => setMappingModal({ isOpen: false, nodeId: null })}
+          nodeId={mappingModal.nodeId}
+          nodes={nodes}
+          edges={edges}
+          onSave={handleSaveMapping}
         />
       </div>
     </ReactFlowProvider>
