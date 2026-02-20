@@ -14,7 +14,7 @@ export function ChainFileOutputNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.chainFileOutput;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function ChainFileOutputNode(props: NodeProps) {
       title="Chain Output"
       icon={<FileCode className="w-4 h-4 text-white" />}
       color="from-purple-500 to-pink-600"
+      borderColor="rgb(168, 85, 247)"
+      glowColor="rgba(168, 85, 247, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

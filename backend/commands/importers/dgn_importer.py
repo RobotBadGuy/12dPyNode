@@ -5,13 +5,13 @@ from typing import List
 from .utils import normalize_file_path
 
 
-def generate_dgn_xml_content(actual_file_path: str, modified_variable: str) -> List[str]:
+def generate_dgn_xml_content(file_path: str, PrePostfixForModels: str) -> List[str]:
     """
     Generate XML content for DGN files
     
     Args:
-        actual_file_path: Full path to the DGN file
-        modified_variable: Variable name for the model
+        file_path: Full path to the DGN file
+        PrePostfixForModels: Pre/Postfix for model names
         
     Returns:
         List of XML lines for the DGN import command
@@ -47,7 +47,7 @@ def generate_dgn_xml_content(actual_file_path: str, modified_variable: str) -> L
     xml_content.append('              </input_box>')
     xml_content.append('              <file_box>')
     xml_content.append('                <name>File</name>')
-    formatted_path = normalize_file_path(actual_file_path).replace('\\', '/')
+    formatted_path = normalize_file_path(file_path).replace('\\', '/')
     xml_content.append(f'                <value>{formatted_path}</value>')
     xml_content.append('              </file_box>')
     xml_content.append('              <file_box>')
@@ -60,7 +60,7 @@ def generate_dgn_xml_content(actual_file_path: str, modified_variable: str) -> L
     xml_content.append('              </input_box>')
     xml_content.append('              <input_box>')
     xml_content.append('                <name>Pre*postfix for models</name>')
-    xml_content.append(f'                <value>{modified_variable}/*</value>')
+    xml_content.append(f'                <value>{PrePostfixForModels}</value>')
     xml_content.append('              </input_box>')
     xml_content.append('              <input_box>')
     xml_content.append('                <name>Allow merge into existing models</name>')

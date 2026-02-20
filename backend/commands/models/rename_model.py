@@ -4,26 +4,35 @@ Generate Rename Model command
 from typing import List
 
 
-def rename_model_command(pattern_replace: str, pattern_search: str) -> List[str]:
+def rename_model_command(
+    command_name: str,
+    pattern_replace: str,
+    pattern_search: str,
+    continue_on_failure: bool,
+    comments: str
+) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Global Model Rename XML command
     
     Args:
         pattern_replace: Pattern replace value (prefix for the model)
         pattern_search: Pattern search value (model name pattern)
+        command_name: name of command
+        continue_on_failure: Continue on failure
+        comments: Comments
     
     Returns:
         List of XML lines for Rename Model command
     """
     return [
         '      <Manual_option>',
-        '        <Name>Option Global Model Rename - MP Pad</Name>',
+        f'        <Name>{command_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'        <Comments>{comments}</Comments>',
         '        <Panel_Data><screen_layout>',
         '  <version>1.0</version>',
         '  <panel>',

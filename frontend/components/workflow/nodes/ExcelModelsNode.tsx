@@ -23,6 +23,9 @@ export function ExcelModelsNode(props: NodeProps) {
       title="Excel Models"
       icon={<FileText className="w-4 h-4 text-white" />}
       color="from-emerald-500 to-teal-600"
+      borderColor="rgb(16, 185, 129)"
+      glowColor="rgba(16, 185, 129, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected}
@@ -33,6 +36,9 @@ export function ExcelModelsNode(props: NodeProps) {
             <div>
               <p className="font-semibold truncate">{excelData.file.name}</p>
               <p className="text-white/60">{modelNames.length} models</p>
+              {excelData.columnName && (
+                <p className="text-emerald-300/70 text-[11px]">Column: {excelData.columnName}</p>
+              )}
             </div>
             {modelNames.length > 0 && (
               <div>

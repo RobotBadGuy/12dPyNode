@@ -14,7 +14,7 @@ export function ForeachModelNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.foreachModel;
-  
+
   const valueItems = (schema.valueOutputs || []).map((output) => ({
     id: output.id,
     label: output.label,
@@ -26,6 +26,9 @@ export function ForeachModelNode(props: NodeProps) {
       title="Foreach Model"
       icon={<Repeat className="w-4 h-4 text-white" />}
       color="from-blue-500 to-indigo-600"
+      borderColor="rgb(59, 130, 246)"
+      glowColor="rgba(59, 130, 246, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

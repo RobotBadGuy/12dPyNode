@@ -14,7 +14,7 @@ export function ImportNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.import;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,14 +26,17 @@ export function ImportNode(props: NodeProps) {
       title="Import"
       icon={<Upload className="w-4 h-4 text-white" />}
       color="from-cyan-500 to-blue-600"
+      borderColor="rgb(6, 182, 212)"
+      glowColor="rgba(6, 182, 212, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
     >
       <div className="text-xs text-white/80">
         <p className="text-white/60">Type: {data.fileType || 'dwg'}</p>
-        {data.actualFilePath && (
-          <p className="text-white/60 truncate">Path: {data.actualFilePath}</p>
+        {data.filePath && (
+          <p className="text-white/60 truncate">Path: {data.filePath}</p>
         )}
         <NodePortSection title="Parameters" items={paramItems} />
       </div>

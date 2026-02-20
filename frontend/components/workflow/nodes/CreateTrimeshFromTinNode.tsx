@@ -14,7 +14,7 @@ export function CreateTrimeshFromTinNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.createTrimeshFromTin;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function CreateTrimeshFromTinNode(props: NodeProps) {
       title="Create Trimesh from TIN"
       icon={<Box className="w-4 h-4 text-white" />}
       color="from-pink-500 to-rose-600"
+      borderColor="rgb(236, 72, 153)"
+      glowColor="rgba(236, 72, 153, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

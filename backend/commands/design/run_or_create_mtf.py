@@ -4,7 +4,8 @@ Generate Run or Create MTF command
 from typing import List
 
 
-def run_or_create_mtf_command(prefix: str, cell_value: str) -> List[str]:
+def run_or_create_mtf_command(prefix: str, cell_value: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate If_function_exists with Create/Run MTF Function XML commands
     
@@ -19,11 +20,10 @@ def run_or_create_mtf_command(prefix: str, cell_value: str) -> List[str]:
       <Manual_option>
         <Name>Create MTF file</Name>
         <Active>true</Active>
-        <Continue_on_failure>false</Continue_on_failure>
+        <Continue_on_failure>{failure_str}</Continue_on_failure>
         <Uses_parameters>false</Uses_parameters>
         <Interactive>false</Interactive>
-        <Comments>
-        </Comments>
+        <Comments>{comments}</Comments>
         <Panel_Data><screen_layout>
           <version>1.0</version>
           <panel>

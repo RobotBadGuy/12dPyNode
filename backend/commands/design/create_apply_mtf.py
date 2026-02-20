@@ -5,6 +5,7 @@ from typing import List
 
 
 def create_apply_mtf(
+    command_name: str,
     function_name: str,
     mtf_file_name: str,
     reference_model_name: str,
@@ -16,11 +17,15 @@ def create_apply_mtf(
     Tadpole_Model_Name: str,
     Polygon_Model_Name: str = '',
     Boundary_Model_Name: str = '',
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate If_function_exists with Create/Run MTF Function XML commands
     
     Args:
+        command_name: name of command
         function_name: Template function name
         mtf_file_name: Name of the MTF file (without extension)
         reference_model_name: Reference model name
@@ -38,14 +43,13 @@ def create_apply_mtf(
     """
     xml_string = rf"""
       <Manual_option>
-        <Name>Create MTF file</Name>
+        <Name>{command_name}</Name>
         <Active>true</Active>
-        <Continue_on_failure>false</Continue_on_failure>
+        <Continue_on_failure>{failure_str}</Continue_on_failure>
         <Uses_parameters>false</Uses_parameters>
         <Interactive>false</Interactive>
-        <Comments>
-        </Comments>
-        <Panel_Data><screen_layout>
+        <Comments>{comments}</Comments>
+        <SLF_data><screen_layout>
           <version>1.0</version>
           <panel>
             <name>Apply Templates Function</name>

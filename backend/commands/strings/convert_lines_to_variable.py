@@ -4,12 +4,13 @@ Generate Convert Lines to Variable command
 from typing import List
 
 
-def convert_lines_to_variable_command(prefix: str) -> List[str]:
+def convert_lines_to_variable_command(model_name: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Change Super String Height XML command
     
     Args:
-        prefix: Prefix for the model filter
+        model_name: Name of the model to filter
     
     Returns:
         List of XML lines for Convert Lines to Variable command
@@ -17,12 +18,11 @@ def convert_lines_to_variable_command(prefix: str) -> List[str]:
     return [
         '      <Run_option>',
         '        <Name>Change Super String Height</Name>',
-        '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
-        '        <Uses_parameters>false</Uses_parameters>',
-        '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'        <Active>true</Active>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
+        f'        <Uses_parameters>false</Uses_parameters>',
+        f'        <Interactive>false</Interactive>',
+        f'        <Comments>{comments}</Comments>',
         '        <SLF_data>',
         '          <screen_layout>',
         '            <version>1.0</version>',

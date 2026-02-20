@@ -14,7 +14,7 @@ export function RunOrCreateContoursNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.runOrCreateContours;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function RunOrCreateContoursNode(props: NodeProps) {
       title="Run or Create Contours"
       icon={<Mountain className="w-4 h-4 text-white" />}
       color="from-slate-500 to-gray-600"
+      borderColor="rgb(100, 116, 139)"
+      glowColor="rgba(100, 116, 139, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

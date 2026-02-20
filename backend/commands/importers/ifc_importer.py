@@ -5,13 +5,13 @@ from typing import List
 from .utils import normalize_file_path
 
 
-def generate_ifc_xml_content(actual_file_path: str, modified_variable: str) -> List[str]:
+def generate_ifc_xml_content(file_path: str, PrePostfixForModels: str) -> List[str]:
     """
     Generate XML content for IFC files
     
     Args:
-        actual_file_path: Full path to the IFC file
-        modified_variable: Variable name for the model
+        file_path: Full path to the IFC file
+        PrePostfixForModels: Pre/Postfix for model names
         
     Returns:
         List of XML lines for the IFC import command
@@ -25,7 +25,7 @@ def generate_ifc_xml_content(actual_file_path: str, modified_variable: str) -> L
     xml_content.append('        <Uses_parameters>false</Uses_parameters>')
     xml_content.append('        <Interactive>false</Interactive>')
     xml_content.append('        <Comments>')
-    xml_content.append(f'        <Comment>import {modified_variable}</Comment>')
+    xml_content.append(f'        <Comment>import IFC file</Comment>')
     xml_content.append('        </Comments>')
     xml_content.append('        <SLF_data>')
     xml_content.append('          <screen_layout>')
@@ -56,7 +56,7 @@ def generate_ifc_xml_content(actual_file_path: str, modified_variable: str) -> L
     xml_content.append('                        <name>1</name>')
     xml_content.append('                        <file_box>')
     xml_content.append('                          <name>File to read</name>')
-    formatted_path = normalize_file_path(actual_file_path).replace('/', '\\')
+    formatted_path = normalize_file_path(file_path).replace('/', '\\')
     xml_content.append(f'                          <value>{formatted_path}</value>')
     xml_content.append('                        </file_box>')
     xml_content.append('                      </widget_page>')
@@ -64,11 +64,11 @@ def generate_ifc_xml_content(actual_file_path: str, modified_variable: str) -> L
     xml_content.append('                  </files_box>')
     xml_content.append('                  <input_box>')
     xml_content.append('                    <name>Model</name>')
-    xml_content.append(f'                    <value>{modified_variable} ifc</value>')
+    xml_content.append(f'                    <value>ifc</value>')
     xml_content.append('                  </input_box>')
     xml_content.append('                  <input_box>')
     xml_content.append('                    <name>Pre*postfix for models</name>')
-    xml_content.append(f'                    <value>{modified_variable}/*</value>')
+    xml_content.append(f'                    <value>{PrePostfixForModels}</value>')
     xml_content.append('                  </input_box>')
     xml_content.append('                  <tick_box>')
     xml_content.append('                    <name>Split data into Entity models?</name>')

@@ -27,6 +27,9 @@ export function CreateMtfFileNode(props: NodeProps) {
       title="Create MTF File"
       icon={<FileCog className="w-4 h-4 text-white" />}
       color="from-violet-500 to-purple-600"
+      borderColor="rgb(139, 92, 246)"
+      glowColor="rgba(139, 92, 246, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

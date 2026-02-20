@@ -5,36 +5,38 @@ from typing import List
 
 
 def remove_model_from_view_command(
-    model_pattern: str,
-    modified_variable: str
+    pattern: str,
+    view_name: str,
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Remove_model_from_view XML command
     
     Args:
-        model_pattern: Model pattern to remove (e.g., "*", "*tin", "*tm", "*Label", "*Mark")
-        modified_variable: View name (variable with spaces instead of hyphens)
+        pattern: Model pattern to remove (e.g., "*", "*tin", "*tm", "*Label", "*Mark")
+        view_name: View name (variable with spaces instead of hyphens)
     
     Returns:
         List of XML lines for Remove_model_from_view command
     """
     # Generate appropriate name based on pattern
-    if model_pattern == "*":
-        name = f"Remove model * from view {modified_variable}"
+    if pattern == "*":
+        name = f"Remove model * from view {view_name}"
     else:
-        name = f"Remove model {model_pattern} from view {modified_variable}"
+        name = f"Remove model {pattern} from view {view_name}"
     
     return [
         '      <Remove_model_from_view>',
         f'        <Name>{name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>true</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
-        f'        <Model>{model_pattern}</Model>',
-        f'        <View>{modified_variable}</View>',
+        f'<Comments>{comments}</Comments>',
+        f'        <Model>{pattern}</Model>',
+        f'        <View>{view_name}</View>',
         '      </Remove_model_from_view>'
     ]
 

@@ -10,8 +10,11 @@ def triangulate_manual_option_command(
     surface_value: str,
     file_ext: str,
     options_ext: str,
-    discipline: str
+    discipline: str,
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Triangulate a Data Source Manual_option XML command
     
@@ -43,6 +46,7 @@ def triangulate_manual_option_command(
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
         '        <Comments>',
+        f'          {comments}',
         '        </Comments>',
         '        <Panel_Data><screen_layout>',
         '  <version>1.0</version>',

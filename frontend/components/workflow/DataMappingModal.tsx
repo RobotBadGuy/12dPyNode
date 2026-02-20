@@ -11,7 +11,10 @@ import {
     ArrowRight,
     Database,
     Layers,
-    Trash2
+    Trash2,
+    ChevronDown,
+    ChevronRight,
+    ArrowRightFromLine
 } from 'lucide-react';
 import {
     DndContext,
@@ -36,6 +39,7 @@ interface DataMappingModalProps {
     nodes: WorkflowNode[];
     edges: WorkflowEdge[];
     onSave: (nodeId: string, updates: { data: any }) => void;
+    onExcelColumnChange?: (nodeId: string, columnIndex: number) => void;
 }
 
 interface DataItem {
@@ -60,10 +64,12 @@ export function DataMappingModal({
     nodeId,
     nodes,
     edges,
-    onSave
+    onSave,
+    onExcelColumnChange
 }: DataMappingModalProps) {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [activeItem, setActiveItem] = useState<DataItem | null>(null);
+    const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
     // Local state for mappings (buffer before save)
     const [localMappings, setLocalMappings] = useState<Record<string, string>>({});
@@ -140,14 +146,28 @@ export function DataMappingModal({
 
             // Rule 1: ExcelModels -> Returns Array of Models
             if (sourceNode.type === 'excelModels') {
-                items.push({
-                    id: `source-models-${sourceNode.id}`,
-                    label: 'Model Names List',
-                    type: 'array',
-                    token: `{{ ${sourceNode.id}.models }}`,
-                    isList: true,
-                    sourceId: sourceNode.id
-                });
+                const modelNames = ((sourceNode.data as any).modelNames as string[]) || [];
+                if (modelNames.length > 0) {
+                    modelNames.forEach((name, index) => {
+                        items.push({
+                            id: `source-model-${sourceNode.id}-${index}`,
+                            label: name,
+                            type: 'text',
+                            token: `{{ ${sourceNode.id}.models[${index}] }}`,
+                            isList: false,
+                            sourceId: sourceNode.id
+                        });
+                    });
+                } else {
+                    items.push({
+                        id: `source-models-${sourceNode.id}`,
+                        label: 'Model Names List',
+                        type: 'array',
+                        token: `{{ ${sourceNode.id}.models }}`,
+                        isList: true,
+                        sourceId: sourceNode.id
+                    });
+                }
             }
 
             // Rule 2: ForeachModel -> Returns Iterator Item Context
@@ -208,6 +228,110 @@ export function DataMappingModal({
 
         return allItems;
     }, [sourceNodes]);
+
+    // Initialize expanded groups when source nodes change
+    useEffect(() => {
+        const initial: Record<string, boolean> = {};
+        sourceNodes.forEach(n => { initial[n.id] = false; });
+        setExpandedGroups(initial);
+    }, [sourceNodes]);
+
+    // Resolve a token like {{ nodeId.propertyName }} to its actual value
+    const resolveTokenValue = (rawValue: string): string => {
+        if (!rawValue) return rawValue;
+
+        // Replace all {{ nodeId.property }} tokens with resolved values
+        return rawValue.replace(/\{\{\s*([^.}]+)\.([^}]+)\s*\}\}/g, (match, refNodeId, propName) => {
+            const refNode = nodes.find(n => n.id === refNodeId.trim());
+            if (!refNode) return match; // Can't resolve, keep token
+
+            const prop = propName.trim();
+
+            // SetVariable node: look up variable by name
+            if (refNode.type === 'setVariable') {
+                const variables = ((refNode.data as any).variables as any[]) || [];
+                const safeVars = Array.isArray(variables) ? variables : [];
+                const found = safeVars.find(v => v.name === prop);
+                if (found) {
+                    return typeof found.value === 'string' ? found.value : JSON.stringify(found.value);
+                }
+            }
+
+            // Generic: check node data property
+            const dataVal = (refNode.data as any)[prop];
+            if (dataVal !== undefined) {
+                return typeof dataVal === 'string' ? dataVal : JSON.stringify(dataVal);
+            }
+
+            return match; // Can't resolve
+        });
+    };
+
+    // Compute Output Data for the target node
+    const outputData = useMemo(() => {
+        if (!targetNode) return [];
+
+        const items: { id: string; label: string; value: string; type: string }[] = [];
+
+        // 1. Value outputs from schema (e.g. foreachModel -> model_name, modified_variable)
+        const schema = nodeSchemas[targetNode.type];
+        if (schema?.valueOutputs && schema.valueOutputs.length > 0) {
+            schema.valueOutputs.forEach(output => {
+                items.push({
+                    id: `output-${output.id}`,
+                    label: output.label,
+                    value: `{{ ${targetNode.id}.${output.token} }}`,
+                    type: 'value',
+                });
+            });
+        }
+
+        // 1b. ExcelModels: show actual model names as value outputs
+        if (targetNode.type === 'excelModels') {
+            const modelNames = ((targetNode.data as any).modelNames as string[]) || [];
+            modelNames.forEach((name, index) => {
+                items.push({
+                    id: `output-model-${index}`,
+                    label: name,
+                    value: name,
+                    type: 'value',
+                });
+            });
+        }
+
+        // 2. SetVariable dynamic outputs
+        if (targetNode.type === 'setVariable') {
+            const variables = ((targetNode.data as any).variables as any[]) || [];
+            const safeVars = Array.isArray(variables) ? variables : [];
+            safeVars.forEach((v, index) => {
+                if (v.name) {
+                    items.push({
+                        id: `output-var-${index}`,
+                        label: v.name,
+                        value: typeof v.value === 'string' ? v.value : JSON.stringify(v.value),
+                        type: 'variable',
+                    });
+                }
+            });
+        }
+
+        // 3. Parameter values as output preview (what the node is configured with)
+        if (schema) {
+            schema.parameters.forEach(param => {
+                if (param.key === 'variables' && targetNode.type === 'setVariable') return;
+                const rawVal = (targetNode.data as any)[param.key];
+                const strVal = rawVal !== undefined ? String(rawVal) : String(param.defaultValue ?? '');
+                items.push({
+                    id: `output-param-${param.key}`,
+                    label: param.label,
+                    value: resolveTokenValue(strVal),
+                    type: 'parameter',
+                });
+            });
+        }
+
+        return items;
+    }, [targetNode, nodes]);
 
     // Target Node Parameters
     const targetParams = useMemo((): NodeVariable[] => {
@@ -359,6 +483,10 @@ export function DataMappingModal({
         onClose();
     };
 
+    const toggleGroup = (nodeId: string) => {
+        setExpandedGroups(prev => ({ ...prev, [nodeId]: !prev[nodeId] }));
+    };
+
     if (!isOpen || !targetNode || !nodeId) return null;
 
     const getTypeIcon = (type: string) => {
@@ -411,40 +539,50 @@ export function DataMappingModal({
 
                     {/* Body */}
                     <div className="flex-1 flex overflow-hidden text-slate-200">
-                        {/* Left Panel - Source Data */}
-                        <div className="w-1/3 border-r border-slate-700/50 flex flex-col bg-[#111420]">
-                            <div className="px-6 py-4 border-b border-slate-700/30 bg-[#161b2e]/50">
+                        {/* Left Panel - Source Data (Input) */}
+                        <div className="w-1/4 border-r border-slate-700/50 flex flex-col bg-[#111420]">
+                            <div className="px-4 py-3 border-b border-slate-700/30 bg-[#161b2e]/50">
                                 <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
                                     <Database className="w-4 h-4 text-emerald-400" />
                                     Input Data
                                 </h3>
                                 <p className="text-xs text-slate-500 mt-1">
-                                    {sourceNodes.length} source nodeQuery(s) connected
+                                    {sourceNodes.length} source(s) connected
                                 </p>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                            <div className="flex-1 overflow-y-auto p-3 space-y-3">
                                 {incomingData.length === 0 ? (
-                                    <div className="text-center py-10 px-4">
+                                    <div className="text-center py-8 px-3">
                                         <p className="text-slate-500 text-sm">No mappable data found.</p>
                                         {sourceNodes.length === 0 && (
-                                            <p className="text-xs text-slate-600 mt-2">Connect a node (SetVariable, etc.) to see its outputs here.</p>
+                                            <p className="text-xs text-slate-600 mt-2">Connect a node to see its outputs here.</p>
                                         )}
                                     </div>
                                 ) : (
                                     sourceNodes.map(node => {
                                         const nodeItems = incomingData.filter(i => i.sourceId === node.id);
                                         if (nodeItems.length === 0) return null;
+                                        const isExpanded = expandedGroups[node.id] !== false;
 
                                         return (
-                                            <div key={node.id} className="space-y-2">
-                                                <div className="flex items-center justify-between px-2">
-                                                    <p className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider truncate max-w-[200px]" title={node.id}>
-                                                        {(node.data as any).label || node.type}
-                                                    </p>
-                                                    <span className="text-[10px] text-slate-600 font-mono">{node.id.slice(0, 8)}...</span>
-                                                </div>
-                                                {nodeItems.map((item) => (
+                                            <div key={node.id} className="space-y-1.5">
+                                                <button
+                                                    onClick={() => toggleGroup(node.id)}
+                                                    className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-slate-800/50 transition-colors group"
+                                                >
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        {isExpanded
+                                                            ? <ChevronDown className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                                                            : <ChevronRight className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
+                                                        }
+                                                        <p className="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider truncate" title={node.id}>
+                                                            {(node.data as any).label || node.type}
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-600 font-mono flex-shrink-0 ml-1">{node.id.slice(0, 8)}...</span>
+                                                </button>
+                                                {isExpanded && nodeItems.map((item) => (
                                                     <SourceVariableItem key={item.id} item={item} icon={getTypeIcon(item.type)} />
                                                 ))}
                                             </div>
@@ -454,9 +592,9 @@ export function DataMappingModal({
                             </div>
                         </div>
 
-                        {/* Right Panel - Target Parameters */}
-                        <div className="w-2/3 flex flex-col bg-[#0f111a]">
-                            <div className="px-6 py-4 border-b border-slate-700/30 bg-[#161b2e]/50">
+                        {/* Center Panel - Target Parameters */}
+                        <div className="w-2/4 flex flex-col bg-[#0f111a]">
+                            <div className="px-5 py-3 border-b border-slate-700/30 bg-[#161b2e]/50">
                                 <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
                                     <List className="w-4 h-4 text-blue-400" />
                                     Parameters
@@ -466,8 +604,41 @@ export function DataMappingModal({
                                 </p>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-6">
-                                <div className="grid grid-cols-1 gap-6 max-w-3xl">
+                            <div className="flex-1 overflow-y-auto p-5">
+                                {/* Excel Column Selector */}
+                                {targetNode.type === 'excelModels' && (() => {
+                                    const excelData = targetNode.data as any;
+                                    const availableColumns: string[] = excelData.availableColumns || [];
+                                    const selectedColumnIndex: number = excelData.selectedColumnIndex ?? 0;
+                                    if (availableColumns.length <= 1) return null;
+                                    return (
+                                        <div className="mb-6 p-4 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                                            <label className="text-sm font-medium text-slate-300 mb-2 block">Read From Column</label>
+                                            <select
+                                                value={selectedColumnIndex}
+                                                onChange={(e) => {
+                                                    const newIndex = Number(e.target.value);
+                                                    if (onExcelColumnChange && nodeId) {
+                                                        onExcelColumnChange(nodeId, newIndex);
+                                                    }
+                                                }}
+                                                className="w-full h-10 px-3 rounded-lg bg-slate-900/50 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
+                                                style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+                                            >
+                                                {availableColumns.map((col, idx) => (
+                                                    <option key={idx} value={idx} className="bg-slate-900 text-white">
+                                                        Column {String.fromCharCode(65 + idx)}: {col}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[11px] text-slate-500 mt-1.5">
+                                                Currently reading {(excelData.modelNames || []).length} values from &ldquo;{availableColumns[selectedColumnIndex] || '?'}&rdquo;
+                                            </p>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="grid grid-cols-1 gap-5 max-w-3xl">
                                     {targetParams.map((param) => (
                                         <DroppableParameter
                                             key={param.key}
@@ -483,6 +654,76 @@ export function DataMappingModal({
                                         </div>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Right Panel - Output Data */}
+                        <div className="w-1/4 border-l border-slate-700/50 flex flex-col bg-[#111420]">
+                            <div className="px-4 py-3 border-b border-slate-700/30 bg-[#161b2e]/50">
+                                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                                    <ArrowRightFromLine className="w-4 h-4 text-violet-400" />
+                                    Output Data
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    What this node produces
+                                </p>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                                {outputData.length === 0 ? (
+                                    <div className="text-center py-8 px-3">
+                                        <p className="text-slate-500 text-sm">No output data.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Value Outputs */}
+                                        {outputData.filter(d => d.type === 'value' || d.type === 'variable').length > 0 && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-xs font-semibold text-violet-400/80 uppercase tracking-wider px-2">
+                                                    Value Outputs
+                                                </p>
+                                                {outputData
+                                                    .filter(d => d.type === 'value' || d.type === 'variable')
+                                                    .map(item => (
+                                                        <div
+                                                            key={item.id}
+                                                            className="flex flex-col gap-1 px-3 py-2.5 rounded-lg bg-slate-800/40 border border-slate-700/50"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="p-1 rounded bg-violet-500/10 border border-violet-500/20">
+                                                                    <ArrowRightFromLine className="w-3 h-3 text-violet-400" />
+                                                                </div>
+                                                                <span className="text-slate-200 text-sm font-medium truncate">{item.label}</span>
+                                                            </div>
+                                                            <span className="text-[10px] text-violet-300/60 font-mono truncate pl-7">{item.value}</span>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
+
+                                        {/* Parameter Preview */}
+                                        {outputData.filter(d => d.type === 'parameter').length > 0 && (
+                                            <div className="space-y-1.5">
+                                                <p className="text-xs font-semibold text-slate-400/80 uppercase tracking-wider px-2 mt-2">
+                                                    Parameters
+                                                </p>
+                                                {outputData
+                                                    .filter(d => d.type === 'parameter')
+                                                    .map(item => (
+                                                        <div
+                                                            key={item.id}
+                                                            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg bg-slate-800/30 border border-slate-700/30"
+                                                        >
+                                                            <span className="text-xs text-slate-400 font-medium">{item.label}</span>
+                                                            <span className="text-xs text-slate-300 font-mono truncate">
+                                                                {item.value || <span className="text-slate-600 italic">empty</span>}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

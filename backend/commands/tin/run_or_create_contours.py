@@ -4,7 +4,8 @@ Generate Run or Create Contours command
 from typing import List
 
 
-def run_or_create_contours_command(prefix: str, cell_value: str) -> List[str]:
+def run_or_create_contours_command(prefix: str, cell_value: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Run or Create Contours XML command
     
@@ -48,6 +49,7 @@ def run_or_create_contours_command(prefix: str, cell_value: str) -> List[str]:
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
         '        <Comments>',
+        f'          {comments}',
         '        </Comments>',
         '        <Panel_Data><screen_layout>',
         '  <version>1.0</version>',

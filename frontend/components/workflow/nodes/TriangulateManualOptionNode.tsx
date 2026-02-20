@@ -14,7 +14,7 @@ export function TriangulateManualOptionNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.triangulateManualOption;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function TriangulateManualOptionNode(props: NodeProps) {
       title="Triangulate Manual"
       icon={<Triangle className="w-4 h-4 text-white" />}
       color="from-teal-500 to-cyan-600"
+      borderColor="rgb(20, 184, 166)"
+      glowColor="rgba(20, 184, 166, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

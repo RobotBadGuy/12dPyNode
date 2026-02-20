@@ -14,7 +14,7 @@ export function RenameModelNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.renameModel;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function RenameModelNode(props: NodeProps) {
       title="Rename Model"
       icon={<Tag className="w-4 h-4 text-white" />}
       color="from-purple-500 to-indigo-600"
+      borderColor="rgb(168, 85, 247)"
+      glowColor="rgba(168, 85, 247, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

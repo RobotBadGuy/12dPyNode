@@ -14,7 +14,7 @@ export function IfFunctionExistsNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.ifFunctionExists;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function IfFunctionExistsNode(props: NodeProps) {
       title="If Function Exists"
       icon={<CheckCircle2 className="w-4 h-4 text-white" />}
       color="from-emerald-500 to-teal-600"
+      borderColor="rgb(16, 185, 129)"
+      glowColor="rgba(16, 185, 129, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

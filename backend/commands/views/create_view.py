@@ -4,10 +4,7 @@ Generate Create_view command
 from typing import List, Tuple
 
 
-def create_view_command(
-    view_name: str,
-    coordinates: Tuple[int, int, int, int] = None
-) -> List[str]:
+def create_view_command(view_name: str, coordinates: tuple = (40, 30, 565, 715), continue_on_failure: bool = True, comments: str = "") -> List[str]:
     """
     Generate Create_view XML command
     
@@ -15,25 +12,23 @@ def create_view_command(
         view_name: View name (variable with spaces instead of hyphens)
         coordinates: Tuple of (Top, Left, Bot, Right). Defaults to Model coordinates (40, 30, 565, 715)
                     For TIN, use (130, 120, 640, 790)
+        continue_on_failure: If True, the command will continue even if it fails. Defaults to True.
     
     Returns:
         List of XML lines for Create_view command
     """
-    if coordinates is None:
-        # Default Model coordinates
-        top, left, bot, right = 40, 30, 565, 715
-    else:
-        top, left, bot, right = coordinates
+    failure_str = 'true' if continue_on_failure else 'false'
+    
+    top, left, bot, right = coordinates
     
     return [
         '      <Create_view>',
         f'        <Name>Create view {view_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>true</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'<Comments>{comments}</Comments>',
         f'        <View>{view_name}</View>',
         '        <View_Type>2010</View_Type>',
         '        <View_Engine>GDI_legacy</View_Engine>',

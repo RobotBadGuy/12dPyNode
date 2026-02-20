@@ -14,7 +14,7 @@ export function RemoveModelFromViewNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.removeModelFromView;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function RemoveModelFromViewNode(props: NodeProps) {
       title="Remove Model from View"
       icon={<EyeOff className="w-4 h-4 text-white" />}
       color="from-violet-500 to-purple-600"
+      borderColor="rgb(139, 92, 246)"
+      glowColor="rgba(139, 92, 246, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

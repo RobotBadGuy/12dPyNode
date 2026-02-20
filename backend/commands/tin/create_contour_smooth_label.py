@@ -4,7 +4,8 @@ Generate Create Contour Smooth Label command
 from typing import List
 
 
-def create_contour_smooth_label_command(prefix: str, cell_value: str) -> List[str]:
+def create_contour_smooth_label_command(prefix: str, cell_value: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Create Contour Smooth Label XML command
     
@@ -19,11 +20,10 @@ def create_contour_smooth_label_command(prefix: str, cell_value: str) -> List[st
         '      <Manual_option>',
         f'        <Name>{cell_value} tin Contours Function</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'<Comments>{comments}</Comments>',
         '        <Panel_Data><screen_layout>',
         '  <version>1.0</version>',
         '  <panel>',

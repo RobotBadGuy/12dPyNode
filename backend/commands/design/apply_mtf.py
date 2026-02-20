@@ -4,7 +4,8 @@ Generate Apply MTF command
 from typing import List
 
 
-def apply_mtf_command(function_name: str) -> List[str]:
+def apply_mtf_command(function_name: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Apply MTF Function XML command
     
@@ -18,14 +19,10 @@ def apply_mtf_command(function_name: str) -> List[str]:
         '      <Function>',
         f'        <Name>Recalc {function_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'        <Comments>{comments}</Comments>',
         f'        <Function>{function_name}</Function>',
         '      </Function>'
     ]
-
-
-

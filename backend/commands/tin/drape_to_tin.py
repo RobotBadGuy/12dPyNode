@@ -4,7 +4,8 @@ Generate Drape to TIN command
 from typing import List
 
 
-def drape_strings_to_tin_command(data_to_drape: str, z_offset: str, tin_name: str) -> List[str]:
+def drape_strings_to_tin_command(data_to_drape: str, z_offset: str, tin_name: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Drape to TIN XML command
     
@@ -20,11 +21,10 @@ def drape_strings_to_tin_command(data_to_drape: str, z_offset: str, tin_name: st
         '      <Run_option>',
         '        <Name>Drape to survey tin</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'<Comments>{comments}</Comments>',
         '        <SLF_data>',
         '          <screen_layout>',
         '            <version>1.0</version>',

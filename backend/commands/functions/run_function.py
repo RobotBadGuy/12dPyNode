@@ -6,8 +6,11 @@ from typing import List
 
 def function_command(
     command_name: str,
-    function_name: str
+    function_name: str,
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Function XML command
     
@@ -22,14 +25,10 @@ def function_command(
         '      <Function>',
         f'        <Name>{command_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'        <Comments>{comments}</Comments>',
         f'        <Function>{function_name}</Function>',
         '      </Function>'
     ]
-
-
-

@@ -4,7 +4,8 @@ Generate Comment command
 from typing import List
 
 
-def add_comment_command(comment_name: str) -> List[str]:
+def add_comment_command(comment_name: str, continue_on_failure: bool = True, comments: str = "") -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Comment XML command
     
@@ -18,10 +19,9 @@ def add_comment_command(comment_name: str) -> List[str]:
         '      <Comment>',
         f'        <Name>{comment_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'        <Comments>{comments}</Comments>',
         '      </Comment>'
     ]

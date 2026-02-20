@@ -14,7 +14,7 @@ export function SetVariableNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.setVariable;
-  
+
   // Generate value outputs from variables array
   // Use a stable handle ID based on index so renaming the variable doesn't break existing connections
   const valueItems = (data.variables || []).map((varBinding, index) => ({
@@ -28,6 +28,9 @@ export function SetVariableNode(props: NodeProps) {
       title="Set Variable"
       icon={<Settings className="w-4 h-4 text-white" />}
       color="from-yellow-500 to-amber-600"
+      borderColor="rgb(251, 146, 60)"
+      glowColor="rgba(251, 146, 60, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

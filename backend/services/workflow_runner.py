@@ -192,51 +192,63 @@ def execute_node(
     
     if node_type == 'import':
         file_type = data.get('fileType', 'dwg')
-        actual_file_path = resolve_variable(
-            data.get('actualFilePath', 'actual_file_path'),
+        file_path = resolve_variable(
+            data.get('filePath', 'filePath'),
             model_name,
             variables,
             per_run_vars,
         )
+        PrePostfixForModels = resolve_variable(
+            data.get('PrePostfixForModels', ''),
+            model_name,
+            variables,
+            per_run_vars,
+        )
+        # Note: modified_variable is no longer passed to importers, but kept if needed for other logic
         modified_variable = resolve_variable('modified_variable', model_name, variables, per_run_vars)
         
         if file_type == 'ifc':
-            xml_content.extend(generate_ifc_xml_content(actual_file_path, modified_variable))
+            xml_content.extend(generate_ifc_xml_content(file_path, PrePostfixForModels))
         elif file_type == 'dwg':
-            xml_content.extend(generate_dwg_xml_content(actual_file_path, modified_variable))
+            xml_content.extend(generate_dwg_xml_content(file_path, PrePostfixForModels))
         elif file_type == 'dgn':
-            xml_content.extend(generate_dgn_xml_content(actual_file_path, modified_variable))
+            xml_content.extend(generate_dgn_xml_content(file_path, PrePostfixForModels))
     
     elif node_type == 'cleanModel':
-        discipline = resolve_variable(data.get('discipline', 'discipline'), model_name, variables, per_run_vars)
-        prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
-        description = resolve_variable(data.get('description', 'description'), model_name, variables, per_run_vars)
-        object_dimension = resolve_variable(data.get('objectDimension', 'object_dimension'), model_name, variables, per_run_vars)
-        file_ext = resolve_variable(data.get('fileExt', 'file_ext'), model_name, variables, per_run_vars)
-        variable = resolve_variable(data.get('variable', 'variable'), model_name, variables, per_run_vars)
+        modelName = resolve_variable(data.get('modelName', 'modelName'), model_name, variables, per_run_vars)
+        comments = resolve_variable(data.get('comments', 'comments'), model_name, variables, per_run_vars)
+        continue_on_failure = data.get('continueOnFailure', 'True')
+        command_name = resolve_variable(data.get('commandName', 'Clean model'), model_name, variables, per_run_vars)
         
-        xml_content.extend(clean_model_command(discipline, prefix, description, object_dimension, file_ext, variable))
+        xml_content.extend(clean_model_command(command_name, modelName, comments, continue_on_failure))
     
     elif node_type == 'createView':
         view_name = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         coordinates = data.get('coordinates', [40, 30, 565, 715])
-        xml_content.extend(create_view_command(view_name, coordinates=tuple(coordinates)))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(create_view_command(view_name, coordinates=tuple(coordinates), continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'addModelToView':
         model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
         view_name = resolve_variable(data.get('viewName', 'view_name'), model_name, variables, per_run_vars)
-        xml_content.extend(add_model_to_view_command(model_name, view_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(add_model_to_view_command(model_name, view_name, continue_on_failure, comments))
     
     elif node_type == 'removeModelFromView':
         pattern = data.get('pattern', '*')
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
-        xml_content.extend(remove_model_from_view_command(pattern, modified_variable))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(remove_model_from_view_command(pattern, modified_variable, continue_on_failure, comments))
     
     elif node_type == 'deleteModelsFromView':
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         coordinates = data.get('coordinates', [497, 319])
         continue_on_failure = data.get('continueOnFailure', True)
-        xml_content.extend(delete_models_from_view_command(modified_variable, coordinates=tuple(coordinates), continue_on_failure=continue_on_failure))
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(delete_models_from_view_command(modified_variable, coordinates=tuple(coordinates), continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'createSharedModel':
         discipline = resolve_variable(data.get('discipline', 'discipline'), model_name, variables, per_run_vars)
@@ -245,9 +257,14 @@ def execute_node(
         object_dimension = resolve_variable(data.get('objectDimension', 'object_dimension'), model_name, variables, per_run_vars)
         file_ext = resolve_variable(data.get('fileExt', 'file_ext'), model_name, variables, per_run_vars)
         variable = resolve_variable(data.get('variable', 'variable'), model_name, variables, per_run_vars)
-        modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
+        # Note: 'modifiedVariable' in data is used as 'view_name'
+        view_name = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
+        command_name = resolve_variable(data.get('commandName', 'Create Shared Model'), model_name, variables, per_run_vars)
         
-        xml_content.extend(create_shared_model_command(discipline, prefix, description, object_dimension, file_ext, variable, modified_variable))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        
+        xml_content.extend(create_shared_model_command(command_name, discipline, prefix, description, object_dimension, file_ext, variable, view_name, continue_on_failure, comments))
     
     elif node_type == 'triangulateManualOption':
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
@@ -256,72 +273,100 @@ def execute_node(
         file_ext = resolve_variable(data.get('fileExt', 'file_ext'), model_name, variables, per_run_vars)
         options_ext = resolve_variable(data.get('optionsExt', 'options_ext'), model_name, variables, per_run_vars)
         discipline = resolve_variable(data.get('discipline', 'discipline'), model_name, variables, per_run_vars)
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         
-        xml_content.extend(triangulate_manual_option_command(modified_variable, prefix, surface_value, file_ext, options_ext, discipline))
+        xml_content.extend(triangulate_manual_option_command(modified_variable, prefix, surface_value, file_ext, options_ext, discipline, continue_on_failure, comments))
     
     elif node_type == 'tinFunction':
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
-        xml_content.extend(tin_function_command(modified_variable))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(tin_function_command(modified_variable, continue_on_failure, comments))
 
     elif node_type == 'runFunction':
         command_name = resolve_variable(data.get('commandName', 'command_name'), model_name, variables, per_run_vars)
         function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
-        xml_content.extend(function_command(command_name, function_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(function_command(command_name, function_name, continue_on_failure, comments))
     
     elif node_type == 'ifFunctionExists':
         function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
         pass_action_go_to_label = resolve_variable(data.get('passActionGoToLabel', 'pass_action_go_to_label'), model_name, variables, per_run_vars)
         fail_action_go_to_label = resolve_variable(data.get('failActionGoToLabel', 'fail_action_go_to_label'), model_name, variables, per_run_vars)
-        xml_content.extend(if_function_exists_command(function_name, pass_action_go_to_label, fail_action_go_to_label))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(if_function_exists_command(function_name, pass_action_go_to_label, fail_action_go_to_label, continue_on_failure, comments))
     
     elif node_type == 'renameModel':
         pattern_replace_token = data.get('patternReplace', 'pattern_replace')
         pattern_search_token = data.get('patternSearch', 'pattern_search')
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         pattern_replace = resolve_variable(pattern_replace_token, model_name, variables, per_run_vars)
         pattern_search = resolve_variable(pattern_search_token, model_name, variables, per_run_vars)
+        command_name = resolve_variable(data.get('commandName', 'Rename model'), model_name, variables, per_run_vars)
+        
         # Debug logging
         import logging
         logger = logging.getLogger(__name__)
         logger.info(f"RenameModel: patternSearch token='{pattern_search_token}', resolved='{pattern_search}', variables={[v.get('name') for v in variables]}, per_run_vars={list(per_run_vars.keys())}")
-        xml_content.extend(rename_model_command(pattern_replace, pattern_search))
+        xml_content.extend(rename_model_command(command_name, pattern_replace, pattern_search, continue_on_failure, comments))
     
     elif node_type == 'getTotalSurfaceArea':
         export_location = resolve_variable(data.get('exportLocation', 'export_location'), model_name, variables, per_run_vars)
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
         polygon_name = resolve_variable(data.get('polygonName', 'polygon_name'), model_name, variables, per_run_vars)
-        xml_content.extend(get_total_surface_area_command(export_location, tin_name, polygon_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        command_name = resolve_variable(data.get('commandName', 'Get Total Surface Area'), model_name, variables, per_run_vars)
+        
+        xml_content.extend(get_total_surface_area_command(command_name, export_location, tin_name, polygon_name, continue_on_failure, comments))
     
     elif node_type == 'trimeshVolumeReport':
         trimesh_name = resolve_variable(data.get('trimeshName', 'trimesh_name'), model_name, variables, per_run_vars)
         output_location = resolve_variable(data.get('outputLocation', 'output_location'), model_name, variables, per_run_vars)
         filename = resolve_variable(data.get('filename', 'filename'), model_name, variables, per_run_vars)
-        xml_content.extend(trimesh_volume_report_command(trimesh_name, output_location, filename))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(trimesh_volume_report_command(trimesh_name, output_location, filename, continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'volumeTinToTin':
         original_tin_name = resolve_variable(data.get('originalTinName', 'original_tin_name'), model_name, variables, per_run_vars)
         new_tin_name = resolve_variable(data.get('newTinName', 'new_tin_name'), model_name, variables, per_run_vars)
         output_location = resolve_variable(data.get('outputLocation', 'output_location'), model_name, variables, per_run_vars)
         filename = resolve_variable(data.get('filename', 'filename'), model_name, variables, per_run_vars)
-        xml_content.extend(volume_tin_to_tin_command(original_tin_name, new_tin_name, output_location, filename))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(volume_tin_to_tin_command(original_tin_name, new_tin_name, output_location, filename, continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'convertLinesToVariable':
-        xml_content.extend(convert_lines_to_variable_command(model_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(convert_lines_to_variable_command(model_name, continue_on_failure, comments))
     
     elif node_type == 'createContourSmoothLabel':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        xml_content.extend(create_contour_smooth_label_command(prefix, cell_value))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(create_contour_smooth_label_command(prefix, cell_value, continue_on_failure, comments))
     
     elif node_type == 'drapeToTin':
         data_to_drape = resolve_variable(data.get('dataToDrape', 'data_to_drape'), model_name, variables, per_run_vars)
         z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
-        xml_content.extend(drape_strings_to_tin_command(data_to_drape, z_offset, tin_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(drape_strings_to_tin_command(data_to_drape, z_offset, tin_name, continue_on_failure, comments))
     
     elif node_type == 'runOrCreateContours':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        xml_content.extend(run_or_create_contours_command(prefix, cell_value))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(run_or_create_contours_command(prefix, cell_value, continue_on_failure, comments))
     
     elif node_type == 'createTrimeshFromTin':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
@@ -331,15 +376,21 @@ def execute_node(
         z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
         depth = resolve_variable(data.get('depth', '1'), model_name, variables, per_run_vars)
         colour = resolve_variable(data.get('colour', 'colour'), model_name, variables, per_run_vars)
-        xml_content.extend(create_trimesh_from_tin_command(prefix, cell_value, trimesh_name, tin_name, z_offset, depth, colour))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(create_trimesh_from_tin_command(prefix, cell_value, trimesh_name, tin_name, z_offset, depth, colour, continue_on_failure, comments))
     
     elif node_type == 'addComment':
         comment_name = resolve_variable(data.get('commentName', 'comment_name'), model_name, variables, per_run_vars)
-        xml_content.extend(add_comment_command(comment_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(add_comment_command(comment_name, continue_on_failure, comments))
     
     elif node_type == 'addLabel':
         label_name = resolve_variable(data.get('labelName', 'label_name'), model_name, variables, per_run_vars)
-        xml_content.extend(add_label_command(label_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(add_label_command(label_name, continue_on_failure, comments))
     
     elif node_type in ('runOrCreateMtf', 'createApplyMtf'):
         function_name = resolve_variable(
@@ -409,8 +460,13 @@ def execute_node(
             per_run_vars,
         )
 
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        command_name = resolve_variable(data.get('commandName', 'Create MTF file'), model_name, variables, per_run_vars)
+
         xml_content.extend(
             create_apply_mtf(
+                command_name,
                 function_name,
                 mtf_file_name,
                 reference_model_name,
@@ -422,6 +478,8 @@ def execute_node(
                 Tadpole_Model_Name,
                 Polygon_Model_Name,
                 Boundary_Model_Name,
+                continue_on_failure,
+                comments
             )
         )
     
@@ -432,7 +490,9 @@ def execute_node(
             variables,
             per_run_vars,
         )
-        xml_content.extend(apply_mtf_command(function_name))
+        continue_on_failure = data.get('continueOnFailure', True)
+        comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
+        xml_content.extend(apply_mtf_command(function_name, continue_on_failure, comments))
 
     elif node_type == 'createMtfFile':
         # Generate an .mtf file as a side-effect; this does not add XML commands.
@@ -694,6 +754,7 @@ def run_workflow(
     workflow_graph: Dict[str, Any],
     variables: List[Dict[str, Any]],
     output_folder: str,
+    selected_column_index: int = 0,
 ) -> Tuple[List[str], Optional[str], List[Dict[str, str]]]:
     """
     Run a workflow graph for all models in Excel file
@@ -703,6 +764,7 @@ def run_workflow(
         workflow_graph: Workflow graph JSON (nodes and edges)
         variables: Variable bindings
         output_folder: Output folder path
+        selected_column_index: Which column to read model names from (0-based)
     
     Returns:
         Tuple of (generated file paths, project folder, file details)
@@ -712,8 +774,9 @@ def run_workflow(
     # This prevents pandas from treating the first row as a header and losing it
     try:
         df_raw = pd.read_excel(excel_file_path, engine='openpyxl', header=None)
-        # Get all values from first column (index 0)
-        model_names_raw = df_raw.iloc[:, 0].astype(str).tolist()
+        # Use the selected column index (clamped to valid range)
+        col_index = min(selected_column_index, max(0, len(df_raw.columns) - 1))
+        model_names_raw = df_raw.iloc[:, col_index].astype(str).tolist()
     except Exception as e:
         # Fallback to using load_naming_data if direct read fails
         naming_data = load_naming_data(excel_file_path)

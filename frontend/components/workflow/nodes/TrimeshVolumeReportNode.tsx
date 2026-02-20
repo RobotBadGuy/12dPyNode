@@ -14,7 +14,7 @@ export function TrimeshVolumeReportNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.trimeshVolumeReport;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function TrimeshVolumeReportNode(props: NodeProps) {
       title="Trimesh Volume Report"
       icon={<FileBarChart className="w-4 h-4 text-white" />}
       color="from-green-500 to-emerald-600"
+      borderColor="rgb(34, 197, 94)"
+      glowColor="rgba(34, 197, 94, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

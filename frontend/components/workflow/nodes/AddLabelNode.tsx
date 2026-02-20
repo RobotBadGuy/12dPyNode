@@ -15,7 +15,7 @@ export function AddLabelNode(props: NodeProps) {
   };
   const schema = nodeSchemas.addLabel;
   const labelName = (data?.labelName || '').toString();
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -27,6 +27,9 @@ export function AddLabelNode(props: NodeProps) {
       title="Add Label"
       icon={<Tag className="w-4 h-4 text-white" />}
       color="from-lime-500 to-green-600"
+      borderColor="rgb(132, 204, 22)"
+      glowColor="rgba(132, 204, 22, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

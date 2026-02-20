@@ -14,7 +14,7 @@ export function DrapeToTinNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.drapeToTin;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function DrapeToTinNode(props: NodeProps) {
       title="Drape to TIN"
       icon={<Map className="w-4 h-4 text-white" />}
       color="from-amber-500 to-orange-600"
+      borderColor="rgb(245, 158, 11)"
+      glowColor="rgba(245, 158, 11, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

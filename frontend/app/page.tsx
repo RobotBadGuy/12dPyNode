@@ -21,6 +21,8 @@ import { ErrorModal } from '@/components/workflow/ErrorModal';
 import { TemplateNotification } from '@/components/workflow/TemplateNotification';
 import { SaveTemplateModal } from '@/components/workflow/SaveTemplateModal';
 import { DataMappingModal } from '@/components/workflow/DataMappingModal';
+import { LandingPage } from '@/components/LandingPage';
+import { ProfilePage } from '@/components/ProfilePage';
 import { WorkflowNode, WorkflowEdge, ExcelModelsNodeData } from '@/lib/workflow/types';
 import { compileWorkflow, validateWorkflow } from '@/lib/workflow/compile';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
@@ -63,6 +65,7 @@ export default function WorkspacePage() {
     isOpen: false,
     nodeId: null,
   });
+  const [currentPage, setCurrentPage] = useState<'landing' | 'editor' | 'profile'>('landing');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Clipboard for copy/paste
@@ -452,7 +455,7 @@ export default function WorkspacePage() {
       let nodeData: any = {};
 
       if (type === 'excelModels') {
-        nodeData = { file: null, columnName: '', modelNames: [] };
+        nodeData = { file: null, columnName: '', modelNames: [], availableColumns: [], selectedColumnIndex: 0 };
       } else if (type === 'foreachModel') {
         nodeData = { currentModel: null };
       } else if (type === 'setVariable') {
@@ -551,49 +554,95 @@ export default function WorkspacePage() {
     [edges, viewport]
   );
 
+  // Helper to parse a single Excel file, reading from a specific column index
+  const parseExcelFile = useCallback(
+    (file: File, columnIndex: number = 0): Promise<{ modelNames: string[]; columnName: string; availableColumns: string[] }> => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+            const rows = XLSX.utils.sheet_to_json<any[]>(firstSheet, {
+              header: 1,
+              defval: '',
+            }) as any[][];
+
+            // Extract all column headers from the first row
+            const availableColumns: string[] = [];
+            if (rows.length > 0 && Array.isArray(rows[0])) {
+              rows[0].forEach((cell) => {
+                const header = String(cell ?? '').trim();
+                if (header) availableColumns.push(header);
+              });
+            }
+
+            // Clamp column index to valid range
+            const safeIndex = Math.min(columnIndex, Math.max(0, (rows[0]?.length ?? 1) - 1));
+
+            const modelNames = rows
+              .map((row) => (Array.isArray(row) ? String((row[safeIndex] ?? '')).trim() : ''))
+              .filter((name) => !!name);
+
+            const columnName =
+              rows.length > 0 && Array.isArray(rows[0])
+                ? String((rows[0][safeIndex] ?? '')).trim()
+                : '';
+
+            resolve({ modelNames, columnName, availableColumns });
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    },
+    []
+  );
+
+  // Handle changing the selected Excel column for an ExcelModels node
+  const handleExcelColumnChange = useCallback(
+    (nodeId: string, columnIndex: number) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node || node.type !== 'excelModels') return;
+      const file = (node.data as any)?.file as File | undefined;
+      if (!file) return;
+
+      parseExcelFile(file, columnIndex).then(({ modelNames, columnName, availableColumns }) => {
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (n.id === nodeId) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  modelNames,
+                  columnName,
+                  availableColumns,
+                  selectedColumnIndex: columnIndex,
+                },
+              };
+            }
+            return n;
+          })
+        );
+      });
+    },
+    [nodes, parseExcelFile]
+  );
+
   const handleFileUpload = useCallback(
     (type: 'excel' | 'model', files: File[]) => {
       if (type === 'excel') {
-        // Helper to parse a single Excel file
-        const parseExcelFile = (file: File): Promise<{ modelNames: string[]; columnName: string }> => {
-          return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              try {
-                const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-
-                const rows = XLSX.utils.sheet_to_json<any[]>(firstSheet, {
-                  header: 1,
-                  defval: '',
-                }) as any[][];
-
-                const modelNames = rows
-                  .map((row) => (Array.isArray(row) ? String((row[0] ?? '')).trim() : ''))
-                  .filter((name) => !!name);
-
-                const columnName =
-                  rows.length > 0 && Array.isArray(rows[0])
-                    ? String((rows[0][0] ?? '')).trim()
-                    : '';
-
-                resolve({ modelNames, columnName });
-              } catch (err) {
-                reject(err);
-              }
-            };
-            reader.onerror = reject;
-            reader.readAsArrayBuffer(file);
-          });
-        };
-
         // Always create one ExcelModels node per uploaded Excel file
-        Promise.all(files.map(parseExcelFile)).then((results) => {
+        Promise.all(files.map((f) => parseExcelFile(f, 0))).then((results) => {
           setNodes((nds) => {
             const newNodes: WorkflowNode[] = [];
             files.forEach((file, index) => {
-              const { modelNames, columnName } = results[index];
+              const { modelNames, columnName, availableColumns } = results[index];
               const newNode: WorkflowNode = {
                 id: `excelModels_${Date.now()}_${index}`,
                 type: 'excelModels',
@@ -602,6 +651,8 @@ export default function WorkspacePage() {
                   file,
                   modelNames,
                   columnName,
+                  availableColumns,
+                  selectedColumnIndex: 0,
                 } as any,
               };
               newNodes.push(newNode);
@@ -908,6 +959,10 @@ export default function WorkspacePage() {
     (nodes || []).some((n) => n.type === 'foreachModel') &&
     (nodes || []).some((n) => n.type === 'chainFileOutput');
 
+  const handleNavigate = useCallback((page: string) => {
+    setCurrentPage(page as 'landing' | 'editor' | 'profile');
+  }, []);
+
   return (
     <ReactFlowProvider>
       <div className="h-screen w-screen flex flex-col bg-gray-900">
@@ -923,91 +978,110 @@ export default function WorkspacePage() {
           canRedo={future.length > 0}
           isRunning={isRunning}
           canRun={canRun}
+          onNavigate={handleNavigate}
+          currentPage={currentPage}
         />
-        <div className="flex-1 flex overflow-hidden">
-          <LeftSidebar
-            onAddNode={handleAddNode}
-            onFileUpload={handleFileUpload}
-            excelNodes={nodes
-              .filter((n) => n.type === 'excelModels' && (n.data as any)?.file)
-              .map((n) => ({
-                id: n.id,
-                fileName: ((n.data as any)?.file as File)?.name || 'Untitled',
-              }))}
-            modelFiles={modelFiles}
-          />
-          <div className="flex-1 relative">
-            <WorkspaceCanvas
+        {currentPage === 'landing' && (
+          <div className="flex-1 overflow-auto">
+            <LandingPage onNavigate={handleNavigate} />
+          </div>
+        )}
+
+        {currentPage === 'profile' && (
+          <div className="flex-1 overflow-auto">
+            <ProfilePage onNavigate={handleNavigate} />
+          </div>
+        )}
+
+        {currentPage === 'editor' && (
+          <>
+            <div className="flex-1 flex overflow-hidden">
+              <LeftSidebar
+                onAddNode={handleAddNode}
+                onFileUpload={handleFileUpload}
+                excelNodes={nodes
+                  .filter((n) => n.type === 'excelModels' && (n.data as any)?.file)
+                  .map((n) => ({
+                    id: n.id,
+                    fileName: ((n.data as any)?.file as File)?.name || 'Untitled',
+                  }))}
+                modelFiles={modelFiles}
+              />
+              <div className="flex-1 relative">
+                <WorkspaceCanvas
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={handleNodesChange}
+                  onEdgesChange={handleEdgesChange}
+                  onConnect={onConnect}
+                  onNodeClick={onNodeClick}
+                  onNodeDoubleClick={onNodeDoubleClick}
+                  onViewportChange={setViewport}
+                />
+              </div>
+              <RightSidebar
+                selectedNode={selectedNode}
+                nodes={nodes}
+                edges={edges}
+                onUpdateNode={(nodeId, data) => {
+                  setNodes((nds) =>
+                    nds.map((node) =>
+                      node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
+                    )
+                  );
+                  // Update selectedNode if it's the node being updated
+                  setSelectedNode((current) => {
+                    if (current && current.id === nodeId) {
+                      return { ...current, data: { ...current.data, ...data } };
+                    }
+                    return current;
+                  });
+                }}
+              />
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportFile}
+              className="hidden"
+            />
+            <SuccessCelebration
+              isOpen={showSuccess}
+              onClose={() => setShowSuccess(false)}
+              fileCount={successFileCount}
+            />
+            <ErrorModal
+              isOpen={errorModal.isOpen}
+              onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
+              title={errorModal.title}
+              message={errorModal.message}
+              isExcelError={errorModal.isExcelError}
+            />
+            <TemplateNotification
+              isOpen={templateNotification.isOpen}
+              onClose={() => setTemplateNotification({ isOpen: false })}
+              templateName={templateNotification.templateName}
+              nodeCount={templateNotification.nodeCount}
+              edgeCount={templateNotification.edgeCount}
+            />
+            <SaveTemplateModal
+              isOpen={showSaveTemplateModal}
+              onClose={() => setShowSaveTemplateModal(false)}
+              onSave={handleSaveTemplateConfirm}
+              existingTemplateNames={loadAllTemplates().map((t) => t.name)}
+            />
+            <DataMappingModal
+              isOpen={mappingModal.isOpen}
+              onClose={() => setMappingModal({ isOpen: false, nodeId: null })}
+              nodeId={mappingModal.nodeId}
               nodes={nodes}
               edges={edges}
-              onNodesChange={handleNodesChange}
-              onEdgesChange={handleEdgesChange}
-              onConnect={onConnect}
-              onNodeClick={onNodeClick}
-              onNodeDoubleClick={onNodeDoubleClick}
-              onViewportChange={setViewport}
+              onSave={handleSaveMapping}
+              onExcelColumnChange={handleExcelColumnChange}
             />
-          </div>
-          <RightSidebar
-            selectedNode={selectedNode}
-            nodes={nodes}
-            edges={edges}
-            onUpdateNode={(nodeId, data) => {
-              setNodes((nds) =>
-                nds.map((node) =>
-                  node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
-                )
-              );
-              // Update selectedNode if it's the node being updated
-              setSelectedNode((current) => {
-                if (current && current.id === nodeId) {
-                  return { ...current, data: { ...current.data, ...data } };
-                }
-                return current;
-              });
-            }}
-          />
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          onChange={handleImportFile}
-          className="hidden"
-        />
-        <SuccessCelebration
-          isOpen={showSuccess}
-          onClose={() => setShowSuccess(false)}
-          fileCount={successFileCount}
-        />
-        <ErrorModal
-          isOpen={errorModal.isOpen}
-          onClose={() => setErrorModal({ isOpen: false, title: '', message: '' })}
-          title={errorModal.title}
-          message={errorModal.message}
-          isExcelError={errorModal.isExcelError}
-        />
-        <TemplateNotification
-          isOpen={templateNotification.isOpen}
-          onClose={() => setTemplateNotification({ isOpen: false })}
-          templateName={templateNotification.templateName}
-          nodeCount={templateNotification.nodeCount}
-          edgeCount={templateNotification.edgeCount}
-        />
-        <SaveTemplateModal
-          isOpen={showSaveTemplateModal}
-          onClose={() => setShowSaveTemplateModal(false)}
-          onSave={handleSaveTemplateConfirm}
-          existingTemplateNames={loadAllTemplates().map((t) => t.name)}
-        />
-        <DataMappingModal
-          isOpen={mappingModal.isOpen}
-          onClose={() => setMappingModal({ isOpen: false, nodeId: null })}
-          nodeId={mappingModal.nodeId}
-          nodes={nodes}
-          edges={edges}
-          onSave={handleSaveMapping}
-        />
+          </>
+        )}
       </div>
     </ReactFlowProvider>
   );

@@ -14,7 +14,7 @@ export function DeleteModelsFromViewNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.deleteModelsFromView;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function DeleteModelsFromViewNode(props: NodeProps) {
       title="Delete Models from View"
       icon={<Trash2 className="w-4 h-4 text-white" />}
       color="from-red-500 to-pink-600"
+      borderColor="rgb(239, 68, 68)"
+      glowColor="rgba(239, 68, 68, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

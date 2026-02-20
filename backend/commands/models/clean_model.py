@@ -5,37 +5,38 @@ from typing import List
 
 
 def clean_model_command(
-    discipline: str,
-    prefix: str,
-    description: str,
-    object_dimension: str,
-    file_ext: str,
-    variable: str
+    command_name: str,
+    model_name: str,
+    comments: str,
+    continue_on_failure: bool = True,
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Clean_model XML command (in the malformed single-line format that 12d Model expects)
     
     Args:
-        discipline: Discipline name
-        prefix: Prefix name
-        description: Description
-        object_dimension: Object dimension
-        file_ext: File extension
-        variable: Variable name (filename stem)
+        model_name: name of model to clean
+        command_name: name of command
+        continue_on_failure: Continue on failure
+        comments: Comments
     
     Returns:
         List containing a single XML line for Clean_model command
     """
-    # Build the model name from Excel data (no option suffix needed)
-    model_name = f'{discipline}/{prefix} {description} {object_dimension} {file_ext}'
     
     # Return as single-line format (malformed but expected by 12d Model)
     clean_model_line = (
-        f'      <Clean_model>        <Name>Clean model {model_name}</Name>        '
-        f'<Active>true</Active>        <Continue_on_failure>true</Continue_on_failure>        '
-        f'<Uses_parameters>false</Uses_parameters>        <Interactive>false</Interactive>        '
-        f'<Comments>        </Comments>        <Model_Name>{model_name}</Model_Name>        '
-        f'<Model_ID>0</Model_ID>        <Raster_Mode>0</Raster_Mode>      </Clean_model>'
+        '<Clean_model>'
+            f'<Name>{command_name}</Name>'
+            f'<Active>true</Active>'
+            f'<Continue_on_failure>{failure_str}</Continue_on_failure>'
+            f'<Uses_parameters>false</Uses_parameters>'
+            f'<Interactive>false</Interactive>'
+            f'<Comments>{comments}</Comments>'
+            f'<Model_Name>{model_name}</Model_Name>'
+            f'<Model_ID>0</Model_ID>'
+            f'<Raster_Mode>0</Raster_Mode>'
+        '</Clean_model>'
     )
     
     return [clean_model_line]

@@ -14,7 +14,7 @@ export function VolumeTinToTinNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.volumeTinToTin;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function VolumeTinToTinNode(props: NodeProps) {
       title="Volume TIN to TIN"
       icon={<Layers className="w-4 h-4 text-white" />}
       color="from-indigo-500 to-purple-600"
+      borderColor="rgb(99, 102, 241)"
+      glowColor="rgba(99, 102, 241, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

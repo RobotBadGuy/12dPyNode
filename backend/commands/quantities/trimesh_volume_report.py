@@ -9,7 +9,8 @@ def trimesh_volume_report_command(
     output_location: str,
     filename: str,
     command_name: str = 'Trimesh Volume Report',
-    comments: str = ''
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
     """
     Generate Trimesh Volume and Area Report XML command
@@ -19,16 +20,18 @@ def trimesh_volume_report_command(
         output_location: Output directory for the report file
         filename: Filename for the report (without extension)
         command_name: Name of the command (default: 'Trimesh Volume Report')
+        continue_on_failure: Whether the command should continue on failure (default: True)
         comments: Optional comments for the command
     
     Returns:
         List of XML lines for Trimesh Volume Report command
     """
+    failure_str = 'true' if continue_on_failure else 'false'
     return [
         '      <Run_option>',
         f'        <Name>{command_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
         '        <Comments>',

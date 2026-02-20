@@ -5,43 +5,46 @@ from typing import List
 
 
 def create_shared_model_command(
+    command_name: str,
     discipline: str,
     prefix: str,
     description: str,
     object_dimension: str,
     file_ext: str,
     variable: str,
-    modified_variable: str
+    view_name: str,
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Create shared model Run_option XML command (in single-line format)
     
     Args:
+        command_name: name of command
         discipline: Discipline name
         prefix: Prefix name
         description: Description
         object_dimension: Object dimension
         file_ext: File extension
         variable: Variable name (filename stem)
-        modified_variable: View name (variable with spaces instead of hyphens)
+        view_name: View name (variable with spaces instead of hyphens)
     
     Returns:
         List containing a single XML line for Create shared model Run_option command
     """
-    # Build the model name from Excel data (no option suffix needed)
-    model_name = f'{discipline}/{prefix} {description} {object_dimension} {file_ext}'
     
     # Return as single-line format
     shared_model_line = (
-        f'      <Run_option>        <Name>Create {model_name} Share model</Name>        '
-        f'<Active>true</Active>        <Continue_on_failure>false</Continue_on_failure>        '
+        f'      <Run_option>        <Name>{command_name}</Name>        '
+        f'<Active>true</Active>        <Continue_on_failure>{failure_str}</Continue_on_failure>        '
         f'<Uses_parameters>false</Uses_parameters>        <Interactive>false</Interactive>        '
-        f'<Comments>        </Comments>        <SLF_data>          <screen_layout>            '
+        f'<Comments>{comments}</Comments>        <SLF_data>          <screen_layout>            '
         f'<version>1.0</version>            <panel>              <name>Change String Info</name>              '
         f'<x>313</x>              <y>281</y>              <resize>                <width>1.26571429</width>                '
         f'<height>1</height>              </resize>              <source_box>                <name>Data to convert</name>                '
         f'<mode>Source_Box_View</mode>                <input_box>                  <name>Data to convert - View</name>                  '
-        f'<value>{modified_variable}</value>                </input_box>              </source_box>              '
+        f'<value>{view_name}</value>                </input_box>              </source_box>              '
         f'<input_box>                <name>New name</name>                <value />              </input_box>              '
         f'<input_box>                <name>New colour</name>                <value />              </input_box>              '
         f'<tick_box>                <name>Clear individual segment colours</name>                <value>false</value>              </tick_box>              '

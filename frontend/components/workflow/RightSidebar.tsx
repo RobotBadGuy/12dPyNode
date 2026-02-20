@@ -176,7 +176,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
 
   // Render Import node editor
   if (selectedNode.type === 'import') {
-    const actualFilePathWired = isParamWired(selectedNode.id, 'actualFilePath');
+    const filePathWired = isParamWired(selectedNode.id, 'filePath');
 
     return (
       <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
@@ -205,25 +205,25 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
             </div>
             <div>
               <Label className="text-sm font-semibold text-gray-300 mb-1 block">
-                Actual File Path
-                {actualFilePathWired.wired && (
+                File Path
+                {filePathWired.wired && (
                   <span className="ml-2 text-xs text-blue-400">
-                    (wired from: {actualFilePathWired.sourceToken})
+                    (wired from: {filePathWired.sourceToken})
                   </span>
                 )}
               </Label>
-              {actualFilePathWired.wired ? (
+              {filePathWired.wired ? (
                 <div className="p-2 bg-gray-800/50 rounded border border-blue-600/50 text-sm text-gray-400">
-                  Wired from: <span className="text-blue-400">{actualFilePathWired.sourceToken}</span>
+                  Wired from: <span className="text-blue-400">{filePathWired.sourceToken}</span>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <Input
                     type="text"
-                    value={nodeData.actualFilePath || ''}
+                    value={nodeData.filePath || ''}
                     onChange={(e) =>
                       onUpdateNode(selectedNode.id, {
-                        actualFilePath: e.target.value,
+                        filePath: e.target.value,
                       } as Partial<WorkflowNodeData>)
                     }
                     className="bg-gray-800 border-gray-700 text-white text-sm h-9"
@@ -237,15 +237,15 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                         onChange={(e) => {
                           if (e.target.value) {
                             onUpdateNode(selectedNode.id, {
-                              actualFilePath: `{${e.target.value}}`,
+                              filePath: `{${e.target.value}}`,
                             } as Partial<WorkflowNodeData>);
                           }
                         }}
                         className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
                       >
                         <option value="">-- Select Variable --</option>
-                        {allVariables.map((v) => (
-                          <option key={v.name} value={v.name}>
+                        {allVariables.map((v, idx) => (
+                          <option key={`${v.name}-${idx}`} value={v.name}>
                             {v.name} ({v.scope})
                           </option>
                         ))}
@@ -312,7 +312,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                 ) : param.kind === 'boolean' ? (
                   <input
                     type="checkbox"
-                    checked={value}
+                    checked={value === true || value === 'true'}
                     onChange={(e) =>
                       onUpdateNode(selectedNode.id, {
                         [param.key]: e.target.checked,
@@ -348,8 +348,8 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
                           className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
                         >
                           <option value="">-- Select Variable --</option>
-                          {allVariables.map((v) => (
-                            <option key={v.name} value={v.name}>
+                          {allVariables.map((v, idx) => (
+                            <option key={`${v.name}-${idx}`} value={v.name}>
                               {v.name} ({v.scope})
                             </option>
                           ))}

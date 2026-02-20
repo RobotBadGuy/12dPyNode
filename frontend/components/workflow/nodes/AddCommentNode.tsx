@@ -14,7 +14,7 @@ export function AddCommentNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.addComment;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function AddCommentNode(props: NodeProps) {
       title="Add Comment"
       icon={<MessageSquare className="w-4 h-4 text-white" />}
       color="from-yellow-500 to-amber-600"
+      borderColor="rgb(234, 179, 8)"
+      glowColor="rgba(234, 179, 8, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

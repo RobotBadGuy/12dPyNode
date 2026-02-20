@@ -11,8 +11,11 @@ def create_trimesh_from_tin_command(
     tin_name: str,
     z_offset: str,
     depth: str,
-    colour: str
+    colour: str,
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Create Trimesh from TIN XML command
     
@@ -32,11 +35,10 @@ def create_trimesh_from_tin_command(
         '      <Run_option>',
         f'        <Name>{trimesh_name}</Name>',
         '        <Active>true</Active>',
-        '        <Continue_on_failure>false</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'<Comments>{comments}</Comments>',
         '        <SLF_data>',
         '          <screen_layout>',
         '            <version>1.0</version>',

@@ -14,7 +14,7 @@ export function CreateContourSmoothLabelNode(props: NodeProps) {
     selected?: boolean;
   };
   const schema = nodeSchemas.createContourSmoothLabel;
-  
+
   const paramItems = schema.parameters.map((param) => ({
     id: getParamHandleId(param.key),
     label: param.label,
@@ -26,6 +26,9 @@ export function CreateContourSmoothLabelNode(props: NodeProps) {
       title="Create Contour Smooth Label"
       icon={<Waves className="w-4 h-4 text-white" />}
       color="from-cyan-500 to-blue-600"
+      borderColor="rgb(6, 182, 212)"
+      glowColor="rgba(6, 182, 212, 0.4)"
+      nodeState={(data as any).nodeState}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

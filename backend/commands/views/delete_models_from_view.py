@@ -5,15 +5,17 @@ from typing import List, Tuple
 
 
 def delete_models_from_view_command(
-    modified_variable: str,
-    coordinates: Tuple[int, int] = None,
-    continue_on_failure: bool = True
+    view_name: str,
+    coordinates: tuple = (497, 319),
+    continue_on_failure: bool = True,
+    comments: str = ""
 ) -> List[str]:
+    failure_str = 'true' if continue_on_failure else 'false'
     """
     Generate Delete models from view Run_option XML command
     
     Args:
-        modified_variable: View name (variable with spaces instead of hyphens)
+        view_name: View name (variable with spaces instead of hyphens)
         coordinates: Tuple of (x, y) panel coordinates. Defaults to Model coordinates (497, 319)
                     For TIN, use (241, 386)
         continue_on_failure: Whether to continue on failure. Default True for Model, False for TIN
@@ -21,21 +23,17 @@ def delete_models_from_view_command(
     Returns:
         List of XML lines for Delete models from view Run_option command
     """
-    if coordinates is None:
-        # Default Model coordinates
-        x, y = 497, 319
-    else:
-        x, y = coordinates
+    # The default coordinates are now handled in the function signature
+    x, y = coordinates
     
     return [
         '      <Run_option>',
         '        <Name>Delete models from view</Name>',
         '        <Active>true</Active>',
-        f'        <Continue_on_failure>{"true" if continue_on_failure else "false"}</Continue_on_failure>',
+        f'        <Continue_on_failure>{failure_str}</Continue_on_failure>',
         '        <Uses_parameters>false</Uses_parameters>',
         '        <Interactive>false</Interactive>',
-        '        <Comments>',
-        '        </Comments>',
+        f'<Comments>{comments}</Comments>',
         '        <SLF_data>',
         '          <screen_layout>',
         '            <version>1.0</version>',
