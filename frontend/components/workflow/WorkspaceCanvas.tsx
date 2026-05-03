@@ -13,6 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
+import { validateConnection } from '@/lib/workflow/edgeRules';
 import { ExcelModelsNode } from './nodes/ExcelModelsNode';
 import { ForeachModelNode } from './nodes/ForeachModelNode';
 import { ChainFileOutputNode } from './nodes/ChainFileOutputNode';
@@ -139,6 +140,7 @@ export function WorkspaceCanvas({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        isValidConnection={validateConnection}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
         onMoveEnd={(_, viewport) => {
