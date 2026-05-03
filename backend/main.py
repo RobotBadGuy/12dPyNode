@@ -116,13 +116,14 @@ app = FastAPI(
 cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 cors_origins = [origin.strip() for origin in cors_origins if origin.strip()]
 
-# Add CORS middleware
+# Add CORS middleware. Methods/headers are explicit so the API surface is
+# documented in code; tighten further with PC-801 when auth lands.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Accept"],
 )
 
 
