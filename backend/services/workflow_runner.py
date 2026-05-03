@@ -511,10 +511,12 @@ def execute_node(
         )
         try:
             create_mtf_file(mtf_name, template_left, template_right)
-        except Exception:
-            # Non-fatal: we don't want MTF generation failures to break the chain build
-            # Logging can be added here if needed.
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"MTF file generation failed for '{mtf_name}' (model '{model_name}'): {e}",
+                exc_info=True,
+            )
     
     elif node_type == 'createTemplateFile':
         # Generate a .tpl file as a side-effect; this does not add XML commands.
@@ -524,10 +526,12 @@ def execute_node(
         final_search_distance = resolve_variable(data.get('finalSearchDistance', '100'), model_name, variables, per_run_vars)
         try:
             create_template(template_name, final_cut_slope, final_fill_slope, final_search_distance, output_dir=output_folder)
-        except Exception:
-            # Non-fatal: we don't want template generation failures to break the chain build
-            # Logging can be added here if needed.
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Template file generation failed for '{template_name}' (model '{model_name}'): {e}",
+                exc_info=True,
+            )
 
 
 def build_command_chain(
@@ -725,10 +729,10 @@ def generate_chain_file(
     
     # Always add opening scaffolding
     if model_type == 'TIN':
-        xml_content.extend(generate_xml_header(date="2024-01-16", time="20:57:27"))
+        xml_content.extend(generate_xml_header())
         xml_content.extend(generate_meta_data_tin(project_folder or '', model_name))
     else:
-        xml_content.extend(generate_xml_header(date="2023-10-13", time="08:35:06"))
+        xml_content.extend(generate_xml_header())
         xml_content.extend(generate_meta_data_model(project_folder or '', model_name))
     
     xml_content.extend(generate_chain_wrapper())

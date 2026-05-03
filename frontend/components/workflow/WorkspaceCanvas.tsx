@@ -54,6 +54,9 @@ interface WorkspaceCanvasProps {
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
   onNodeDoubleClick?: (event: React.MouseEvent, node: Node) => void;
   onViewportChange?: (viewport: Viewport) => void;
+  // Lets the parent capture the ReactFlowInstance so it can drive the
+  // viewport programmatically (e.g. when restoring a saved template).
+  onInit?: (instance: ReactFlowInstance) => void;
 }
 
 export function WorkspaceCanvas({
@@ -65,6 +68,7 @@ export function WorkspaceCanvas({
   onNodeClick,
   onNodeDoubleClick,
   onViewportChange,
+  onInit,
 }: WorkspaceCanvasProps) {
   const nodeTypes = {
     excelModels: ExcelModelsNode,
@@ -145,6 +149,11 @@ export function WorkspaceCanvas({
         onInit={(instance) => {
           if (onViewportChange) {
             onViewportChange(instance.getViewport());
+          }
+          if (onInit) {
+            // The colored-edge style narrows the inferred edge type; cast back
+            // to the public ReactFlowInstance shape parents expect.
+            onInit(instance as unknown as ReactFlowInstance);
           }
         }}
         deleteKeyCode={['Backspace', 'Delete']}

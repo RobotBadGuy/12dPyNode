@@ -20,18 +20,22 @@ import { SuccessCelebration } from '@/components/workflow/SuccessCelebration';
 import { ErrorModal } from '@/components/workflow/ErrorModal';
 import { TemplateNotification } from '@/components/workflow/TemplateNotification';
 import { SaveTemplateModal } from '@/components/workflow/SaveTemplateModal';
+import { LoadTemplateModal } from '@/components/workflow/LoadTemplateModal';
 import { DataMappingModal } from '@/components/workflow/DataMappingModal';
 import { LandingPage } from '@/components/LandingPage';
 import { ProfilePage } from '@/components/ProfilePage';
-import { WorkflowNode, WorkflowEdge, ExcelModelsNodeData } from '@/lib/workflow/types';
+import { WorkflowNode, WorkflowEdge, WorkflowTemplate, WorkflowTemplateVersionSnapshot, ExcelModelsNodeData } from '@/lib/workflow/types';
 import { compileWorkflow, validateWorkflow } from '@/lib/workflow/compile';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
+import { exportTemplate, importTemplate, migrateLocalStorageToServer } from '@/lib/workflow/templates';
 import {
-  saveTemplate,
-  loadAllTemplates,
-  exportTemplate,
-  importTemplate,
-} from '@/lib/workflow/templates';
+  fetchTemplates,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate as deleteTemplateApi,
+} from '@/lib/workflow/templatesApi';
+import type { ReactFlowInstance, Viewport } from '@xyflow/react';
+import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModal';
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
@@ -61,6 +65,16 @@ export default function WorkspacePage() {
     isOpen: false,
   });
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [showLoadTemplateModal, setShowLoadTemplateModal] = useState(false);
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  // PC-203: which template (if any) was last loaded onto the canvas. Drives
+  // the SaveTemplateModal's "Save Changes" path so each save accumulates a
+  // new version on that template instead of forking a new one.
+  const [loadedTemplate, setLoadedTemplate] = useState<{ id: string; name: string } | null>(null);
+  // Captured via WorkspaceCanvas onInit so we can drive the canvas viewport
+  // when restoring a template or version.
+  const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const [mappingModal, setMappingModal] = useState<{ isOpen: boolean; nodeId: string | null }>({
     isOpen: false,
     nodeId: null,
@@ -823,66 +837,182 @@ export default function WorkspacePage() {
     }
   }, [nodes, edges, selectedExcelNodeIds]);
 
+  const refreshTemplates = useCallback(async () => {
+    try {
+      const list = await fetchTemplates();
+      setTemplates(list);
+    } catch (err) {
+      setErrorModal({
+        isOpen: true,
+        title: 'Could Not Load Templates',
+        message: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }, []);
+
+  // Fetch templates on mount and migrate any leftover localStorage entries
+  // from the pre-PC-202 storage. Single-shot — `migrateLocalStorageToServer`
+  // sets a localStorage flag so the upload never repeats.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setTemplatesLoading(true);
+      try {
+        const migrated = await migrateLocalStorageToServer();
+        if (cancelled) return;
+        const list = await fetchTemplates();
+        if (cancelled) return;
+        setTemplates(list);
+        if (migrated > 0) {
+          setTemplateNotification({
+            isOpen: true,
+            templateName: `Migrated ${migrated} template${migrated !== 1 ? 's' : ''} to the cloud`,
+          });
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setErrorModal({
+          isOpen: true,
+          title: 'Could Not Load Templates',
+          message: err instanceof Error ? err.message : 'Unknown error',
+        });
+      } finally {
+        if (!cancelled) setTemplatesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleSaveTemplate = useCallback(() => {
     setShowSaveTemplateModal(true);
   }, []);
 
-  const handleSaveTemplateConfirm = useCallback(
-    (name: string) => {
-      const viewport = { x: 0, y: 0, zoom: 1 }; // TODO: capture actual viewport
-      saveTemplate(name, nodes as WorkflowNode[], edges as WorkflowEdge[], viewport);
-
-      // Show success notification
-      setTemplateNotification({
-        isOpen: true,
-        templateName: name,
-        nodeCount: nodes.length,
-        edgeCount: edges.length,
-      });
+  // Apply a saved snapshot (template, version, or imported file) to the canvas.
+  // Centralised so load/restore/import all stay in sync — including the
+  // viewport restore, which used to be silently dropped.
+  const applySnapshot = useCallback(
+    (snapshot: {
+      nodes: WorkflowNode[];
+      edges: WorkflowEdge[];
+      viewport?: { x: number; y: number; zoom: number };
+    }) => {
+      const validEdges = filterValidEdges(snapshot.edges, snapshot.nodes);
+      setNodes(snapshot.nodes);
+      setEdges(validEdges as WorkflowEdge[]);
+      // Stale node IDs would dangle in selection state.
+      setSelectedNode(null);
+      setSelectedExcelNodeIds(new Set());
+      if (snapshot.viewport) {
+        setViewport(snapshot.viewport);
+        reactFlowInstanceRef.current?.setViewport(snapshot.viewport);
+      }
+      return validEdges.length;
     },
-    [nodes, edges]
+    []
+  );
+
+  const handleSaveTemplateConfirm = useCallback(
+    async (name: string, options: SaveTemplateOptions) => {
+      const payload = {
+        name,
+        nodes: nodes as WorkflowNode[],
+        edges: edges as WorkflowEdge[],
+        viewport,
+        message: options.message,
+      };
+      try {
+        let saved: WorkflowTemplate;
+        if (options.mode === 'update' && loadedTemplate) {
+          saved = await updateTemplate(loadedTemplate.id, payload);
+        } else {
+          saved = await createTemplate(payload);
+        }
+        // The newly-saved template is now the "current" one, so subsequent
+        // saves default to versioning it.
+        setLoadedTemplate({ id: saved.id, name: saved.name });
+        await refreshTemplates();
+        setTemplateNotification({
+          isOpen: true,
+          templateName: saved.name,
+          nodeCount: nodes.length,
+          edgeCount: edges.length,
+        });
+      } catch (err) {
+        setErrorModal({
+          isOpen: true,
+          title: 'Could Not Save Template',
+          message: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    },
+    [nodes, edges, viewport, loadedTemplate, refreshTemplates]
   );
 
   const handleLoadTemplate = useCallback(() => {
-    const templates = loadAllTemplates();
-    if (templates.length === 0) {
-      alert('No templates found');
-      return;
-    }
+    setShowLoadTemplateModal(true);
+  }, []);
 
-    const templateNames = templates.map((t, i) => `${i + 1}. ${t.name}`).join('\n');
-    const choice = prompt(`Select template (1-${templates.length}):\n${templateNames}`);
-    const index = parseInt(choice || '0') - 1;
-
-    if (index >= 0 && index < templates.length) {
-      const template = templates[index];
-      const loadedNodes = template.nodes as WorkflowNode[];
-      const loadedEdges = template.edges as WorkflowEdge[];
-
-      // Filter out invalid edges
-      const validEdges = filterValidEdges(loadedEdges, loadedNodes);
-
-      if (validEdges.length < loadedEdges.length) {
+  const handleConfirmLoadTemplate = useCallback(
+    (template: WorkflowTemplate) => {
+      const validCount = applySnapshot(template);
+      if (validCount < template.edges.length) {
         console.warn(
-          `Filtered out ${loadedEdges.length - validEdges.length} invalid edges when loading template "${template.name}"`
+          `Filtered out ${template.edges.length - validCount} invalid edges when loading template "${template.name}"`
         );
       }
-
-      setNodes(loadedNodes);
-      setEdges(validEdges as WorkflowEdge[]);
-
-      // Show modern notification
+      setLoadedTemplate({ id: template.id, name: template.name });
+      setShowLoadTemplateModal(false);
       setTemplateNotification({
         isOpen: true,
         templateName: template.name,
-        nodeCount: loadedNodes?.length,
-        edgeCount: validEdges?.length,
+        nodeCount: template.nodes?.length,
+        edgeCount: validCount,
       });
-    }
-  }, []);
+    },
+    [applySnapshot]
+  );
+
+  const handleRestoreVersion = useCallback(
+    (template: WorkflowTemplate, snapshot: WorkflowTemplateVersionSnapshot) => {
+      const validCount = applySnapshot(snapshot);
+      // The restored snapshot belongs to `template` — saving from here should
+      // append a new version on top of that template.
+      setLoadedTemplate({ id: template.id, name: template.name });
+      setShowLoadTemplateModal(false);
+      setTemplateNotification({
+        isOpen: true,
+        templateName: `${template.name} · v${snapshot.versionNumber}`,
+        nodeCount: snapshot.nodes?.length,
+        edgeCount: validCount,
+      });
+    },
+    [applySnapshot]
+  );
+
+  const handleDeleteTemplate = useCallback(
+    async (template: WorkflowTemplate) => {
+      try {
+        await deleteTemplateApi(template.id);
+        await refreshTemplates();
+        // If we just deleted the template the canvas was tracking, drop the
+        // pointer so the next Save defaults to creating a new template.
+        setLoadedTemplate((current) =>
+          current?.id === template.id ? null : current
+        );
+      } catch (err) {
+        setErrorModal({
+          isOpen: true,
+          title: 'Could Not Delete Template',
+          message: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    },
+    [refreshTemplates]
+  );
 
   const handleExportTemplate = useCallback(() => {
-    const viewport = { x: 0, y: 0, zoom: 1 };
     const template = {
       id: 'export',
       name: 'Exported Template',
@@ -900,7 +1030,7 @@ export default function WorkspacePage() {
     a.download = 'workflow-template.json';
     a.click();
     URL.revokeObjectURL(url);
-  }, [nodes, edges]);
+  }, [nodes, edges, viewport]);
 
   const handleImportTemplate = useCallback(() => {
     if (!fileInputRef.current) return;
@@ -917,30 +1047,26 @@ export default function WorkspacePage() {
         try {
           const json = event.target?.result as string;
           const template = importTemplate(json);
-          const loadedNodes = template.nodes as WorkflowNode[];
-          const loadedEdges = template.edges as WorkflowEdge[];
-
-          // Filter out invalid edges
-          const validEdges = filterValidEdges(loadedEdges, loadedNodes);
-
-          if (validEdges.length < loadedEdges.length) {
+          const importedNodes = template.nodes as WorkflowNode[];
+          const importedEdges = template.edges as WorkflowEdge[];
+          const validCount = applySnapshot({
+            nodes: importedNodes,
+            edges: importedEdges,
+            viewport: template.viewport,
+          });
+          if (validCount < importedEdges.length) {
             console.warn(
-              `Filtered out ${loadedEdges.length - validEdges.length} invalid edges when importing template`
+              `Filtered out ${importedEdges.length - validCount} invalid edges when importing template`
             );
           }
-
-          setNodes(loadedNodes);
-          setEdges(validEdges as WorkflowEdge[]);
-          // Clear selections so future Excel uploads behave predictably
-          setSelectedNode(null);
-          setSelectedExcelNodeIds(new Set());
-
-          // Show modern notification
+          // The imported file isn't tied to any saved template — saving from
+          // here should default to creating a new one.
+          setLoadedTemplate(null);
           setTemplateNotification({
             isOpen: true,
             templateName: template.name || 'Imported Template',
-            nodeCount: loadedNodes?.length,
-            edgeCount: validEdges?.length,
+            nodeCount: importedNodes?.length,
+            edgeCount: validCount,
           });
         } catch (err) {
           alert(
@@ -951,7 +1077,7 @@ export default function WorkspacePage() {
       };
       reader.readAsText(file);
     },
-    []
+    [applySnapshot]
   );
 
   const canRun =
@@ -1017,6 +1143,9 @@ export default function WorkspacePage() {
                   onNodeClick={onNodeClick}
                   onNodeDoubleClick={onNodeDoubleClick}
                   onViewportChange={setViewport}
+                  onInit={(instance) => {
+                    reactFlowInstanceRef.current = instance;
+                  }}
                 />
               </div>
               <RightSidebar
@@ -1069,7 +1198,17 @@ export default function WorkspacePage() {
               isOpen={showSaveTemplateModal}
               onClose={() => setShowSaveTemplateModal(false)}
               onSave={handleSaveTemplateConfirm}
-              existingTemplateNames={loadAllTemplates().map((t) => t.name)}
+              savedTemplateCount={templates.length}
+              loadedTemplate={loadedTemplate}
+            />
+            <LoadTemplateModal
+              isOpen={showLoadTemplateModal}
+              templates={templates}
+              isLoading={templatesLoading}
+              onClose={() => setShowLoadTemplateModal(false)}
+              onLoad={handleConfirmLoadTemplate}
+              onDelete={handleDeleteTemplate}
+              onRestoreVersion={handleRestoreVersion}
             />
             <DataMappingModal
               isOpen={mappingModal.isOpen}

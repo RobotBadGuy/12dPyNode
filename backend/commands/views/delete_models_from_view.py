@@ -46,7 +46,7 @@ def delete_models_from_view_command(
         '                <mode>Source_Box_View</mode>',
         '                <input_box>',
         '                  <name>Data to delete - View</name>',
-        f'                  <value>{modified_variable}</value>',
+        f'                  <value>{view_name}</value>',
         '                </input_box>',
         '              </source_box>',
         '              <input_box>',
