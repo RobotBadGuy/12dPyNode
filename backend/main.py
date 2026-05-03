@@ -37,11 +37,18 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 
 import time as _time
+import asyncio
 
-# Maximum age (in seconds) for files in uploads/ and output/ before they are
-# cleaned up on startup.  Defaults to 1 hour; override via the environment
-# variable CLEANUP_TTL_SECONDS.
+# Maximum age (in seconds) for files in uploads/ and output/ and session rows
+# before they are cleaned up. Default 1 hour; override via CLEANUP_TTL_SECONDS.
 CLEANUP_TTL_SECONDS = int(os.getenv("CLEANUP_TTL_SECONDS", "3600"))
+
+# How often the periodic sweep runs (seconds). Defaults to a quarter of the
+# TTL with a 60-second floor — frequent enough to keep the working set bounded
+# without thrashing the disk. Override via CLEANUP_INTERVAL_SECONDS.
+CLEANUP_INTERVAL_SECONDS = int(
+    os.getenv("CLEANUP_INTERVAL_SECONDS", str(max(60, CLEANUP_TTL_SECONDS // 4)))
+)
 
 
 # PC-201: persistent session storage. Survives backend restarts.
@@ -56,53 +63,81 @@ template_store = build_template_store()
 template_version_store = build_template_version_store()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Lifespan context manager for startup and shutdown events"""
-    # Startup
-    logger.info("Starting PyChain API")
+async def _sweep_stale_files_and_sessions(now: float | None = None) -> int:
+    """Delete files/dirs in UPLOAD_DIR + OUTPUT_DIR older than CLEANUP_TTL_SECONDS,
+    plus session rows older than the same TTL. Returns the total number of items
+    removed. Each half is independently try/except'd so a flaky DB doesn't block
+    the disk sweep and vice versa.
 
-    # Clean up stale files older than CLEANUP_TTL_SECONDS.
-    # This avoids destroying another session's in-flight data during restarts.
-    now = _time.time()
-    stale_count = 0
-    for directory in [UPLOAD_DIR, OUTPUT_DIR]:
-        for file_path in directory.glob("*"):
-            if file_path.is_file():
-                try:
-                    age_seconds = now - file_path.stat().st_mtime
-                    if age_seconds > CLEANUP_TTL_SECONDS:
-                        file_path.unlink()
-                        stale_count += 1
-                except Exception as e:
-                    logger.warning(f"Failed to clean up file {file_path}: {e}")
-        # Also clean up empty session subdirectories in output/
-        if directory == OUTPUT_DIR:
-            for sub_path in directory.iterdir():
-                if sub_path.is_dir():
-                    try:
-                        age_seconds = now - sub_path.stat().st_mtime
-                        if age_seconds > CLEANUP_TTL_SECONDS:
-                            import shutil
-                            shutil.rmtree(sub_path, ignore_errors=True)
-                            stale_count += 1
-                    except Exception as e:
-                        logger.warning(f"Failed to clean up directory {sub_path}: {e}")
-    if stale_count:
-        logger.info(f"Cleaned up {stale_count} stale file(s)/directory(ies) older than {CLEANUP_TTL_SECONDS}s")
+    `now` is injectable for tests; production callers leave it None.
+    """
+    current = now if now is not None else _time.time()
+    removed = 0
 
-    # Drop session rows whose files we just deleted (or that predate the TTL).
+    for directory in (UPLOAD_DIR, OUTPUT_DIR):
+        for entry in directory.glob("*"):
+            try:
+                age = current - entry.stat().st_mtime
+                if age <= CLEANUP_TTL_SECONDS:
+                    continue
+                if entry.is_file():
+                    entry.unlink()
+                    removed += 1
+                elif entry.is_dir() and directory == OUTPUT_DIR:
+                    import shutil
+                    shutil.rmtree(entry, ignore_errors=True)
+                    removed += 1
+            except Exception as exc:
+                logger.warning("Failed to clean up %s: %s", entry, exc)
+
     try:
         purged = session_store.delete_older_than(CLEANUP_TTL_SECONDS)
         if purged:
-            logger.info(f"Purged {purged} stale session row(s) older than {CLEANUP_TTL_SECONDS}s")
-    except Exception as e:
-        logger.warning(f"Failed to purge stale session rows: {e}")
+            logger.info("Purged %d stale session row(s)", purged)
+        removed += purged
+    except Exception as exc:
+        logger.warning("Failed to purge stale session rows: %s", exc)
 
-    yield
+    if removed:
+        logger.info("Sweep removed %d stale item(s)", removed)
+    return removed
 
-    # Shutdown (if needed in the future)
-    # logger.info("Shutting down PyChain API")
+
+async def _periodic_sweep() -> None:
+    """Background loop that runs the sweep every CLEANUP_INTERVAL_SECONDS.
+
+    Cancelled by lifespan teardown; CancelledError exits the loop cleanly.
+    """
+    try:
+        while True:
+            await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+            try:
+                await _sweep_stale_files_and_sessions()
+            except Exception:
+                logger.exception("Periodic sweep raised — continuing")
+    except asyncio.CancelledError:
+        logger.info("Periodic sweep stopped")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    logger.info("Starting PyChain API")
+
+    # One sweep on boot, then keep sweeping every CLEANUP_INTERVAL_SECONDS so
+    # long-running deployments don't accumulate orphaned files and rows.
+    await _sweep_stale_files_and_sessions()
+    sweep_task = asyncio.create_task(_periodic_sweep())
+
+    try:
+        yield
+    finally:
+        sweep_task.cancel()
+        try:
+            await sweep_task
+        except asyncio.CancelledError:
+            pass
+        logger.info("PyChain API shutdown complete")
 
 
 app = FastAPI(
