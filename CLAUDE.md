@@ -84,7 +84,7 @@ Organized by category: `metadata/`, `views/`, `models/`, `importers/` (IFC/DWG/D
 
 ## Conventions
 
-- Generated `.chain` files and `backend/uploads/`, `backend/output/` are gitignored; the server performs TTL-based cleanup on startup (`lifespan` in `main.py`), deleting only files older than `CLEANUP_TTL_SECONDS` (default 3600). The same TTL purges old rows in `pynode_workflow_sessions`.
+- Generated `.chain` files and `backend/uploads/`, `backend/output/` are gitignored; the server performs TTL-based cleanup both at startup and every `CLEANUP_INTERVAL_SECONDS` (default = `max(60, CLEANUP_TTL_SECONDS // 4)`) thereafter, deleting items older than `CLEANUP_TTL_SECONDS` (default 3600) from disk and from `pynode_workflow_sessions`.
 - Templates persist in Supabase via `services/template_store.py` (`pynode_templates`) and are exposed at `GET/POST/PUT/DELETE /api/templates`. Globally shared across users until PC-801 adds auth. Falls back to in-memory when Supabase env vars are absent.
 - Sessions persist in Supabase via `services/session_store.py`. Files (Excel uploads, output ZIPs) stay on local disk; only their paths and metadata are stored in the DB row.
 - All Postgres tables for this app are prefixed `pynode_`. Migrations live in `backend/migrations/` and are applied manually via the Supabase SQL Editor.

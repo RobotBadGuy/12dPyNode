@@ -43,8 +43,8 @@ Backed by Supabase (Postgres). All app tables share the `pynode_` prefix so we c
 - ✅ **PC-203** `[P2]` — Workflow versioning / history.
   *Rationale:* Every save (POST or PUT) snapshots the graph into `pynode_template_versions` (see `backend/migrations/003_add_template_versions.sql`) accessed through the `TemplateVersionStore` Protocol in `backend/services/template_version_store.py`. Existing templates are backfilled as v1. Exposed at `GET /api/templates/{id}/versions` (metadata) and `GET /api/templates/{id}/versions/{n}` (full snapshot). The Save modal grew a two-button flow ("Save Changes" PUTs a new version, "Save as New" POSTs a new template) and an optional commit-style note. The Load modal grew an inline expandable history with Restore. Diffing two versions is deferred. The `author` column is nullable until PC-801 attaches user IDs.
 
-- **PC-204** `[P2]` — Session TTL and garbage collection. (Claude Code)
-  *Rationale:* `delete_older_than` already exists on the store and runs at startup. Promote it to a scheduled task (e.g. APScheduler) so long-running servers don't accumulate stale rows + orphaned files between restarts.
+- ✅ **PC-204** `[P2]` — Session TTL and garbage collection.
+  *Rationale:* The startup-only sweep is now augmented by an asyncio task in `lifespan()` that runs every `CLEANUP_INTERVAL_SECONDS` (default = `max(60, CLEANUP_TTL_SECONDS // 4)`). Both halves (file glob + `session_store.delete_older_than`) are independently try/except'd so a flaky DB does not block the disk sweep. Tested in `backend/tests/test_lifespan_sweep.py`.
 
 ---
 
@@ -64,8 +64,8 @@ The current compiler handles the happy path (one `foreach` → one `chainFileOut
 - **PC-304** `[P2]` — Chain XML preview before download.
   *Rationale:* Add `GET /api/workflow/preview/{session_id}/{model_name}` that returns the generated chain as text. Lets users verify output without opening 12d.
 
-- **PC-305** `[P2]` — Edge type validation at compile time.
-  *Rationale:* The handle prefix system (`flow:` / `param:` / `value:`) exists but is not enforced. A `value:` output can be wired to a `flow:` input and the runner silently ignores it. Reject invalid connections in `WorkspaceCanvas.tsx::onConnect`.
+- ✅ **PC-305** `[P2]` — Edge type validation at compile time.
+  *Rationale:* `WorkspaceCanvas.tsx` now passes `isValidConnection={validateConnection}` to React Flow. The validator (in `frontend/lib/workflow/edgeRules.ts`) only allows `flow→flow` and `value→param` connections; legacy unprefixed handles still pass for backward compatibility. Tested in `frontend/lib/workflow/__tests__/edgeRules.test.ts`.
 
 - **PC-306** `[P2]` — Richer control-flow nodes.
   *Rationale:* Currently only `ifFunctionExists`. Add generic `If`, `Switch`, and `While` nodes so users can branch on variable values without writing a new command module.
@@ -113,14 +113,14 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 - **PC-601** `[P2]` — Dockerfile + docker-compose for local dev.
   *Rationale:* Windows venv + Node setup is brittle (see README using wrong path `Python Scripts` instead of `Python Projects`). One `docker compose up` removes the onboarding friction.
 
-- **PC-602** `[P2]` — Fix README paths and remove stale instructions.
-  *Rationale:* README references `G:\WebDev\Python Scripts\12dPynode` — the folder is actually `Python Projects`. Legacy `/api/upload` docs describe a broken endpoint.
+- ✅ **PC-602** `[P2]` — Fix README paths and remove stale instructions.
+  *Rationale:* Replaced "Python Scripts" with the correct "Python Projects" path, removed the Legacy API section (those endpoints were killed in PC-101), corrected the templates-storage description to match PC-202, and updated the cleanup-on-startup wording to match PC-204.
 
 - **PC-603** `[P2]` — Contribution guide and node-authoring template.
   *Rationale:* `frontend/adding_node_params.md` is excellent but hidden. Move to `docs/`, link from README, and add a cookiecutter-style script that scaffolds the 5 files needed for a new node.
 
-- **PC-604** `[P2]` — Consolidate `start.sh` and `start.bat`, or delete both.
-  *Rationale:* `start.sh` just runs `python main.py` with some echoes. `start.bat` presumably the same. The README already documents the command. Reduce surface area.
+- ✅ **PC-604** `[P2]` — Consolidate `start.sh` and `start.bat`, or delete both.
+  *Rationale:* Both scripts have been removed. The README and CLAUDE.md document the commands directly.
 
 ---
 
@@ -159,8 +159,8 @@ Move from "developer's laptop" to "team tool." Do this after EPIC-02 lands.
 - **PC-804** `[P2]` — Audit logging.
   *Rationale:* Track who ran what workflow, how many models, which templates. Non-negotiable in a regulated engineering shop.
 
-- **PC-805** `[P2]` — Tighten CORS + CSP headers.
-  *Rationale:* `allow_origins` driven by env var is fine, but `allow_methods=["*"]` and `allow_headers=["*"]` with `allow_credentials=True` is permissive. Lock down once the API surface is stable.
+- ✅ **PC-805** `[P2]` — Tighten CORS + CSP headers.
+  *Rationale:* Replaced wildcard `allow_methods` and `allow_headers` with explicit allowlists (`GET`/`POST`/`PUT`/`DELETE`/`OPTIONS` and `Content-Type`/`Accept`). `allow_origins` and `allow_credentials` were already correct. Will be revisited when PC-801 introduces the `Authorization` header.
 
 ---
 
