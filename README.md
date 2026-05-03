@@ -68,7 +68,7 @@ This application provides a playful, gamified node-based workspace for building 
 Open a terminal and navigate to the project root:
 
 ```bash
-cd "G:\WebDev\Python Scripts\12dPynode\backend"
+cd "G:\WebDev\Python Projects\12dPynode\backend"
 ```
 
 Create and activate a virtual environment:
@@ -106,7 +106,7 @@ The backend API will be available at `http://localhost:8001`
 Open a **new terminal** (keep the backend running) and navigate to the frontend directory:
 
 ```bash
-cd "G:\WebDev\Python Scripts\12dPynode\frontend"
+cd "G:\WebDev\Python Projects\12dPynode\frontend"
 ```
 
 Install dependencies:
@@ -175,7 +175,7 @@ You should see the node-based workflow workspace with:
 
 ### Saving and Loading Templates
 
-- **Save Template**: Click "Save Template" → Enter a name → Template saved to browser localStorage
+- **Save Template**: Click "Save Template" → Enter a name → Template saved to the server
 - **Load Template**: Click "Load Template" → Select from list
 - **Export**: Download template as JSON file
 - **Import**: Upload a previously exported template JSON
@@ -205,16 +205,10 @@ You should see the node-based workflow workspace with:
 
 ## API Endpoints
 
-### Workflow API (New)
+### Workflow API
 - `POST /api/workflow/run` - Execute a workflow graph
 - `GET /api/workflow/status/{session_id}` - Get workflow processing status
 - `GET /api/workflow/download/{session_id}` - Download workflow results as ZIP
-
-### Legacy API (Still Available)
-- `POST /api/upload` - Upload Excel and DWG/DGN/IFC files
-- `POST /api/process` - Start processing with model type mappings
-- `GET /api/status/{session_id}` - Get processing status
-- `GET /api/download/{session_id}` - Download results as ZIP
 
 ## Excel File Format
 
@@ -296,13 +290,13 @@ Variables can be referenced in node properties:
 - Review backend logs for detailed error messages
 
 ### Templates not saving/loading
-- Templates are stored in browser localStorage
-- Clear browser data will delete templates
-- Use Export/Import to backup templates
+- Templates are stored server-side (Supabase) and shared across users
+- The backend falls back to in-memory storage if `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are unset — those templates are lost on restart
+- Use Export/Import to share templates as JSON files
 
 ## Notes
 
 - Temporary files are stored in `backend/uploads` and `backend/output`
-- Old files are cleaned up on server startup
+- Old files are cleaned up periodically (see `CLEANUP_TTL_SECONDS` and `CLEANUP_INTERVAL_SECONDS`)
 - Generated `.chain` files are excluded from version control
-- Templates are stored in browser localStorage (temporary - DB integration planned)
+- Templates are stored in the `pynode_templates` Supabase table (see `backend/migrations/002_init_templates.sql`)
