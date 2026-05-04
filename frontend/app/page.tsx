@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   Node,
   Edge,
@@ -22,10 +22,11 @@ import { TemplateNotification } from '@/components/workflow/TemplateNotification
 import { SaveTemplateModal } from '@/components/workflow/SaveTemplateModal';
 import { LoadTemplateModal } from '@/components/workflow/LoadTemplateModal';
 import { DataMappingModal } from '@/components/workflow/DataMappingModal';
+import { ShortcutsModal } from '@/components/workflow/ShortcutsModal';
 import { LandingPage } from '@/components/LandingPage';
 import { ProfilePage } from '@/components/ProfilePage';
 import { WorkflowNode, WorkflowEdge, WorkflowTemplate, WorkflowTemplateVersionSnapshot, ExcelModelsNodeData } from '@/lib/workflow/types';
-import { compileWorkflow, validateWorkflow } from '@/lib/workflow/compile';
+import { compileWorkflow, validateWorkflow, validateNode } from '@/lib/workflow/compile';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
 import { exportTemplate, importTemplate, migrateLocalStorageToServer } from '@/lib/workflow/templates';
 import {
@@ -39,6 +40,17 @@ import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModa
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+
+function sameWarnings(a: string[] | undefined, b: string[] | undefined): boolean {
+  const aLen = a?.length ?? 0;
+  const bLen = b?.length ?? 0;
+  if (aLen !== bLen) return false;
+  if (aLen === 0) return true;
+  for (let i = 0; i < aLen; i++) {
+    if (a![i] !== b![i]) return false;
+  }
+  return true;
+}
 
 export default function WorkspacePage() {
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
@@ -80,6 +92,7 @@ export default function WorkspacePage() {
     nodeId: null,
   });
   const [currentPage, setCurrentPage] = useState<'landing' | 'editor' | 'profile'>('landing');
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Clipboard for copy/paste
@@ -290,6 +303,9 @@ export default function WorkspacePage() {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         e.preventDefault();
         handlePaste();
+      } else if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setShowShortcuts(true);
       }
     };
 
@@ -1085,6 +1101,35 @@ export default function WorkspacePage() {
     (nodes || []).some((n) => n.type === 'foreachModel') &&
     (nodes || []).some((n) => n.type === 'chainFileOutput');
 
+  // PC-703: derive a per-node warning list from the current graph and inject
+  // it into each node's data so BaseNode can render the warning badge. Spread
+  // ...n preserves React Flow's `selected` / `position` / etc. The map -> map
+  // pattern keeps reference equality stable when warnings haven't changed.
+  const nodeWarnings = useMemo(() => {
+    const map = new Map<string, string[]>();
+    nodes.forEach((n) => {
+      const w = validateNode(n, nodes, edges);
+      if (w.length > 0) map.set(n.id, w);
+    });
+    return map;
+  }, [nodes, edges]);
+
+  const nodesWithWarnings = useMemo(
+    () =>
+      nodes.map((n) => {
+        const w = nodeWarnings.get(n.id);
+        const existing = (n.data as any)?.warnings as string[] | undefined;
+        // Skip rewrap when the warning list is unchanged — avoids needlessly
+        // breaking React Flow's memoized node reconciliation.
+        if (sameWarnings(existing, w)) return n;
+        return {
+          ...n,
+          data: { ...n.data, warnings: w ?? [] },
+        };
+      }),
+    [nodes, nodeWarnings],
+  );
+
   const handleNavigate = useCallback((page: string) => {
     setCurrentPage(page as 'landing' | 'editor' | 'profile');
   }, []);
@@ -1106,6 +1151,7 @@ export default function WorkspacePage() {
           canRun={canRun}
           onNavigate={handleNavigate}
           currentPage={currentPage}
+          onShowShortcuts={() => setShowShortcuts(true)}
         />
         {currentPage === 'landing' && (
           <div className="flex-1 overflow-auto">
@@ -1135,7 +1181,7 @@ export default function WorkspacePage() {
               />
               <div className="flex-1 relative">
                 <WorkspaceCanvas
-                  nodes={nodes}
+                  nodes={nodesWithWarnings}
                   edges={edges}
                   onNodesChange={handleNodesChange}
                   onEdgesChange={handleEdgesChange}
@@ -1218,6 +1264,10 @@ export default function WorkspacePage() {
               edges={edges}
               onSave={handleSaveMapping}
               onExcelColumnChange={handleExcelColumnChange}
+            />
+            <ShortcutsModal
+              isOpen={showShortcuts}
+              onClose={() => setShowShortcuts(false)}
             />
           </>
         )}

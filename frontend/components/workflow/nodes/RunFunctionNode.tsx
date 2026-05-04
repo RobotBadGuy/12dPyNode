@@ -29,6 +29,7 @@ export function RunFunctionNode(props: NodeProps) {
       borderColor="rgb(236, 72, 153)"
       glowColor="rgba(236, 72, 153, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

@@ -126,14 +126,14 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 
 ## EPIC-07 — UX Polish
 
-- **PC-701** `[P1]` — Searchable node palette.
-  *Rationale:* `LeftSidebar` lists ~30 node types flat. Users scroll to find `triangulateManualOption`. Add a filter input + category collapsibles.
+- ✅ **PC-701** `[P1]` — Searchable node palette.
+  *Rationale:* `LeftSidebar.tsx` now sources every entry from `frontend/lib/workflow/palette.ts` (one `PALETTE_ITEMS` array of `{type, label, category, keywords?}`). A search input above "Add Nodes" filters via `filterPaletteItems` (case-insensitive substring on label + curated keywords). Empty query → existing collapsible-sections view. Non-empty query → flat list grouped by category with a "No matches" hint when empty. Tested in `frontend/lib/workflow/__tests__/palette.test.ts`.
 
-- **PC-702** `[P2]` — Keyboard shortcut cheatsheet.
-  *Rationale:* Undo/redo/copy/paste/delete are implemented in `app/page.tsx` but undocumented. `?` modal listing them.
+- ✅ **PC-702** `[P2]` — Keyboard shortcut cheatsheet.
+  *Rationale:* New `ShortcutsModal.tsx` listing every shortcut grouped by category (Editing / Canvas / Help). Opens via `?` keypress (input-focus guard reused from the existing handler in `app/page.tsx`) or the `HelpCircle` button added to `TopBar`. `Esc` closes. Mac vs Windows key labels (`⌘` vs `Ctrl`) chosen from `navigator.platform`.
 
-- **PC-703** `[P2]` — Validation surface in the canvas.
-  *Rationale:* `validateWorkflow` returns errors but they only appear at run time. Show warning badges on nodes with missing required params *before* the user hits Run.
+- ✅ **PC-703** `[P2]` — Validation surface in the canvas.
+  *Rationale:* New `validateNode(node, allNodes, allEdges)` in `frontend/lib/workflow/compile.ts` returns per-node warnings for excelModels-without-file, chainFileOutput-missing-fields, and any param-handle whose data field is empty AND has no incoming `param:` edge (generic check using `nodeSchemas`). `app/page.tsx` memoizes the warning map and injects `data.warnings` into each node before rendering. `BaseNode.tsx` shows an amber `AlertTriangle` badge in the top-left (so it doesn't collide with success/error in the top-right) with the warning list as a native tooltip. Tested in `frontend/lib/workflow/__tests__/validateNode.test.ts`.
 
 - **PC-704** `[P2]` — Excel column picker with preview.
   *Rationale:* `selectedColumnIndex` is hidden in the `excelModels` node data. Render the first N rows of the parsed sheet in a table and let the user click a column header.

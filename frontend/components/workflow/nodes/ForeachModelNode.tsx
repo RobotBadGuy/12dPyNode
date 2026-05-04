@@ -29,6 +29,7 @@ export function ForeachModelNode(props: NodeProps) {
       borderColor="rgb(59, 130, 246)"
       glowColor="rgba(59, 130, 246, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

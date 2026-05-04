@@ -29,6 +29,7 @@ export function RunOrCreateContoursNode(props: NodeProps) {
       borderColor="rgb(100, 116, 139)"
       glowColor="rgba(100, 116, 139, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

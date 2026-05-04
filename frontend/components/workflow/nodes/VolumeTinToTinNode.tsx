@@ -29,6 +29,7 @@ export function VolumeTinToTinNode(props: NodeProps) {
       borderColor="rgb(99, 102, 241)"
       glowColor="rgba(99, 102, 241, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

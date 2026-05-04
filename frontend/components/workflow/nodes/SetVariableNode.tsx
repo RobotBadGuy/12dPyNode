@@ -31,6 +31,7 @@ export function SetVariableNode(props: NodeProps) {
       borderColor="rgb(251, 146, 60)"
       glowColor="rgba(251, 146, 60, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

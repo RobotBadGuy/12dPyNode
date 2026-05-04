@@ -30,6 +30,7 @@ export function AddLabelNode(props: NodeProps) {
       borderColor="rgb(132, 204, 22)"
       glowColor="rgba(132, 204, 22, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

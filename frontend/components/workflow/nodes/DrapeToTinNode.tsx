@@ -29,6 +29,7 @@ export function DrapeToTinNode(props: NodeProps) {
       borderColor="rgb(245, 158, 11)"
       glowColor="rgba(245, 158, 11, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

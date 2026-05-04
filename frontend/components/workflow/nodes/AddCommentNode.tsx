@@ -29,6 +29,7 @@ export function AddCommentNode(props: NodeProps) {
       borderColor="rgb(234, 179, 8)"
       glowColor="rgba(234, 179, 8, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

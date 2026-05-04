@@ -78,8 +78,9 @@ Organized by category: `metadata/`, `views/`, `models/`, `importers/` (IFC/DWG/D
 - `app/page.tsx` — single-page workspace; owns nodes/edges state, undo/redo history, clipboard.
 - `components/workflow/WorkspaceCanvas.tsx` — React Flow canvas.
 - `components/workflow/{Left,Right,Top}Sidebar.tsx` — palette, property editor, actions.
-- `components/workflow/nodes/*.tsx` — one per node type; most are schema-driven via `BaseNode` + `NodePortSection`.
-- `lib/workflow/compile.ts` — client-side validation (requires `excelModels` + `foreachModel` + at least one `chainFileOutput`, and an Excel→Foreach edge).
+- `components/workflow/nodes/*.tsx` — one per node type; most are schema-driven via `BaseNode` + `NodePortSection`. Each node forwards `data.warnings` to `BaseNode` so the warning badge (PC-703) renders consistently.
+- `lib/workflow/palette.ts` — single source of truth for the node palette (`PALETTE_ITEMS` + `filterPaletteItems`). Add new nodes here so they appear in both the sectioned view and the search results.
+- `lib/workflow/compile.ts` — client-side validation. `validateWorkflow` is the global pre-run check; `validateNode` returns per-node warnings the canvas surfaces continuously.
 - `lib/workflow/templates.ts` — save/load/import/export via browser `localStorage`.
 
 ## Conventions

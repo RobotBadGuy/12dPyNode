@@ -30,6 +30,7 @@ export function CreateApplyMtfNode(props: NodeProps) {
       borderColor="rgb(139, 92, 246)"
       glowColor="rgba(139, 92, 246, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

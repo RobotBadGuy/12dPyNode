@@ -29,6 +29,7 @@ export function CleanModelNode(props: NodeProps) {
       borderColor="rgb(249, 115, 22)"
       glowColor="rgba(249, 115, 22, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

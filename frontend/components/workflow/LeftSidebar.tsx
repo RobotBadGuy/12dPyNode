@@ -1,9 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import { FileText, Upload, X } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { FileText, Upload, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import {
+  PALETTE_ITEMS,
+  CATEGORY_ORDER,
+  CATEGORY_LABELS,
+  filterPaletteItems,
+  PaletteCategory,
+  PaletteItem,
+} from '@/lib/workflow/palette';
 
 interface LeftSidebarProps {
   onAddNode: (type: string, position: { x: number; y: number }) => void;
@@ -12,6 +19,21 @@ interface LeftSidebarProps {
   modelFiles: File[];
 }
 
+type SectionsOpen = Record<PaletteCategory, boolean>;
+
+const INITIAL_SECTIONS_OPEN: SectionsOpen = {
+  core: false,
+  models: false,
+  views: false,
+  tin: false,
+  design: false,
+  quantities: false,
+  strings: false,
+  functions: false,
+  conditionals: false,
+  output: false,
+};
+
 export function LeftSidebar({
   onAddNode,
   onFileUpload,
@@ -19,44 +41,46 @@ export function LeftSidebar({
   modelFiles,
 }: LeftSidebarProps) {
   const [dragOver, setDragOver] = useState<'excel' | 'model' | null>(null);
-  const [sectionsOpen, setSectionsOpen] = useState({
-    core: false,
-    functions: false,
-    models: false,
-    views: false,
-    tin: false,
-    design: false,
-    quantities: false,
-    strings: false,
-    conditionals: false,
-    output: false,
-  });
+  const [sectionsOpen, setSectionsOpen] = useState<SectionsOpen>(INITIAL_SECTIONS_OPEN);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const toggleSection = (key: keyof typeof sectionsOpen) => {
+  const trimmedQuery = searchQuery.trim();
+  const isSearching = trimmedQuery.length > 0;
+
+  const filteredItems = useMemo(
+    () => filterPaletteItems(PALETTE_ITEMS, searchQuery),
+    [searchQuery],
+  );
+
+  const itemsByCategory = useMemo(() => {
+    const map = new Map<PaletteCategory, PaletteItem[]>();
+    for (const item of filteredItems) {
+      const existing = map.get(item.category);
+      if (existing) {
+        existing.push(item);
+      } else {
+        map.set(item.category, [item]);
+      }
+    }
+    return map;
+  }, [filteredItems]);
+
+  const toggleSection = (key: PaletteCategory) => {
     setSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Section Header Component
-  const SectionHeader = ({
-    title,
-    sectionKey,
-  }: {
-    title: string;
-    sectionKey: keyof typeof sectionsOpen;
-  }) => {
-    return (
-      <button
-        type="button"
-        onClick={() => toggleSection(sectionKey)}
-        className="w-full flex items-center justify-between text-xs font-semibold text-gray-300 mt-4 mb-2 hover:text-gray-200 transition-colors"
-      >
-        <span>{title}</span>
-        <span className="text-gray-500 text-lg">
-          {sectionsOpen[sectionKey] ? '−' : '+'}
-        </span>
-      </button>
-    );
-  };
+  const renderNodeButton = (item: PaletteItem) => (
+    <Button
+      key={item.type}
+      onClick={() => onAddNode(item.type, { x: 0, y: 0 })}
+      variant="outline"
+      size="sm"
+      className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+    >
+      <FileText className="w-4 h-4 mr-2" />
+      {item.label}
+    </Button>
+  );
 
   const handleDragOver = (e: React.DragEvent, type: 'excel' | 'model') => {
     e.preventDefault();
@@ -210,359 +234,76 @@ export function LeftSidebar({
         {/* Node Palette */}
         <div className="border-t border-gray-700/50 pt-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Nodes</h3>
-          <div className="space-y-2">
-            {/* Core Section */}
-            <SectionHeader title="Core" sectionKey="core" />
-            {sectionsOpen.core && (
-              <>
-                <Button
-                  onClick={() => onAddNode('excelModels', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Excel Models
-                </Button>
-                <Button
-                  onClick={() => onAddNode('foreachModel', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Foreach Model
-                </Button>
-                <Button
-                  onClick={() => onAddNode('setVariable', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Set Variable
-                </Button>
-              </>
-            )}
 
-            {/* Models Section */}
-            <SectionHeader title="Models" sectionKey="models" />
-            {sectionsOpen.models && (
-              <>
-                <Button
-                  onClick={() => onAddNode('import', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Import
-                </Button>
-                <Button
-                  onClick={() => onAddNode('cleanModel', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Clean Model
-                </Button>
-                <Button
-                  onClick={() => onAddNode('renameModel', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Rename Model
-                </Button>
-                <Button
-                  onClick={() => onAddNode('createSharedModel', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create Shared Model
-                </Button>
-              </>
-            )}
-
-            {/* Views Section */}
-            <SectionHeader title="Views" sectionKey="views" />
-            {sectionsOpen.views && (
-              <>
-                <Button
-                  onClick={() => onAddNode('createView', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create View
-                </Button>
-                <Button
-                  onClick={() => onAddNode('addModelToView', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Add Model to View
-                </Button>
-                <Button
-                  onClick={() => onAddNode('removeModelFromView', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Remove Model from View
-                </Button>
-                <Button
-                  onClick={() => onAddNode('deleteModelsFromView', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Delete Models from View
-                </Button>
-              </>
-            )}
-
-            {/* TIN & Surface Section */}
-            <SectionHeader title="TIN & Surface" sectionKey="tin" />
-            {sectionsOpen.tin && (
-              <>
-                <Button
-                  onClick={() => onAddNode('triangulateManualOption', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Triangulate Manual
-                </Button>
-                <Button
-                  onClick={() => onAddNode('tinFunction', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  TIN Function
-                </Button>
-                <Button
-                  onClick={() => onAddNode('createContourSmoothLabel', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create Contour Smooth Label
-                </Button>
-                <Button
-                  onClick={() => onAddNode('drapeToTin', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Drape to TIN
-                </Button>
-                <Button
-                  onClick={() => onAddNode('runOrCreateContours', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Run or Create Contours
-                </Button>
-                <Button
-                  onClick={() => onAddNode('createTrimeshFromTin', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create Trimesh from TIN
-                </Button>
-              </>
-            )}
-
-            {/* Design Section */}
-            <SectionHeader title="Design" sectionKey="design" />
-            {sectionsOpen.design && (
-              <>
-                <Button
-                  onClick={() => onAddNode('runOrCreateMtf', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Run or Create MTF
-                </Button>
-                <Button
-                  onClick={() => onAddNode('applyMtf', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Run Apply MTF
-                </Button>
-                <Button
-                  onClick={() => onAddNode('createApplyMtf', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create Apply MTF File
-                </Button>
-                <Button
-                  onClick={() => onAddNode('createMtfFile', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create .MTF File
-                </Button>
-                <Button
-                  onClick={() => onAddNode('createTemplateFile', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Create Template File
-                </Button>
-              </>
-            )}
-
-            {/* Quantities Section */}
-            <SectionHeader title="Quantities" sectionKey="quantities" />
-            {sectionsOpen.quantities && (
-              <>
-                <Button
-                  onClick={() => onAddNode('getTotalSurfaceArea', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Get Total Surface Area
-                </Button>
-                <Button
-                  onClick={() => onAddNode('trimeshVolumeReport', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Trimesh Volume Report
-                </Button>
-                <Button
-                  onClick={() => onAddNode('volumeTinToTin', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Volume TIN to TIN
-                </Button>
-              </>
-            )}
-
-            {/* Strings Section */}
-            <SectionHeader title="Strings" sectionKey="strings" />
-            {sectionsOpen.strings && (
-              <>
-                <Button
-                  onClick={() => onAddNode('convertLinesToVariable', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Convert Lines to Variable
-                </Button>
-              </>
-            )}
-
-            {/* Functions Section */}
-            <SectionHeader title="Functions" sectionKey="functions" />
-            {sectionsOpen.functions && (
-              <>
-                <Button
-                  onClick={() => onAddNode('runFunction', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Run Function
-                </Button>
-              </>
-            )}
-
-            {/* Conditionals Section */}
-            <SectionHeader title="Conditionals" sectionKey="conditionals" />
-            {sectionsOpen.conditionals && (
-              <>
-                <Button
-                  onClick={() => onAddNode('addComment', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Add Comment
-                </Button>
-                <Button
-                  onClick={() => onAddNode('addLabel', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Add Label
-                </Button>
-                <Button
-                  onClick={() => onAddNode('ifFunctionExists', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  If Function Exists
-                </Button>
-              </>
-            )}
-
-            {/* Output Section */}
-            <SectionHeader title="Output" sectionKey="output" />
-            {sectionsOpen.output && (
-              <>
-                <Button
-                  onClick={() => onAddNode('chainFileOutput', { x: 0, y: 0 })}
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Chain Output
-                </Button>
-              </>
+          {/* Search */}
+          <div className="relative mb-3">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search nodes…"
+              className="w-full pl-8 pr-8 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
           </div>
+
+          {isSearching ? (
+            // Search results: flat list grouped by category, no collapsibles
+            filteredItems.length === 0 ? (
+              <p className="text-xs text-gray-500 italic px-1">
+                No matches for &ldquo;{trimmedQuery}&rdquo;
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {CATEGORY_ORDER.map((cat) => {
+                  const items = itemsByCategory.get(cat);
+                  if (!items || items.length === 0) return null;
+                  return (
+                    <div key={cat}>
+                      <div className="text-xs font-semibold text-gray-400 mb-1">
+                        {CATEGORY_LABELS[cat]}
+                      </div>
+                      <div className="space-y-2">{items.map(renderNodeButton)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          ) : (
+            // Default view: collapsible sections
+            <div className="space-y-2">
+              {CATEGORY_ORDER.map((cat) => {
+                const items = itemsByCategory.get(cat) ?? [];
+                if (items.length === 0) return null;
+                const isOpen = sectionsOpen[cat];
+                return (
+                  <React.Fragment key={cat}>
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(cat)}
+                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-300 mt-4 mb-2 hover:text-gray-200 transition-colors"
+                    >
+                      <span>{CATEGORY_LABELS[cat]}</span>
+                      <span className="text-gray-500 text-lg">{isOpen ? '−' : '+'}</span>
+                    </button>
+                    {isOpen && <>{items.map(renderNodeButton)}</>}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

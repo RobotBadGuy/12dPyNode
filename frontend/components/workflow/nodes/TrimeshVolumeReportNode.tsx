@@ -29,6 +29,7 @@ export function TrimeshVolumeReportNode(props: NodeProps) {
       borderColor="rgb(34, 197, 94)"
       glowColor="rgba(34, 197, 94, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

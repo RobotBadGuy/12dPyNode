@@ -29,6 +29,7 @@ export function DeleteModelsFromViewNode(props: NodeProps) {
       borderColor="rgb(239, 68, 68)"
       glowColor="rgba(239, 68, 68, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

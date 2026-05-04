@@ -29,6 +29,7 @@ export function ChainFileOutputNode(props: NodeProps) {
       borderColor="rgb(168, 85, 247)"
       glowColor="rgba(168, 85, 247, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

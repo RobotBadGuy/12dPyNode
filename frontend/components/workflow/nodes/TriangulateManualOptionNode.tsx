@@ -29,6 +29,7 @@ export function TriangulateManualOptionNode(props: NodeProps) {
       borderColor="rgb(20, 184, 166)"
       glowColor="rgba(20, 184, 166, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}

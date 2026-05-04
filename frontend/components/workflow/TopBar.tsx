@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User } from 'lucide-react';
+import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User, HelpCircle } from 'lucide-react';
 
 interface TopBarProps {
   onRunChain?: () => void;
@@ -12,6 +12,7 @@ interface TopBarProps {
   onImportTemplate?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onShowShortcuts?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   isRunning?: boolean;
@@ -28,6 +29,7 @@ export function TopBar({
   onImportTemplate,
   onUndo,
   onRedo,
+  onShowShortcuts,
   canUndo,
   canRedo,
   isRunning,
@@ -131,6 +133,16 @@ export function TopBar({
           >
             <Save className="w-4 h-4 mr-2" />
             Save Template
+          </Button>
+          <Button
+            onClick={onShowShortcuts}
+            variant="ghost"
+            size="sm"
+            className="text-gray-300 hover:bg-gray-800/50 px-2"
+            title="Keyboard shortcuts (?)"
+            aria-label="Show keyboard shortcuts"
+          >
+            <HelpCircle className="w-4 h-4" />
           </Button>
           <Button
             onClick={onRunChain}

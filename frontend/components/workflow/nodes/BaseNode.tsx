@@ -3,7 +3,7 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { NodeExecutionState } from '@/lib/workflow/types';
 
 interface BaseNodeProps {
@@ -13,6 +13,7 @@ interface BaseNodeProps {
   borderColor?: string;
   glowColor?: string;
   nodeState?: NodeExecutionState;
+  warnings?: string[];
   inputs?: Array<{ id: string; label: string }>;
   outputs?: Array<{ id: string; label: string }>;
   paramInputs?: Array<{ id: string; label: string }>;
@@ -61,6 +62,7 @@ export function BaseNode({
   borderColor = DEFAULT_BORDER,
   glowColor = DEFAULT_GLOW,
   nodeState = 'idle',
+  warnings = [],
   inputs = [],
   outputs = [],
   paramInputs = [],
@@ -68,6 +70,7 @@ export function BaseNode({
   children,
   selected,
 }: BaseNodeProps) {
+  const showWarnings = nodeState === 'idle' && warnings.length > 0;
   const allInputs = [...inputs, ...paramInputs];
   const allOutputs = [...outputs, ...valueOutputs];
   const inputCount = allInputs.length;
@@ -178,6 +181,17 @@ export function BaseNode({
             style={{ boxShadow: '0 0 20px rgba(239, 68, 68, 0.6)' }}
           >
             <AlertCircle className="w-4 h-4 text-white" />
+          </div>
+        )}
+
+        {/* Warning Badge — top-left so it doesn't collide with success/error in top-right */}
+        {showWarnings && (
+          <div
+            className="absolute -top-2 -left-2 bg-amber-500 rounded-full p-1.5 shadow-lg z-20 cursor-help"
+            style={{ boxShadow: '0 0 14px rgba(245, 158, 11, 0.5)' }}
+            title={warnings.join('\n')}
+          >
+            <AlertTriangle className="w-4 h-4 text-white" />
           </div>
         )}
       </div>

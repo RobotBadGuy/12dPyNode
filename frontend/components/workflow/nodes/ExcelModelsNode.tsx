@@ -26,6 +26,7 @@ export function ExcelModelsNode(props: NodeProps) {
       borderColor="rgb(16, 185, 129)"
       glowColor="rgba(16, 185, 129, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected}

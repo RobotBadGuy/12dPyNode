@@ -29,6 +29,7 @@ export function CreateContourSmoothLabelNode(props: NodeProps) {
       borderColor="rgb(6, 182, 212)"
       glowColor="rgba(6, 182, 212, 0.4)"
       nodeState={(data as any).nodeState}
+      warnings={(data as any).warnings}
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected as boolean | undefined}
