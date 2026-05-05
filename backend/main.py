@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any, List, Dict
 from contextlib import asynccontextmanager
+from datetime import datetime
 import os
 import uuid
 from pathlib import Path
@@ -306,9 +307,6 @@ async def run_workflow_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-from datetime import datetime as _datetime
-
-
 def _build_summary_text(
     session_id: str,
     file_details: List[Dict[str, Any]],
@@ -316,7 +314,7 @@ def _build_summary_text(
     failed_count: int,
 ) -> str:
     """Build the human-readable per-run summary written into the ZIP as _summary.txt."""
-    timestamp = _datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
     total = len(file_details)
     lines: List[str] = [
         "PyChain workflow run summary",

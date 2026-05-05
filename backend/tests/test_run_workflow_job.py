@@ -60,7 +60,7 @@ def _patch_run_workflow(
     monkeypatch.setattr(backend_main, "run_workflow", lambda *a, **k: return_value)
 
 
-def _seed_session(session_id: str = "s1") -> str:
+def _seed_session(session_id: str = "00000000-0000-0000-0000-000000000001") -> str:
     """Initialize a session row the way run_workflow_endpoint would."""
     backend_main.session_store.create(session_id, {
         "status": "processing",
