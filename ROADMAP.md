@@ -52,8 +52,8 @@ Backed by Supabase (Postgres). All app tables share the `pynode_` prefix so we c
 
 The current compiler handles the happy path (one `foreach` → one `chainFileOutput`) but has rough edges.
 
-- **PC-301** `[P1]` — Execute all branches reachable from foreach, not just the first DFS hit.
-  *Rationale:* `build_command_chain` in `workflow_runner.py` uses DFS that returns the first path to a `chainFileOutput`. A graph with parallel branches silently drops everything not on that path. Walk *all* reachable flow nodes in topological order instead.
+- ✅ **PC-301** `[P1]` — Execute all branches reachable from foreach.
+  *Rationale:* `build_command_chain` in `workflow_runner.py` previously used a first-path DFS that silently dropped parallel branches downstream of `foreachModel`. Replaced with forward-reachability BFS over flow edges from the foreach node, then deterministic Kahn's topological sort over the induced subgraph (id-sorted roots + adjacency for stable output across dict-iteration / edge insertion order). Cycles log a warning and emit the well-ordered prefix; disconnected subgraphs are correctly excluded; a foreach with no reachable `chainFileOutput` is now a supported shape. Two private helpers (`_collect_flow_reachable`, `_kahn_sort`) are reused by the no-foreach fallback path. Tested in `backend/tests/test_build_command_chain.py::TestParallelBranches` (parallel branches, diamond merge, branch-without-output, disconnected subgraph, cycle, determinism).
 
 - **PC-302** `[P1]` — Per-model error isolation and partial results.
   *Rationale:* `run_workflow` iterates models in a bare loop. One bad model raises out of the whole batch. Wrap each model in try/except, collect `{model, status, error}` rows, and return partial ZIPs with a summary report.
