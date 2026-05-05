@@ -60,6 +60,60 @@ from commands.design.create_template_file import create_template
 from commands.functions import function_command
 
 
+import bisect
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _kahn_sort(
+    node_ids: set,
+    edges: List[Dict[str, Any]],
+    is_flow_edge,
+) -> List[str]:
+    """
+    Deterministic Kahn's topological sort over the induced subgraph defined by node_ids.
+
+    - Initial roots and adjacency lists are sorted by node id (string sort) so output
+      is stable across dict-iteration order and edge insertion order.
+    - On cycle (sort length < |node_ids|), logs a WARNING naming the cyclic node ids
+      and returns the well-ordered prefix. Does not raise.
+    - Edges referencing nodes outside node_ids are silently skipped (caller is
+      responsible for any cross-set logging if it cares).
+    """
+    indegree: Dict[str, int] = {nid: 0 for nid in node_ids}
+    adjacency: Dict[str, List[str]] = {nid: [] for nid in node_ids}
+
+    for edge in edges:
+        if not is_flow_edge(edge):
+            continue
+        source_id = str(edge.get('source'))
+        target_id = str(edge.get('target'))
+        if source_id in adjacency and target_id in adjacency:
+            adjacency[source_id].append(target_id)
+            indegree[target_id] += 1
+
+    for nid in adjacency:
+        adjacency[nid].sort()
+
+    queue: List[str] = sorted(nid for nid, deg in indegree.items() if deg == 0)
+    order: List[str] = []
+
+    while queue:
+        current = queue.pop(0)
+        order.append(current)
+        for neighbor in adjacency[current]:
+            indegree[neighbor] -= 1
+            if indegree[neighbor] == 0:
+                bisect.insort(queue, neighbor)
+
+    if len(order) < len(node_ids):
+        cyclic = sorted(node_ids - set(order))
+        logger.warning(f"Cycle detected; cannot order nodes: {cyclic}")
+
+    return order
+
+
 def resolve_variable(
     var_name: str,
     model_name: str,
@@ -621,8 +675,6 @@ def build_command_chain(
             found = find_path(foreach_id, [foreach_id])
             if not found:
                 # Log warning if no path found (but don't fail - fall through to topological sort)
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.warning(f"No path found from foreachModel node {foreach_id} to any chainFileOutput node. Falling back to topological sort.")
             else:
                 # Execute nodes in the discovered order
@@ -640,58 +692,32 @@ def build_command_chain(
                 if execution_order:
                     return xml_content
     
-    # Fallback: no foreach node – build a generic topological order using flow edges only
+    # Fallback: no foreach node — topological order over all nodes via flow edges.
     # This allows workflows that don't use the Foreach Model node.
-    node_ids = [str(n.get('id')) for n in nodes if n.get('id') is not None]
-    id_to_node: Dict[str, Dict[str, Any]] = {str(n.get('id')): n for n in nodes if n.get('id') is not None}
-    
-    # Initialize graph structures
-    indegree: Dict[str, int] = {node_id: 0 for node_id in node_ids}
-    adjacency: Dict[str, List[str]] = {node_id: [] for node_id in node_ids}
-    
-    # Build adjacency and indegree from flow edges
-    # Only include edges where both source and target nodes exist
-    import logging
-    logger = logging.getLogger(__name__)
+    id_to_node: Dict[str, Dict[str, Any]] = {
+        str(n.get('id')): n for n in nodes if n.get('id') is not None
+    }
+    all_node_ids = set(id_to_node.keys())
+
+    # Log edges that reference unknown nodes (preserves prior debug-aid behavior)
     for edge in edges:
         if not is_flow_edge(edge):
             continue
         source_id = str(edge.get('source'))
         target_id = str(edge.get('target'))
-        # Only add edge if both nodes exist in our node set
-        if source_id in adjacency and target_id in adjacency:
-            adjacency[source_id].append(target_id)
-            indegree[target_id] += 1
-        else:
-            # Log warning if edge references non-existent node (helps debug paste issues)
-            if source_id not in adjacency:
-                logger.warning(f"Edge references non-existent source node: {source_id}")
-            if target_id not in adjacency:
-                logger.warning(f"Edge references non-existent target node: {target_id}")
-    
-    # Kahn's algorithm for topological sort
-    queue: List[str] = [node_id for node_id, deg in indegree.items() if deg == 0]
-    execution_order: List[str] = []
-    
-    while queue:
-        current_id = queue.pop(0)
-        execution_order.append(current_id)
-        for neighbor in adjacency[current_id]:
-            indegree[neighbor] -= 1
-            if indegree[neighbor] == 0:
-                queue.append(neighbor)
-    
-    # Execute nodes in computed order
-    # Filter out control-flow nodes that don't generate commands
+        if source_id not in all_node_ids:
+            logger.warning(f"Edge references non-existent source node: {source_id}")
+        if target_id not in all_node_ids:
+            logger.warning(f"Edge references non-existent target node: {target_id}")
+
+    execution_order = _kahn_sort(all_node_ids, edges, is_flow_edge)
+
     control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
     for node_id in execution_order:
         node = id_to_node.get(node_id)
-        if node:
-            node_type = node.get('type')
-            # Only execute nodes that generate commands (skip control-flow nodes)
-            if node_type not in control_flow_types:
-                execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
-    
+        if node and node.get('type') not in control_flow_types:
+            execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
+
     return xml_content
 
 
