@@ -306,6 +306,46 @@ async def run_workflow_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+from datetime import datetime as _datetime
+
+
+def _build_summary_text(
+    session_id: str,
+    file_details: List[Dict[str, Any]],
+    succeeded_count: int,
+    failed_count: int,
+) -> str:
+    """Build the human-readable per-run summary written into the ZIP as _summary.txt."""
+    timestamp = _datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    total = len(file_details)
+    lines: List[str] = [
+        "PyChain workflow run summary",
+        "============================",
+        f"Generated: {timestamp}",
+        f"Session:   {session_id}",
+        f"Models:    {total} total · {succeeded_count} succeeded · {failed_count} failed",
+        "",
+    ]
+
+    successes = [r for r in file_details if r.get("status") == "success"]
+    failures = [r for r in file_details if r.get("status") == "error"]
+
+    if successes:
+        lines.append("SUCCEEDED")
+        for r in successes:
+            lines.append(f"  {r.get('filename')}")
+        lines.append("")
+
+    if failures:
+        lines.append("FAILED")
+        for r in failures:
+            lines.append(f"  {r.get('model')}")
+            lines.append(f"    {r.get('error')}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def run_workflow_job(
     session_id: str,
     excel_file_path: str,
@@ -314,7 +354,12 @@ def run_workflow_job(
     selected_column_index: int = 0,
 ):
     """
-    Background processing job for workflow execution
+    Background processing job for workflow execution.
+
+    PC-302: per-model failures are isolated inside run_workflow and surfaced via
+    file_details rows. The outer try/except below still catches pre-loop / IO
+    failures (Excel parse error, ZIP write error, etc.) and turns them into
+    status='error'.
     """
     try:
         if session_store.get(session_id) is None:
@@ -333,13 +378,21 @@ def run_workflow_job(
             selected_column_index=selected_column_index,
         )
 
-        # Create ZIP file
+        succeeded_count = sum(1 for r in file_details if r.get("status") == "success")
+        failed_count = sum(1 for r in file_details if r.get("status") == "error")
+
+        summary_text = _build_summary_text(
+            session_id, file_details, succeeded_count, failed_count,
+        )
+
+        # Build the ZIP. _summary.txt is always included so users have provenance
+        # even when every model failed.
         zip_path = OUTPUT_DIR / f"{session_id}_chain_files.zip"
-        if generated_files:
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for file_path in generated_files:
-                    if os.path.exists(file_path):
-                        zipf.write(file_path, os.path.basename(file_path))
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file_path in generated_files:
+                if os.path.exists(file_path):
+                    zipf.write(file_path, os.path.basename(file_path))
+            zipf.writestr("_summary.txt", summary_text)
 
         # Update session
         session_store.update(session_id, {
@@ -350,6 +403,8 @@ def run_workflow_job(
                 "zip_path": str(zip_path),
                 "summary": {
                     "total_files": len(generated_files),
+                    "succeeded_count": succeeded_count,
+                    "failed_count": failed_count,
                     "project_folder": project_folder or "",
                 },
             },
