@@ -782,7 +782,10 @@ def run_workflow(
         selected_column_index: Which column to read model names from (0-based)
     
     Returns:
-        Tuple of (generated file paths, project folder, file details)
+        Tuple of (successfully generated file paths, project folder, per-model
+        status rows). Each row in file_details has keys: model, filename,
+        output_path, project_folder, status ('success' | 'error'), error
+        (None on success, "<ExceptionType>: <message>" on failure).
     """
     # Parse Excel to get model names
     # Read Excel file directly without header to ensure we get ALL rows including first
@@ -847,27 +850,45 @@ def run_workflow(
     # Get project folder value from per-run variables (may be empty if not set)
     project_folder = per_run_vars.get(project_folder_var_name, '')
     
-    generated_files = []
-    file_details = []
-    
-    # Generate chain file for each model
+    generated_files: List[str] = []
+    file_details: List[Dict[str, str]] = []
+
+    # Generate chain file for each model. PC-302: isolate per-model failures so a
+    # single bad model does not abort the whole batch.
     for model_name in model_names:
-        chain_file = generate_chain_file(
-            model_name,
-            nodes,
-            edges,
-            variables,
-            per_run_vars,
-            output_folder,
-            project_folder,
-        )
-        if chain_file:
-            generated_files.append(chain_file)
+        try:
+            chain_file = generate_chain_file(
+                model_name,
+                nodes,
+                edges,
+                variables,
+                per_run_vars,
+                output_folder,
+                project_folder,
+            )
+            if chain_file:
+                generated_files.append(chain_file)
+                file_details.append({
+                    'model': model_name,
+                    'filename': os.path.basename(chain_file),
+                    'output_path': chain_file,
+                    'project_folder': project_folder,
+                    'status': 'success',
+                    'error': None,
+                })
+        except Exception as e:
+            logger.error(
+                "Chain file generation failed for model %r: %s",
+                model_name, e, exc_info=True,
+            )
             file_details.append({
-                'filename': os.path.basename(chain_file),
-                'output_path': chain_file,
+                'model': model_name,
+                'filename': None,
+                'output_path': None,
                 'project_folder': project_folder,
+                'status': 'error',
+                'error': f"{type(e).__name__}: {e}",
             })
-    
+
     return generated_files, project_folder, file_details
 
