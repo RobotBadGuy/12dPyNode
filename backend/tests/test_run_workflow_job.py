@@ -1,5 +1,6 @@
 """Tests for run_workflow_job summary/zip/session shape (PC-302)."""
 import zipfile
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -60,8 +61,14 @@ def _patch_run_workflow(
     monkeypatch.setattr(backend_main, "run_workflow", lambda *a, **k: return_value)
 
 
-def _seed_session(session_id: str = "00000000-0000-0000-0000-000000000001") -> str:
-    """Initialize a session row the way run_workflow_endpoint would."""
+def _seed_session(session_id: str | None = None) -> str:
+    """Initialize a session row the way run_workflow_endpoint would.
+
+    Generates a fresh UUID per call so tests don't collide on the session
+    primary key when run against a real Supabase backend.
+    """
+    if session_id is None:
+        session_id = str(uuid.uuid4())
     backend_main.session_store.create(session_id, {
         "status": "processing",
         "excel_file": "/tmp/x.xlsx",
