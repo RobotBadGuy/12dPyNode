@@ -66,6 +66,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _collect_flow_reachable(
+    start_id: str,
+    edges: List[Dict[str, Any]],
+    is_flow_edge,
+) -> set:
+    """
+    Forward BFS from start_id over flow edges. Returns the set of reachable
+    node ids, including start_id. Edges that aren't flow edges are ignored.
+    """
+    reached = {start_id}
+    frontier = [start_id]
+    while frontier:
+        next_frontier: List[str] = []
+        for current in frontier:
+            for edge in edges:
+                if not is_flow_edge(edge):
+                    continue
+                if str(edge.get('source')) == current:
+                    target = str(edge.get('target'))
+                    if target and target not in reached:
+                        reached.add(target)
+                        next_frontier.append(target)
+        frontier = next_frontier
+    return reached
+
+
 def _kahn_sort(
     node_ids: set,
     edges: List[Dict[str, Any]],
@@ -626,72 +652,31 @@ def build_command_chain(
             return False
         return True
     
-    # Try the original foreach → chainFileOutput path first (for classic graphs)
+    # Foreach-driven path: collect every flow-reachable node, then topo-sort.
+    # This handles parallel branches and diamonds correctly (PC-301).
     foreach_node = next((n for n in nodes if n.get('type') == 'foreachModel'), None)
-    chain_output_nodes = [n for n in nodes if n.get('type') == 'chainFileOutput']
-    
-    if foreach_node and chain_output_nodes:
+
+    if foreach_node:
         foreach_id = str(foreach_node.get('id'))
-        execution_order: List[str] = []
-        visited: set[str] = set()
+        id_to_node: Dict[str, Dict[str, Any]] = {
+            str(n.get('id')): n for n in nodes if n.get('id') is not None
+        }
+        reach_set = _collect_flow_reachable(foreach_id, edges, is_flow_edge)
 
-        def find_path(current_id: str, path: List[str]) -> bool:
-            """
-            Depth-first search from foreach node to chainFileOutput node following
-            only flow edges. When we reach the chainFileOutput node, record all
-            nodes in the path *before* the chain output as the execution order.
-            Returns True if target was found, False otherwise.
-            """
-            current_id_str = str(current_id)
-            
-            # Check if we've reached any chainFileOutput node BEFORE checking visited
-            for chain_output_node in chain_output_nodes:
-                chain_output_id_str = str(chain_output_node.get('id'))
-                if current_id_str == chain_output_id_str:
-                    # path includes the chain output as the last element; we only want
-                    # to execute nodes leading up to it.
-                    if path:
-                        execution_order.extend(path[:-1])
-                    return True
+        # Restrict reach_set to ids that actually exist in id_to_node — guards
+        # against malformed edges that target ids not present in the node list.
+        reach_set = {nid for nid in reach_set if nid in id_to_node}
 
-            # Prevent cycles by checking visited AFTER target check
-            if current_id_str in visited:
-                return False
+        execution_order = _kahn_sort(reach_set, edges, is_flow_edge)
 
-            visited.add(current_id_str)
+        control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
+        for node_id in execution_order:
+            node = id_to_node.get(node_id)
+            if node and node.get('type') not in control_flow_types:
+                execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
 
-            # Find all nodes connected from current (only flow edges)
-            for edge in edges:
-                if str(edge.get('source')) == current_id_str and is_flow_edge(edge):
-                    target_id = edge.get('target')
-                    if target_id:
-                        if find_path(str(target_id), path + [str(target_id)]):
-                            return True
+        return xml_content
 
-            return False
-
-        # Start from foreach and search for a path to any chainFileOutput
-        if foreach_id:
-            found = find_path(foreach_id, [foreach_id])
-            if not found:
-                # Log warning if no path found (but don't fail - fall through to topological sort)
-                logger.warning(f"No path found from foreachModel node {foreach_id} to any chainFileOutput node. Falling back to topological sort.")
-            else:
-                # Execute nodes in the discovered order
-                # Filter out control-flow nodes that don't generate commands
-                control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
-                for node_id in execution_order:
-                    node = next((n for n in nodes if str(n.get('id')) == str(node_id)), None)
-                    if node:
-                        node_type = node.get('type')
-                        # Only execute nodes that generate commands (skip control-flow nodes)
-                        if node_type not in control_flow_types:
-                            execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
-                
-                # If we found a path and executed nodes, return the XML content
-                if execution_order:
-                    return xml_content
-    
     # Fallback: no foreach node — topological order over all nodes via flow edges.
     # This allows workflows that don't use the Foreach Model node.
     id_to_node: Dict[str, Dict[str, Any]] = {

@@ -110,3 +110,31 @@ class TestEdgeCases:
         """Empty node/edge lists should return empty XML."""
         result = build_command_chain([], [], "M", [], {})
         assert result == []
+
+
+class TestParallelBranches:
+    def test_two_parallel_branches_both_execute(self):
+        """foreach fans out to two parallel branches; both must produce XML.
+
+        Graph:
+            foreach -> commentNode -> chainFileOutput
+            foreach -> labelNode  -> chainFileOutput
+        Today's DFS finds the comment branch first and silently drops the label
+        branch. PC-301 must execute both.
+        """
+        nodes = [
+            _make_node("foreach", "foreachModel"),
+            _make_node("comment", "addComment", {"commentName": "branch_a"}),
+            _make_node("label", "addLabel", {"labelName": "branch_b"}),
+            _make_node("out", "chainFileOutput"),
+        ]
+        edges = [
+            _make_edge("foreach", "comment"),
+            _make_edge("foreach", "label"),
+            _make_edge("comment", "out"),
+            _make_edge("label", "out"),
+        ]
+        result = build_command_chain(nodes, edges, "M", [], {})
+        joined = '\n'.join(result)
+        assert '<Comment>' in joined, "branch A (addComment) must execute"
+        assert '<Label>' in joined, "branch B (addLabel) must execute — this is the PC-301 bug"
