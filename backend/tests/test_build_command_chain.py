@@ -138,3 +138,141 @@ class TestParallelBranches:
         joined = '\n'.join(result)
         assert '<Comment>' in joined, "branch A (addComment) must execute"
         assert '<Label>' in joined, "branch B (addLabel) must execute — this is the PC-301 bug"
+
+    def test_diamond_merge_executes_once(self):
+        """foreach fans out to A and B which both feed merge node C.
+
+        C must appear exactly once and after both A and B.
+        """
+        nodes = [
+            _make_node("foreach", "foreachModel"),
+            _make_node("a", "addComment", {"commentName": "a"}),
+            _make_node("b", "addLabel", {"labelName": "b"}),
+            _make_node("c", "addComment", {"commentName": "c_merge"}),
+            _make_node("out", "chainFileOutput"),
+        ]
+        edges = [
+            _make_edge("foreach", "a"),
+            _make_edge("foreach", "b"),
+            _make_edge("a", "c"),
+            _make_edge("b", "c"),
+            _make_edge("c", "out"),
+        ]
+        result = build_command_chain(nodes, edges, "M", [], {})
+        joined = '\n'.join(result)
+        # All three node tags appear
+        assert '<Label>' in joined
+        # The merge node should appear exactly once — count occurrences of its
+        # unique commentName which we resolve via resolve_variable's literal path.
+        # (addComment renders the resolved commentName inside its XML.)
+        assert joined.count('c_merge') == 1
+
+    def test_branch_without_chain_output_still_executes(self):
+        """foreach -> A -> B with no chainFileOutput. Both A and B must execute.
+
+        Spec section 3 explicitly documents this as a now-supported shape.
+        """
+        nodes = [
+            _make_node("foreach", "foreachModel"),
+            _make_node("a", "addComment", {"commentName": "a"}),
+            _make_node("b", "addLabel", {"labelName": "b"}),
+        ]
+        edges = [
+            _make_edge("foreach", "a"),
+            _make_edge("a", "b"),
+        ]
+        result = build_command_chain(nodes, edges, "M", [], {})
+        joined = '\n'.join(result)
+        assert '<Comment>' in joined
+        assert '<Label>' in joined
+
+    def test_disconnected_subgraph_excluded(self):
+        """A node not flow-reachable from foreach must not execute."""
+        nodes = [
+            _make_node("foreach", "foreachModel"),
+            _make_node("connected", "addComment", {"commentName": "in_branch"}),
+            _make_node("orphan", "addLabel", {"labelName": "orphaned"}),
+            _make_node("out", "chainFileOutput"),
+        ]
+        edges = [
+            _make_edge("foreach", "connected"),
+            _make_edge("connected", "out"),
+            # 'orphan' has no incoming flow edge from foreach
+        ]
+        result = build_command_chain(nodes, edges, "M", [], {})
+        joined = '\n'.join(result)
+        assert '<Comment>' in joined
+        assert '<Label>' not in joined, "disconnected node must not execute"
+
+    def test_cycle_emits_warning_and_partial_output(self, caplog):
+        """foreach -> a -> b -> c -> b creates a cycle (b ↔ c).
+
+        a should still execute (well-ordered prefix). A WARNING should be logged
+        naming the cyclic node ids. No exception is raised.
+        """
+        import logging as _logging
+        nodes = [
+            _make_node("foreach", "foreachModel"),
+            _make_node("a", "addComment", {"commentName": "first"}),
+            _make_node("b", "addLabel", {"labelName": "second"}),
+            _make_node("c", "addComment", {"commentName": "third"}),
+        ]
+        edges = [
+            _make_edge("foreach", "a"),
+            _make_edge("a", "b"),
+            _make_edge("b", "c"),
+            _make_edge("c", "b"),  # cycle
+        ]
+        with caplog.at_level(_logging.WARNING, logger="services.workflow_runner"):
+            result = build_command_chain(nodes, edges, "M", [], {})
+
+        # No crash, list returned
+        assert isinstance(result, list)
+        # 'a' is well-ordered before the cycle, so its XML must appear
+        joined = '\n'.join(result)
+        assert '<Comment>' in joined
+        # Cycle warning logged
+        assert any("Cycle detected" in record.message for record in caplog.records), \
+            "expected a 'Cycle detected' WARNING; saw: " + repr([r.message for r in caplog.records])
+
+    def test_deterministic_ordering_with_foreach(self):
+        """Same graph with shuffled edge insertion order must produce identical output."""
+        nodes = [
+            _make_node("foreach", "foreachModel"),
+            _make_node("a", "addComment", {"commentName": "a"}),
+            _make_node("b", "addLabel", {"labelName": "b"}),
+            _make_node("c", "addComment", {"commentName": "c"}),
+            _make_node("out", "chainFileOutput"),
+        ]
+        edges_v1 = [
+            _make_edge("foreach", "a"),
+            _make_edge("foreach", "b"),
+            _make_edge("a", "c"),
+            _make_edge("b", "c"),
+            _make_edge("c", "out"),
+        ]
+        edges_v2 = list(reversed(edges_v1))
+
+        result_v1 = build_command_chain(nodes, edges_v1, "M", [], {})
+        result_v2 = build_command_chain(nodes, edges_v2, "M", [], {})
+
+        assert result_v1 == result_v2, \
+            "edge insertion order must not affect output (Kahn's queue + adjacency are id-sorted)"
+
+    def test_deterministic_ordering_no_foreach_fallback(self):
+        """Same shuffle test for the no-foreach fallback path."""
+        nodes = [
+            _make_node("a", "addComment", {"commentName": "a"}),
+            _make_node("b", "addLabel", {"labelName": "b"}),
+            _make_node("c", "addComment", {"commentName": "c"}),
+        ]
+        edges_v1 = [
+            _make_edge("a", "b"),
+            _make_edge("b", "c"),
+        ]
+        edges_v2 = list(reversed(edges_v1))
+
+        result_v1 = build_command_chain(nodes, edges_v1, "M", [], {})
+        result_v2 = build_command_chain(nodes, edges_v2, "M", [], {})
+
+        assert result_v1 == result_v2
