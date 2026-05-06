@@ -31,13 +31,18 @@ export interface WorkflowStatusResponse {
   results?: {
     files: string[];
     file_details?: Array<{
-      filename: string;
+      model?: string;
+      filename: string | null;
       project_folder: string;
-      output_path?: string;
+      output_path?: string | null;
+      status?: 'success' | 'error';
+      error?: string | null;
     }>;
     zip_path: string;
     summary: {
       total_files: number;
+      succeeded_count?: number;
+      failed_count?: number;
       project_folder: string;
     };
   };
