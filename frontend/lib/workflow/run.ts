@@ -34,7 +34,7 @@ export interface WorkflowStatusResponse {
       model?: string;
       filename: string | null;
       project_folder: string;
-      output_path?: string | null;
+      output_path: string | null;
       status?: 'success' | 'error';
       error?: string | null;
     }>;
