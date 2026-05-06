@@ -6,16 +6,14 @@ import { Button } from '@/components/ui/button';
 
 export interface FailedModel {
   model: string;
-  error: string;
+  error: string | null;
 }
 
 interface SuccessCelebrationProps {
   isOpen: boolean;
   onClose: () => void;
   fileCount?: number;
-  /** PC-302: total models attempted across the run (or batch). */
   totalModels?: number;
-  /** PC-302: models that failed; if non-empty, the modal shifts to a warning/error state. */
   failedModels?: FailedModel[];
 }
 
@@ -38,12 +36,13 @@ export function SuccessCelebration({
   const fullSuccess = failed.length === 0;
 
   useEffect(() => {
-    if (isOpen && fullSuccess) {
-      setShowConfetti(true);
-      const timer = setTimeout(() => setShowConfetti(false), 3000);
-      return () => clearTimeout(timer);
+    if (!isOpen || !fullSuccess) {
+      setShowConfetti(false);
+      return;
     }
-    setShowConfetti(false);
+    setShowConfetti(true);
+    const timer = setTimeout(() => setShowConfetti(false), 3000);
+    return () => clearTimeout(timer);
   }, [isOpen, fullSuccess]);
 
   useEffect(() => {
@@ -143,7 +142,7 @@ export function SuccessCelebration({
                   {failed.map((f) => (
                     <li key={f.model} className="text-xs text-gray-200">
                       <div className="font-semibold text-white">{f.model}</div>
-                      <div className="font-mono text-rose-300 break-all">{f.error}</div>
+                      <div className="font-mono text-rose-300 break-all">{f.error ?? '(no error message)'}</div>
                     </li>
                   ))}
                 </ul>
