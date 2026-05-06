@@ -62,6 +62,8 @@ export default function WorkspacePage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successFileCount, setSuccessFileCount] = useState<number | undefined>(undefined);
+  const [successTotalModels, setSuccessTotalModels] = useState<number | undefined>(undefined);
+  const [successFailedModels, setSuccessFailedModels] = useState<Array<{ model: string; error: string | null }>>([]);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string; isExcelError?: boolean }>({
     isOpen: false,
     title: '',
@@ -721,7 +723,14 @@ export default function WorkspacePage() {
     }
 
     // Helper to run a single workflow and wait for completion
-    const runSingleWorkflow = async (excelNodeId: string): Promise<{ sessionId: string; zipBlob: Blob; folderName: string }> => {
+    const runSingleWorkflow = async (excelNodeId: string): Promise<{
+      sessionId: string;
+      zipBlob: Blob;
+      folderName: string;
+      succeededCount?: number;
+      failedCount: number;
+      failedModels: Array<{ model: string; error: string | null }>;
+    }> => {
       const validation = validateWorkflow(nodes, edges, excelNodeId);
       if (!validation.valid) {
         throw new Error(`Validation failed for ${excelNodeId}: ${validation.errors.join(', ')}`);
@@ -754,7 +763,23 @@ export default function WorkspacePage() {
             ? excelFile.name.replace(/\.xlsx?$/i, '').replace(/[^a-zA-Z0-9_-]/g, '_')
             : `workflow_${sessionId.substring(0, 8)}`;
 
-          return { sessionId, zipBlob, folderName };
+          const succeededCount = status.results?.summary?.succeeded_count;
+          const failedCount = status.results?.summary?.failed_count ?? 0;
+          const failedModels = (status.results?.file_details ?? [])
+            .filter((r) => r.status === 'error')
+            .map((r) => ({
+              model: r.model ?? '(unknown model)',
+              error: r.error ?? null,
+            }));
+
+          return {
+            sessionId,
+            zipBlob,
+            folderName,
+            succeededCount,
+            failedCount,
+            failedModels,
+          };
         } else if (status.status === 'error') {
           throw new Error(status.error || 'Unknown error occurred during processing');
         }
@@ -769,13 +794,22 @@ export default function WorkspacePage() {
     try {
       if (selectedExcelIds.length === 1) {
         // Single workflow - use existing behavior
-        const { sessionId, zipBlob, folderName } = await runSingleWorkflow(selectedExcelIds[0]);
+        const result = await runSingleWorkflow(selectedExcelIds[0]);
+        const { sessionId, zipBlob, succeededCount, failedCount, failedModels } = result;
         setSessionId(sessionId);
 
-        // Get file count (approximate from ZIP)
-        const zip = await JSZip.loadAsync(zipBlob);
-        const fileCount = Object.keys(zip.files).filter((name) => !name.endsWith('/')).length;
-        setSuccessFileCount(fileCount);
+        // Prefer the structured succeeded_count from the backend; fall back to
+        // counting non-_summary entries in the ZIP for legacy sessions.
+        let chainFileCount = succeededCount;
+        if (chainFileCount === undefined) {
+          const zip = await JSZip.loadAsync(zipBlob);
+          chainFileCount = Object.keys(zip.files).filter(
+            (name) => !name.endsWith('/') && name !== '_summary.txt',
+          ).length;
+        }
+        setSuccessFileCount(chainFileCount);
+        setSuccessTotalModels((chainFileCount ?? 0) + failedCount);
+        setSuccessFailedModels(failedModels);
         setShowSuccess(true);
 
         // Trigger download
@@ -789,15 +823,40 @@ export default function WorkspacePage() {
         URL.revokeObjectURL(url);
       } else {
         // Multiple workflows - run sequentially and combine
-        const results: Array<{ sessionId: string; zipBlob: Blob; folderName: string }> = [];
-        let totalFileCount = 0;
+        const results: Array<{
+          sessionId: string;
+          zipBlob: Blob;
+          folderName: string;
+          succeededCount?: number;
+          failedCount: number;
+          failedModels: Array<{ model: string; error: string | null }>;
+        }> = [];
+        let totalSucceeded = 0;
+        let totalFailed = 0;
+        const combinedFailedModels: Array<{ model: string; error: string | null }> = [];
 
         for (const excelNodeId of selectedExcelIds) {
           try {
             const result = await runSingleWorkflow(excelNodeId);
             results.push(result);
-            const zip = await JSZip.loadAsync(result.zipBlob);
-            totalFileCount += Object.keys(zip.files).filter((name) => !name.endsWith('/')).length;
+
+            // Prefer structured counts; fall back to ZIP inspection (excluding _summary.txt).
+            let succeededInRun = result.succeededCount;
+            if (succeededInRun === undefined) {
+              const zip = await JSZip.loadAsync(result.zipBlob);
+              succeededInRun = Object.keys(zip.files).filter(
+                (name) => !name.endsWith('/') && name !== '_summary.txt',
+              ).length;
+            }
+            totalSucceeded += succeededInRun;
+            totalFailed += result.failedCount;
+            // Prefix with the Excel folder so the combined list is unambiguous.
+            for (const f of result.failedModels) {
+              combinedFailedModels.push({
+                model: `${result.folderName}/${f.model}`,
+                error: f.error,
+              });
+            }
           } catch (err) {
             setErrorModal({
               isOpen: true,
@@ -828,7 +887,9 @@ export default function WorkspacePage() {
         }
 
         const combinedBlob = await combinedZip.generateAsync({ type: 'blob' });
-        setSuccessFileCount(totalFileCount);
+        setSuccessFileCount(totalSucceeded);
+        setSuccessTotalModels(totalSucceeded + totalFailed);
+        setSuccessFailedModels(combinedFailedModels);
         setShowSuccess(true);
 
         // Trigger download of combined ZIP
@@ -1223,8 +1284,14 @@ export default function WorkspacePage() {
             />
             <SuccessCelebration
               isOpen={showSuccess}
-              onClose={() => setShowSuccess(false)}
+              onClose={() => {
+                setShowSuccess(false);
+                setSuccessFailedModels([]);
+                setSuccessTotalModels(undefined);
+              }}
               fileCount={successFileCount}
+              totalModels={successTotalModels}
+              failedModels={successFailedModels}
             />
             <ErrorModal
               isOpen={errorModal.isOpen}
