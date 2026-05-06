@@ -16,7 +16,7 @@ import { TopBar } from '@/components/workflow/TopBar';
 import { LeftSidebar } from '@/components/workflow/LeftSidebar';
 import { RightSidebar } from '@/components/workflow/RightSidebar';
 import { WorkspaceCanvas } from '@/components/workflow/WorkspaceCanvas';
-import { SuccessCelebration } from '@/components/workflow/SuccessCelebration';
+import { SuccessCelebration, FailedModel } from '@/components/workflow/SuccessCelebration';
 import { ErrorModal } from '@/components/workflow/ErrorModal';
 import { TemplateNotification } from '@/components/workflow/TemplateNotification';
 import { SaveTemplateModal } from '@/components/workflow/SaveTemplateModal';
@@ -63,7 +63,7 @@ export default function WorkspacePage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successFileCount, setSuccessFileCount] = useState<number | undefined>(undefined);
   const [successTotalModels, setSuccessTotalModels] = useState<number | undefined>(undefined);
-  const [successFailedModels, setSuccessFailedModels] = useState<Array<{ model: string; error: string | null }>>([]);
+  const [successFailedModels, setSuccessFailedModels] = useState<FailedModel[]>([]);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string; isExcelError?: boolean }>({
     isOpen: false,
     title: '',
@@ -729,7 +729,7 @@ export default function WorkspacePage() {
       folderName: string;
       succeededCount?: number;
       failedCount: number;
-      failedModels: Array<{ model: string; error: string | null }>;
+      failedModels: FailedModel[];
     }> => {
       const validation = validateWorkflow(nodes, edges, excelNodeId);
       if (!validation.valid) {
@@ -829,11 +829,11 @@ export default function WorkspacePage() {
           folderName: string;
           succeededCount?: number;
           failedCount: number;
-          failedModels: Array<{ model: string; error: string | null }>;
+          failedModels: FailedModel[];
         }> = [];
         let totalSucceeded = 0;
         let totalFailed = 0;
-        const combinedFailedModels: Array<{ model: string; error: string | null }> = [];
+        const combinedFailedModels: FailedModel[] = [];
 
         for (const excelNodeId of selectedExcelIds) {
           try {
@@ -1286,8 +1286,9 @@ export default function WorkspacePage() {
               isOpen={showSuccess}
               onClose={() => {
                 setShowSuccess(false);
-                setSuccessFailedModels([]);
+                setSuccessFileCount(undefined);
                 setSuccessTotalModels(undefined);
+                setSuccessFailedModels([]);
               }}
               fileCount={successFileCount}
               totalModels={successTotalModels}
