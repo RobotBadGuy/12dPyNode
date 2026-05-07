@@ -26,24 +26,52 @@ export interface WorkflowRunResponse {
   message: string;
 }
 
+// PC-907: rows are 'queued' from the moment the backend has parsed the model
+// list (the seed write) until each model is attempted, at which point they
+// flip to 'success' or 'error'. The final completion snapshot only contains
+// 'success' / 'error'.
+export type FileDetailStatus = 'queued' | 'success' | 'error';
+
+// PC-303: per-node event emitted by build_command_chain. One event per
+// (model, node_id) pair — every executed (non-control-flow) node gets an
+// event. Successful nodes have error: null; failed nodes carry the
+// "<ExceptionType>: <message>" string.
+export interface NodeEvent {
+  model: string;
+  node_id: string;
+  node_type: string;
+  node_label?: string | null;
+  status: 'success' | 'error';
+  error?: string | null;
+}
+
+export interface FileDetail {
+  model?: string;
+  filename: string | null;
+  project_folder: string;
+  output_path: string | null;
+  status?: FileDetailStatus;
+  error?: string | null;
+  // PC-303: present on rows whose model has been attempted (status is
+  // 'success' or 'error'). Absent on 'queued' rows.
+  node_events?: NodeEvent[];
+}
+
 export interface WorkflowStatusResponse {
   status: 'processing' | 'completed' | 'error';
+  // PC-907: `results` may be present while status='processing' once the
+  // backend has parsed the Excel and seeded queued rows. Fields like
+  // `files`, `zip_path` and `summary.succeeded_count` are only populated by
+  // the final completion write — hence everything is optional below.
   results?: {
-    files: string[];
-    file_details?: Array<{
-      model?: string;
-      filename: string | null;
-      project_folder: string;
-      output_path: string | null;
-      status?: 'success' | 'error';
-      error?: string | null;
-    }>;
-    zip_path: string;
-    summary: {
-      total_files: number;
+    files?: string[];
+    file_details?: FileDetail[];
+    zip_path?: string;
+    summary?: {
+      total_files?: number;
       succeeded_count?: number;
       failed_count?: number;
-      project_folder: string;
+      project_folder?: string;
     };
   };
   error?: string;
@@ -115,5 +143,34 @@ export async function getWorkflowStatus(
 
 export function getWorkflowDownloadUrl(sessionId: string): string {
   return `${API_URL}/api/workflow/download/${sessionId}`;
+}
+
+// PC-303: fetch the XML lines a single node emitted for one model. The
+// backend captures these to disk during run_workflow_job; the layout is
+// keyed by sanitized model name + node id. Returns plain text. Throws on
+// 404 (no captured XML for this node, or unknown session).
+export async function getNodeXml(
+  sessionId: string,
+  modelName: string,
+  nodeId: string,
+): Promise<string> {
+  const url = `${API_URL}/api/workflow/node-xml/${encodeURIComponent(sessionId)}/${encodeURIComponent(modelName)}/${encodeURIComponent(nodeId)}`;
+  try {
+    const response = await api.get<string>(url, {
+      // Force the response body to be returned as a raw string. Axios will
+      // otherwise try to JSON.parse a "<xml>..." body, throwing on the first
+      // non-JSON character.
+      responseType: 'text',
+      transformResponse: (body) => body,
+      // The path is absolute — bypass the api instance's baseURL.
+      baseURL: '',
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data || error.message);
+    }
+    throw error;
+  }
 }
 

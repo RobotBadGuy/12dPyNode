@@ -8,15 +8,56 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
+import { NodeRunDetails } from '@/components/workflow/NodeRunDetails';
+import type { FileDetail } from '@/lib/workflow/run';
 
 interface RightSidebarProps {
   selectedNode: Node | null;
   nodes: WorkflowNode[];
   edges: Edge[];
   onUpdateNode: (nodeId: string, data: Partial<WorkflowNodeData>) => void;
+  // PC-303: per-model events from the latest run, plus the session id needed
+  // to fetch per-node XML on demand. Both can be undefined / null when no
+  // run has produced any data yet.
+  runFileDetails?: FileDetail[];
+  runSessionId?: string | null;
 }
 
-export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: RightSidebarProps) {
+// Shared outer shell for any of the editor branches that operate on a
+// selected node. Renders the NodeRunDetails block (which is a no-op when
+// the node has no events yet) above the editor content. Keeps the three
+// editor returns from each having to repeat the same wrapper markup.
+function EditorShell({
+  selectedNodeId,
+  runFileDetails,
+  runSessionId,
+  children,
+}: {
+  selectedNodeId: string;
+  runFileDetails?: FileDetail[];
+  runSessionId?: string | null;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
+      <NodeRunDetails
+        nodeId={selectedNodeId}
+        fileDetails={runFileDetails}
+        sessionId={runSessionId ?? null}
+      />
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+export function RightSidebar({
+  selectedNode,
+  nodes,
+  edges,
+  onUpdateNode,
+  runFileDetails,
+  runSessionId,
+}: RightSidebarProps) {
   // Get all variables from SetVariable nodes for dropdowns
   const allVariables = useMemo(() => {
     const vars: VariableBinding[] = [];
@@ -102,8 +143,11 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
     };
 
     return (
-      <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
-        <div className="p-4">
+      <EditorShell
+        selectedNodeId={selectedNode.id}
+        runFileDetails={runFileDetails}
+        runSessionId={runSessionId}
+      >
           <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
           <div className="space-y-4">
             <div>
@@ -169,8 +213,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
               </div>
             </div>
           </div>
-        </div>
-      </div>
+      </EditorShell>
     );
   }
 
@@ -179,8 +222,11 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
     const filePathWired = isParamWired(selectedNode.id, 'filePath');
 
     return (
-      <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
-        <div className="p-4">
+      <EditorShell
+        selectedNodeId={selectedNode.id}
+        runFileDetails={runFileDetails}
+        runSessionId={runSessionId}
+      >
           <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
           <div className="space-y-4">
             <div>
@@ -256,15 +302,17 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
               )}
             </div>
           </div>
-        </div>
-      </div>
+      </EditorShell>
     );
   }
 
   // Generic editor for other node types
   return (
-    <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
-      <div className="p-4">
+    <EditorShell
+      selectedNodeId={selectedNode.id}
+      runFileDetails={runFileDetails}
+      runSessionId={runSessionId}
+    >
         <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
         <div className="space-y-4">
           <div>
@@ -362,8 +410,7 @@ export function RightSidebar({ selectedNode, nodes, edges, onUpdateNode }: Right
             );
           })}
         </div>
-      </div>
-    </div>
+    </EditorShell>
   );
 }
 

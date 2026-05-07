@@ -191,3 +191,98 @@ def test_row_order_matches_model_order(monkeypatch, excel_with_three_models, out
 
     assert [r["model"] for r in details] == ["A", "B", "C"]
     assert [r["status"] for r in details] == ["error", "success", "error"]
+
+
+# PC-907 — progress callback ---------------------------------------------------
+
+def test_progress_callback_emits_queued_seed_and_per_model_updates(
+    monkeypatch, excel_with_three_models, output_dir,
+):
+    """Callback fires once with all rows queued, then once per model attempt
+    with that row promoted to success or error. Snapshot at each call."""
+    def fake_generate(model_name, *args, **kwargs):
+        if model_name == "B":
+            raise RuntimeError("boom")
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    snapshots: List[List[Dict[str, Any]]] = []
+
+    def capture(rows: List[Dict[str, Any]]) -> None:
+        # Defensive copy: run_workflow mutates the same list in place between
+        # callback invocations, so we must snapshot to assert on the per-call
+        # state rather than the final state.
+        snapshots.append([dict(r) for r in rows])
+
+    run_workflow(
+        str(excel_with_three_models), _minimal_graph(), [], str(output_dir),
+        progress_callback=capture,
+    )
+
+    # 1 seed + 3 per-model = 4 calls
+    assert len(snapshots) == 4
+
+    # Seed: every row queued
+    seed = snapshots[0]
+    assert [r["model"] for r in seed] == ["A", "B", "C"]
+    assert [r["status"] for r in seed] == ["queued", "queued", "queued"]
+
+    # After A: A success, B+C still queued
+    assert [r["status"] for r in snapshots[1]] == ["success", "queued", "queued"]
+
+    # After B (which fails): A success, B error, C still queued
+    assert [r["status"] for r in snapshots[2]] == ["success", "error", "queued"]
+    assert snapshots[2][1]["error"] == "RuntimeError: boom"
+
+    # After C: terminal state
+    assert [r["status"] for r in snapshots[3]] == ["success", "error", "success"]
+
+
+def test_progress_callback_exception_does_not_abort_run(
+    monkeypatch, excel_with_three_models, output_dir, caplog,
+):
+    """A flaky callback must not derail the run; failures are logged at WARNING."""
+    def fake_generate(model_name, *args, **kwargs):
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    def explode(_rows: List[Dict[str, Any]]) -> None:
+        raise RuntimeError("db is down")
+
+    with caplog.at_level(logging.WARNING, logger="services.workflow_runner"):
+        generated, _project, details = run_workflow(
+            str(excel_with_three_models), _minimal_graph(), [], str(output_dir),
+            progress_callback=explode,
+        )
+
+    # Run still completed normally
+    assert len(generated) == 3
+    assert [r["status"] for r in details] == ["success", "success", "success"]
+    # And every callback raise was logged
+    assert any("db is down" in r.getMessage() for r in caplog.records)
+
+
+def test_no_progress_callback_keeps_legacy_signature_working(
+    monkeypatch, excel_with_three_models, output_dir,
+):
+    """Omitting progress_callback returns identical results to the pre-PC-907 path."""
+    def fake_generate(model_name, *args, **kwargs):
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    generated, _project, details = run_workflow(
+        str(excel_with_three_models), _minimal_graph(), [], str(output_dir),
+    )
+
+    assert len(generated) == 3
+    # Final return never carries 'queued'
+    assert all(r["status"] in ("success", "error") for r in details)

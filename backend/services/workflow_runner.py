@@ -5,7 +5,7 @@ Workflow Runner - Executes node-based workflow graphs to generate chain files
 import os
 import json
 import re
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Callable, Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
@@ -623,10 +623,13 @@ def build_command_chain(
     per_run_vars: Dict[str, Any],
     model_type: str = 'Model',
     output_folder: str = '',
+    *,
+    node_events_out: Optional[List[Dict[str, Any]]] = None,
+    node_xml_out: Optional[Dict[str, List[str]]] = None,
 ) -> List[str]:
     """
     Build the command chain XML for a single model
-    
+
     Args:
         nodes: List of node definitions
         edges: List of edge definitions
@@ -634,7 +637,14 @@ def build_command_chain(
         variables: Variable bindings
         per_run_vars: Per-run variable values
         model_type: 'Model' or 'TIN'
-    
+        node_events_out: PC-303 — if provided, one event dict is appended for
+            every node executed (success or error). Keys: model, node_id,
+            node_type, node_label, status ('success' | 'error'), error
+            (None on success).
+        node_xml_out: PC-303 — if provided, the XML lines emitted by each node
+            are stored under that node's id. Skipped nodes (control-flow) and
+            nodes that emit nothing are absent. Mutated in place.
+
     Returns:
         List of XML lines for the command chain
     """
@@ -674,7 +684,10 @@ def build_command_chain(
         for node_id in execution_order:
             node = id_to_node.get(node_id)
             if node and node.get('type') not in control_flow_types:
-                execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
+                _execute_node_with_capture(
+                    node, model_name, variables, per_run_vars, xml_content,
+                    output_folder, node_events_out, node_xml_out,
+                )
 
         return xml_content
 
@@ -702,9 +715,59 @@ def build_command_chain(
     for node_id in execution_order:
         node = id_to_node.get(node_id)
         if node and node.get('type') not in control_flow_types:
-            execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
+            _execute_node_with_capture(
+                node, model_name, variables, per_run_vars, xml_content,
+                output_folder, node_events_out, node_xml_out,
+            )
 
     return xml_content
+
+
+def _execute_node_with_capture(
+    node: Dict[str, Any],
+    model_name: str,
+    variables: List[Dict[str, Any]],
+    per_run_vars: Dict[str, Any],
+    xml_content: List[str],
+    output_folder: str,
+    node_events_out: Optional[List[Dict[str, Any]]],
+    node_xml_out: Optional[Dict[str, List[str]]],
+) -> None:
+    """PC-303 — wrap execute_node so per-node success/failure and the XML
+    slice it emitted can be captured for the run-details UI. Re-raises so
+    PC-302's per-model error isolation still kicks in at the outer scope."""
+    node_id = str(node.get('id', ''))
+    node_type = node.get('type', '')
+    node_label = (node.get('data') or {}).get('label')
+
+    xml_start = len(xml_content)
+    try:
+        execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)
+    except Exception as exc:
+        if node_events_out is not None:
+            node_events_out.append({
+                'model': model_name,
+                'node_id': node_id,
+                'node_type': node_type,
+                'node_label': node_label,
+                'status': 'error',
+                'error': f"{type(exc).__name__}: {exc}",
+            })
+        raise
+
+    if node_events_out is not None:
+        node_events_out.append({
+            'model': model_name,
+            'node_id': node_id,
+            'node_type': node_type,
+            'node_label': node_label,
+            'status': 'success',
+            'error': None,
+        })
+    if node_xml_out is not None:
+        emitted = xml_content[xml_start:]
+        if emitted:
+            node_xml_out[node_id] = list(emitted)
 
 
 def generate_chain_file(
@@ -715,10 +778,13 @@ def generate_chain_file(
     per_run_vars: Dict[str, Any],
     output_folder: str,
     project_folder: str = '',
+    *,
+    node_events_out: Optional[List[Dict[str, Any]]] = None,
+    node_xml_out: Optional[Dict[str, List[str]]] = None,
 ) -> Optional[str]:
     """
     Generate a single chain file for a model
-    
+
     Args:
         model_name: Model name (filename stem)
         nodes: Workflow graph nodes
@@ -727,7 +793,9 @@ def generate_chain_file(
         per_run_vars: Per-run variable values
         output_folder: Output folder path
         project_folder: Project folder path
-    
+        node_events_out: PC-303 — see build_command_chain.
+        node_xml_out: PC-303 — see build_command_chain.
+
     Returns:
         Path to generated chain file or None
     """
@@ -751,7 +819,11 @@ def generate_chain_file(
     xml_content.extend(generate_chain_settings())
     
     # Build command chain from graph
-    command_xml = build_command_chain(nodes, edges, model_name, variables, per_run_vars, model_type, output_folder)
+    command_xml = build_command_chain(
+        nodes, edges, model_name, variables, per_run_vars, model_type, output_folder,
+        node_events_out=node_events_out,
+        node_xml_out=node_xml_out,
+    )
     xml_content.extend(command_xml)
     
     # Always add closing scaffolding
@@ -771,22 +843,41 @@ def run_workflow(
     variables: List[Dict[str, Any]],
     output_folder: str,
     selected_column_index: int = 0,
+    progress_callback: Optional[Callable[[List[Dict[str, Any]]], None]] = None,
+    node_xml_callback: Optional[Callable[[str, Dict[str, List[str]]], None]] = None,
 ) -> Tuple[List[str], Optional[str], List[Dict[str, str]]]:
     """
     Run a workflow graph for all models in Excel file
-    
+
     Args:
         excel_file_path: Path to Excel file
         workflow_graph: Workflow graph JSON (nodes and edges)
         variables: Variable bindings
         output_folder: Output folder path
         selected_column_index: Which column to read model names from (0-based)
-    
+        progress_callback: PC-907 — optional callable invoked with the current
+            file_details list (a) once after the model list is known with every
+            row in status='queued', and (b) after each per-model attempt with
+            the row updated to 'success' or 'error'. Stays callback-based so
+            this function remains session-store-agnostic. Exceptions raised
+            from the callback are swallowed with a log so a flaky DB cannot
+            abort the run.
+        node_xml_callback: PC-303 — optional callable invoked once per model
+            (after that model finishes, success or error) with the dict of
+            {node_id: List[str]} containing each node's emitted XML lines.
+            Caller is expected to persist these somewhere durable (e.g. disk)
+            so the UI can fetch them on demand. Exceptions are swallowed with
+            a log.
+
     Returns:
         Tuple of (successfully generated file paths, project folder, per-model
         status rows). Each row in file_details has keys: model, filename,
-        output_path, project_folder, status ('success' | 'error'), error
-        (None on success, "<ExceptionType>: <message>" on failure).
+        output_path, project_folder, status ('queued' | 'success' | 'error'),
+        error (None on success, "<ExceptionType>: <message>" on failure), and
+        node_events (PC-303: list of per-node {node_id, node_type, status,
+        error} dicts; absent on rows that are still 'queued').
+        Final return value never contains 'queued' rows — the loop converts
+        each row to 'success' or 'error' before returning.
     """
     # Parse Excel to get model names
     # Read Excel file directly without header to ensure we get ALL rows including first
@@ -852,11 +943,37 @@ def run_workflow(
     project_folder = per_run_vars.get(project_folder_var_name, '')
     
     generated_files: List[str] = []
-    file_details: List[Dict[str, str]] = []
+    # PC-907: seed every model in 'queued' state up-front so the UI can render
+    # the full list immediately, then flip rows to success/error as the loop
+    # progresses. Index is preserved by mutating in place.
+    file_details: List[Dict[str, Any]] = [
+        {
+            'model': model_name,
+            'filename': None,
+            'output_path': None,
+            'project_folder': project_folder,
+            'status': 'queued',
+            'error': None,
+        }
+        for model_name in model_names
+    ]
+
+    def _emit_progress() -> None:
+        if progress_callback is None:
+            return
+        try:
+            progress_callback(file_details)
+        except Exception as exc:
+            logger.warning("progress_callback raised; ignoring: %s", exc)
+
+    _emit_progress()
 
     # Generate chain file for each model. PC-302: isolate per-model failures so a
-    # single bad model does not abort the whole batch.
-    for model_name in model_names:
+    # single bad model does not abort the whole batch. PC-303: capture per-node
+    # events and per-node XML slices for the run-details UI.
+    for index, model_name in enumerate(model_names):
+        node_events_for_model: List[Dict[str, Any]] = []
+        node_xml_for_model: Dict[str, List[str]] = {}
         try:
             chain_file = generate_chain_file(
                 model_name,
@@ -866,30 +983,59 @@ def run_workflow(
                 per_run_vars,
                 output_folder,
                 project_folder,
+                node_events_out=node_events_for_model,
+                node_xml_out=node_xml_for_model,
             )
             if chain_file:
                 generated_files.append(chain_file)
-                file_details.append({
+                file_details[index] = {
                     'model': model_name,
                     'filename': os.path.basename(chain_file),
                     'output_path': chain_file,
                     'project_folder': project_folder,
                     'status': 'success',
                     'error': None,
-                })
+                    'node_events': node_events_for_model,
+                }
+            else:
+                # generate_chain_file's signature permits None today (defensively
+                # — it always returns a path or raises in current code). Treat a
+                # None return as an error so the model row never gets stuck in
+                # 'queued' once the loop has visited it.
+                file_details[index] = {
+                    'model': model_name,
+                    'filename': None,
+                    'output_path': None,
+                    'project_folder': project_folder,
+                    'status': 'error',
+                    'error': 'generate_chain_file returned None',
+                    'node_events': node_events_for_model,
+                }
         except Exception as e:
             logger.error(
                 "Chain file generation failed for model %r: %s",
                 model_name, e, exc_info=True,
             )
-            file_details.append({
+            file_details[index] = {
                 'model': model_name,
                 'filename': None,
                 'output_path': None,
                 'project_folder': project_folder,
                 'status': 'error',
                 'error': f"{type(e).__name__}: {e}",
-            })
+                'node_events': node_events_for_model,
+            }
+
+        # PC-303: persist per-node XML for any node that emitted lines, even
+        # if the model overall failed mid-chain. The XML up to the failing
+        # node is still useful diagnostic context.
+        if node_xml_callback is not None and node_xml_for_model:
+            try:
+                node_xml_callback(model_name, node_xml_for_model)
+            except Exception as exc:
+                logger.warning("node_xml_callback raised; ignoring: %s", exc)
+
+        _emit_progress()
 
     return generated_files, project_folder, file_details
 

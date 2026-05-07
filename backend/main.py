@@ -14,6 +14,7 @@ from typing import Any, List, Dict
 from contextlib import asynccontextmanager
 from datetime import datetime
 import os
+import re
 import uuid
 from pathlib import Path
 import logging
@@ -307,6 +308,15 @@ async def run_workflow_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _safe_path_segment(value: str) -> str:
+    """PC-303 — sanitize a model name or node id for use as a filesystem path
+    segment. Replaces anything outside [A-Za-z0-9_-] with '_'. Used by both the
+    write side (run_workflow_job._on_node_xml) and the read side (the
+    /api/workflow/node-xml endpoint) so they always agree on the layout."""
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", value)
+    return safe or "_"
+
+
 def _build_summary_text(
     session_id: str,
     file_details: List[Dict[str, Any]],
@@ -358,6 +368,12 @@ def run_workflow_job(
     file_details rows. The outer try/except below still catches pre-loop / IO
     failures (Excel parse error, ZIP write error, etc.) and turns them into
     status='error'.
+
+    PC-907: a progress_callback is passed into run_workflow so each per-model
+    row update is mirrored onto the session's `results` field while the run is
+    still in progress. Polling clients see the list grow (queued → success /
+    error) instead of waiting for one final write. The /api/workflow/status
+    endpoint surfaces these intermediate `results` while status='processing'.
     """
     try:
         if session_store.get(session_id) is None:
@@ -367,6 +383,31 @@ def run_workflow_job(
         output_folder = OUTPUT_DIR / session_id
         output_folder.mkdir(exist_ok=True)
 
+        def _on_progress(file_details_so_far: List[Dict[str, Any]]) -> None:
+            # PC-907: the running shape carries only `file_details`; counts are
+            # derived on the client via row.status. The final write below
+            # replaces this with the richer completion shape (zip_path,
+            # succeeded/failed counts, project_folder).
+            session_store.update(session_id, {
+                "results": {
+                    "file_details": list(file_details_so_far),
+                },
+            })
+
+        # PC-303: persist per-node emitted XML to disk so the run-details UI
+        # can fetch a single node's slice on demand without bloating every
+        # /api/workflow/status poll. Layout: OUTPUT_DIR/<session>/_node_xml/
+        # <safe_model>/<safe_node_id>.xml. Sanitization must match the read
+        # side in /api/workflow/node-xml.
+        node_xml_root = output_folder / "_node_xml"
+
+        def _on_node_xml(model_name: str, node_xml: Dict[str, List[str]]) -> None:
+            model_dir = node_xml_root / _safe_path_segment(model_name)
+            model_dir.mkdir(parents=True, exist_ok=True)
+            for node_id, lines in node_xml.items():
+                target = model_dir / f"{_safe_path_segment(node_id)}.xml"
+                target.write_text("\n".join(lines), encoding="utf-8")
+
         # Run workflow
         generated_files, project_folder, file_details = run_workflow(
             excel_file_path,
@@ -374,6 +415,8 @@ def run_workflow_job(
             variables,
             str(output_folder),
             selected_column_index=selected_column_index,
+            progress_callback=_on_progress,
+            node_xml_callback=_on_node_xml,
         )
 
         succeeded_count = sum(1 for r in file_details if r.get("status") == "success")
@@ -431,8 +474,44 @@ async def get_workflow_status(session_id: str):
         result["results"] = session.get("results")
     elif session["status"] == "error":
         result["error"] = session.get("error") or "Unknown error"
+    elif session["status"] == "processing":
+        # PC-907: surface the live per-model progress that run_workflow_job
+        # writes via the progress callback. May be None if the run hasn't
+        # parsed the Excel yet (the queued seed has not been emitted).
+        progress = session.get("results")
+        if progress is not None:
+            result["results"] = progress
 
     return result
+
+
+@app.get("/api/workflow/node-xml/{session_id}/{model_name}/{node_id}")
+async def get_node_xml(session_id: str, model_name: str, node_id: str):
+    """PC-303 — return the XML lines emitted by a single node for one model.
+    Layout was written by run_workflow_job._on_node_xml; sanitization for the
+    path segments must match _safe_path_segment.
+
+    Returns text/plain. 404 if the session, model, or node has no captured XML.
+    """
+    if session_store.get(session_id) is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Defense in depth: session_id is normally a server-generated UUID and
+    # session_store.get() has already validated it exists, but sanitize the
+    # path segment too so a hypothetical future code path that produces a
+    # weirder id can never escape OUTPUT_DIR.
+    file_path = (
+        OUTPUT_DIR
+        / _safe_path_segment(session_id)
+        / "_node_xml"
+        / _safe_path_segment(model_name)
+        / f"{_safe_path_segment(node_id)}.xml"
+    )
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Node XML not found for this run")
+
+    text = file_path.read_text(encoding="utf-8")
+    return Response(content=text, media_type="text/plain; charset=utf-8")
 
 
 @app.get("/api/workflow/download/{session_id}")

@@ -66,7 +66,9 @@
       "Bash(npx vitest *)",
       "Bash(netstat -ano)",
       "Bash(findstr \":3000 :3001 :8001\")",
-      "Bash(python -m pytest tests/test_build_command_chain.py tests/test_resolve_variable.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_build_command_chain.py tests/test_resolve_variable.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_run_workflow.py tests/test_run_workflow_job.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_per_node_events.py -v --tb=short)"
     ]
   }
 }

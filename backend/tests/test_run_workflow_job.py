@@ -210,3 +210,99 @@ def test_summary_omits_failed_section_when_all_succeed(monkeypatch, _isolate_dir
     )
     assert "SUCCEEDED" in text
     assert "FAILED" not in text
+
+
+# PC-907 — progress writes ----------------------------------------------------
+
+def test_progress_callback_writes_intermediate_results(monkeypatch, _isolate_dirs):
+    """run_workflow_job wires a callback that updates the session's `results`
+    field on every per-model tick. Stub run_workflow to drive the callback
+    directly so we can observe each write."""
+    _, output_dir = _isolate_dirs
+    paths = _write_chain_files(output_dir, ["A.chain"])
+
+    captured_states: List[Dict[str, Any]] = []
+    session_id = _seed_session()
+
+    # Snapshot the session's `results` field every time the callback fires.
+    # Wrap session_store.update so we observe the actual stored shape.
+    real_update = backend_main.session_store.update
+
+    def spying_update(sid: str, patch: Dict[str, Any]) -> None:
+        real_update(sid, patch)
+        if sid == session_id and "results" in patch and patch.get("status") is None:
+            row = backend_main.session_store.get(sid)
+            captured_states.append(row["results"])
+
+    monkeypatch.setattr(backend_main.session_store, "update", spying_update)
+
+    queued_seed = [
+        {"model": "A", "filename": None, "output_path": None,
+         "project_folder": "/p", "status": "queued", "error": None},
+        {"model": "B", "filename": None, "output_path": None,
+         "project_folder": "/p", "status": "queued", "error": None},
+    ]
+    after_a = [
+        _success_row("A", paths[0]),
+        {"model": "B", "filename": None, "output_path": None,
+         "project_folder": "/p", "status": "queued", "error": None},
+    ]
+    after_b = [_success_row("A", paths[0]), _failure_row("B", "RE: x")]
+
+    def fake_run_workflow(*_a, progress_callback=None, **_k):
+        # Drive the callback the same way the real run_workflow does.
+        progress_callback(queued_seed)
+        progress_callback(after_a)
+        progress_callback(after_b)
+        return ([paths[0]], "/p", after_b)
+
+    monkeypatch.setattr(backend_main, "run_workflow", fake_run_workflow)
+
+    backend_main.run_workflow_job(session_id, "/tmp/x.xlsx", {}, [])
+
+    # 3 callback ticks + the final completion write. The final write carries
+    # status='completed' so it is filtered out of captured_states.
+    assert len(captured_states) == 3
+    assert [r["status"] for r in captured_states[0]["file_details"]] == ["queued", "queued"]
+    assert [r["status"] for r in captured_states[1]["file_details"]] == ["success", "queued"]
+    assert [r["status"] for r in captured_states[2]["file_details"]] == ["success", "error"]
+
+
+def test_status_endpoint_surfaces_progress_during_processing(monkeypatch, _isolate_dirs):
+    """While status='processing', /api/workflow/status returns the in-flight
+    `results` (with file_details) so the UI can render the live list."""
+    session_id = _seed_session()
+    backend_main.session_store.update(session_id, {
+        "status": "processing",
+        "results": {
+            "file_details": [
+                {"model": "A", "filename": None, "output_path": None,
+                 "project_folder": "/p", "status": "success", "error": None},
+                {"model": "B", "filename": None, "output_path": None,
+                 "project_folder": "/p", "status": "queued", "error": None},
+            ],
+        },
+    })
+
+    import asyncio
+    result = asyncio.run(backend_main.get_workflow_status(session_id))
+
+    assert result["status"] == "processing"
+    assert "results" in result
+    assert [r["status"] for r in result["results"]["file_details"]] == ["success", "queued"]
+
+
+def test_status_endpoint_omits_results_when_processing_with_no_progress_yet(
+    monkeypatch, _isolate_dirs,
+):
+    """If the run hasn't reached the queued-seed callback yet, results is None
+    and the endpoint must not include a `results` key."""
+    session_id = _seed_session()  # seeds with results=None
+    # Confirm: row exists with status='processing', results is None
+    backend_main.session_store.update(session_id, {"status": "processing"})
+
+    import asyncio
+    result = asyncio.run(backend_main.get_workflow_status(session_id))
+
+    assert result["status"] == "processing"
+    assert "results" not in result

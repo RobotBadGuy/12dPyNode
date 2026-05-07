@@ -28,6 +28,9 @@ import { ProfilePage } from '@/components/ProfilePage';
 import { WorkflowNode, WorkflowEdge, WorkflowTemplate, WorkflowTemplateVersionSnapshot, ExcelModelsNodeData } from '@/lib/workflow/types';
 import { compileWorkflow, validateWorkflow, validateNode } from '@/lib/workflow/compile';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
+import type { FileDetail } from '@/lib/workflow/run';
+import { RunProgressPanel } from '@/components/workflow/RunProgressPanel';
+import { aggregateNodeStates } from '@/lib/workflow/runStatus';
 import { exportTemplate, importTemplate, migrateLocalStorageToServer } from '@/lib/workflow/templates';
 import {
   fetchTemplates,
@@ -64,6 +67,22 @@ export default function WorkspacePage() {
   const [successFileCount, setSuccessFileCount] = useState<number | undefined>(undefined);
   const [successTotalModels, setSuccessTotalModels] = useState<number | undefined>(undefined);
   const [successFailedModels, setSuccessFailedModels] = useState<FailedModel[]>([]);
+  // PC-907: live per-model progress while a run is in flight. Reset to null
+  // when the run finishes (success or error). The RunProgressPanel only
+  // renders when this is non-null.
+  const [runProgress, setRunProgress] = useState<{
+    fileDetails: FileDetail[];
+    currentExcel: number;       // 1-based
+    totalExcels: number;
+    excelLabel: string;
+  } | null>(null);
+  // PC-303: latest finished-run file_details + session id, kept around so the
+  // right-sidebar Run Details panel and per-node coloring remain readable
+  // after the run completes. Cleared when a new run starts.
+  const [lastRunDetails, setLastRunDetails] = useState<{
+    fileDetails: FileDetail[];
+    sessionId: string;
+  } | null>(null);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string; isExcelError?: boolean }>({
     isOpen: false,
     title: '',
@@ -723,7 +742,10 @@ export default function WorkspacePage() {
     }
 
     // Helper to run a single workflow and wait for completion
-    const runSingleWorkflow = async (excelNodeId: string): Promise<{
+    const runSingleWorkflow = async (
+      excelNodeId: string,
+      progressContext: { currentExcel: number; totalExcels: number; excelLabel: string },
+    ): Promise<{
       sessionId: string;
       zipBlob: Blob;
       folderName: string;
@@ -750,6 +772,24 @@ export default function WorkspacePage() {
 
       while (attempts < maxAttempts) {
         const status = await getWorkflowStatus(sessionId);
+        // PC-907: surface live per-model progress regardless of overall status.
+        // The backend writes file_details into `results` from the moment the
+        // queued seed is emitted, so this can populate before the run finishes.
+        if (status.results?.file_details) {
+          setRunProgress({
+            fileDetails: status.results.file_details,
+            currentExcel: progressContext.currentExcel,
+            totalExcels: progressContext.totalExcels,
+            excelLabel: progressContext.excelLabel,
+          });
+          // PC-303: also stash the latest file_details under the session id
+          // so the right-sidebar Run Details panel can keep rendering after
+          // the run finishes.
+          setLastRunDetails({
+            fileDetails: status.results.file_details,
+            sessionId,
+          });
+        }
         if (status.status === 'completed') {
           // Download the ZIP file
           const downloadUrl = getWorkflowDownloadUrl(sessionId);
@@ -790,11 +830,27 @@ export default function WorkspacePage() {
       throw new Error('Processing timeout');
     };
 
+    // PC-907: derive a friendly per-Excel label for the progress panel header.
+    const excelLabelFor = (excelNodeId: string): string => {
+      const node = nodes.find((n) => n.id === excelNodeId);
+      const file = (node?.data as any)?.file as File | undefined;
+      return file?.name ?? '(unknown.xlsx)';
+    };
+
     setIsRunning(true);
+    setRunProgress(null);
+    // PC-303: a new run replaces the previous run's per-node events. Clear
+    // the stash so the canvas / sidebar don't show stale data while polling
+    // for the first tick of the new run.
+    setLastRunDetails(null);
     try {
       if (selectedExcelIds.length === 1) {
         // Single workflow - use existing behavior
-        const result = await runSingleWorkflow(selectedExcelIds[0]);
+        const result = await runSingleWorkflow(selectedExcelIds[0], {
+          currentExcel: 1,
+          totalExcels: 1,
+          excelLabel: excelLabelFor(selectedExcelIds[0]),
+        });
         const { sessionId, zipBlob, succeededCount, failedCount, failedModels } = result;
         setSessionId(sessionId);
 
@@ -835,9 +891,14 @@ export default function WorkspacePage() {
         let totalFailed = 0;
         const combinedFailedModels: FailedModel[] = [];
 
-        for (const excelNodeId of selectedExcelIds) {
+        for (let i = 0; i < selectedExcelIds.length; i++) {
+          const excelNodeId = selectedExcelIds[i];
           try {
-            const result = await runSingleWorkflow(excelNodeId);
+            const result = await runSingleWorkflow(excelNodeId, {
+              currentExcel: i + 1,
+              totalExcels: selectedExcelIds.length,
+              excelLabel: excelLabelFor(excelNodeId),
+            });
             results.push(result);
 
             // Prefer structured counts; fall back to ZIP inspection (excluding _summary.txt).
@@ -911,6 +972,9 @@ export default function WorkspacePage() {
       });
     } finally {
       setIsRunning(false);
+      // PC-907: hide the live progress panel; SuccessCelebration / ErrorModal
+      // now own the user's attention.
+      setRunProgress(null);
     }
   }, [nodes, edges, selectedExcelNodeIds]);
 
@@ -1175,20 +1239,33 @@ export default function WorkspacePage() {
     return map;
   }, [nodes, edges]);
 
+  // PC-303: aggregated per-node execution state derived from the latest run.
+  // We read from `lastRunDetails` (which persists after the run finishes) so
+  // node coloring stays meaningful while the user inspects results — not just
+  // during the live polling window.
+  const nodeStates = useMemo(
+    () => aggregateNodeStates(lastRunDetails?.fileDetails),
+    [lastRunDetails?.fileDetails],
+  );
+
   const nodesWithWarnings = useMemo(
     () =>
       nodes.map((n) => {
         const w = nodeWarnings.get(n.id);
-        const existing = (n.data as any)?.warnings as string[] | undefined;
-        // Skip rewrap when the warning list is unchanged — avoids needlessly
-        // breaking React Flow's memoized node reconciliation.
-        if (sameWarnings(existing, w)) return n;
+        const nodeState = nodeStates.get(n.id) ?? 'idle';
+        const existingWarnings = (n.data as any)?.warnings as string[] | undefined;
+        const existingState = (n.data as any)?.nodeState as string | undefined;
+        // Skip rewrap when neither warnings nor nodeState have changed —
+        // avoids needlessly breaking React Flow's memoized node reconciliation.
+        const warningsUnchanged = sameWarnings(existingWarnings, w);
+        const stateUnchanged = (existingState ?? 'idle') === nodeState;
+        if (warningsUnchanged && stateUnchanged) return n;
         return {
           ...n,
-          data: { ...n.data, warnings: w ?? [] },
+          data: { ...n.data, warnings: w ?? [], nodeState },
         };
       }),
-    [nodes, nodeWarnings],
+    [nodes, nodeWarnings, nodeStates],
   );
 
   const handleNavigate = useCallback((page: string) => {
@@ -1259,6 +1336,8 @@ export default function WorkspacePage() {
                 selectedNode={selectedNode}
                 nodes={nodes}
                 edges={edges}
+                runFileDetails={lastRunDetails?.fileDetails}
+                runSessionId={lastRunDetails?.sessionId ?? null}
                 onUpdateNode={(nodeId, data) => {
                   setNodes((nds) =>
                     nds.map((node) =>
@@ -1282,6 +1361,14 @@ export default function WorkspacePage() {
               onChange={handleImportFile}
               className="hidden"
             />
+            {runProgress && (
+              <RunProgressPanel
+                fileDetails={runProgress.fileDetails}
+                currentExcel={runProgress.currentExcel}
+                totalExcels={runProgress.totalExcels}
+                excelLabel={runProgress.excelLabel}
+              />
+            )}
             <SuccessCelebration
               isOpen={showSuccess}
               onClose={() => {
