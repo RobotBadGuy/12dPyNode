@@ -1,8 +1,20 @@
 # PyChain Roadmap
 
-Jira-style backlog. IDs use the `PC-` prefix. Priorities: **P0** (breaking / must-fix), **P1** (high value), **P2** (nice to have).
+Jira-style backlog. IDs use the `PC-` prefix. Tasks are grouped by Epic; each task lists a one-line description, rationale, and the metadata below.
 
-Recommendations are grouped by Epic. Each task lists a one-line description and a short rationale.
+**Priority** — `P0` (breaking / must-fix), `P1` (high value), `P2` (nice to have).
+
+**Size** (rough effort estimate):
+- `XS` — under 1 hour
+- `S` — 1–3 hours
+- `M` — half a day to a full day
+- `L` — 2–3 days
+- `XL` — 1+ week
+
+**Mode** — recommended Claude Code mode for executing the task:
+- `regular` — direct prompting, well-scoped change, no special workflow needed
+- `feature-dev` — `/feature-dev` skill, for cross-stack features that need codebase understanding and architectural framing
+- `superpowers` — superpowers skills (brainstorming → plan → TDD), for high-stakes or design-heavy work where mistakes are expensive
 
 ---
 
@@ -55,20 +67,19 @@ The current compiler handles the happy path (one `foreach` → one `chainFileOut
 - ✅ **PC-301** `[P1]` — Execute all branches reachable from foreach.
   *Rationale:* `build_command_chain` in `workflow_runner.py` previously used a first-path DFS that silently dropped parallel branches downstream of `foreachModel`. Replaced with forward-reachability BFS over flow edges from the foreach node, then deterministic Kahn's topological sort over the induced subgraph (id-sorted roots + adjacency for stable output across dict-iteration / edge insertion order). Cycles log a warning and emit the well-ordered prefix; disconnected subgraphs are correctly excluded; a foreach with no reachable `chainFileOutput` is now a supported shape. Two private helpers (`_collect_flow_reachable`, `_kahn_sort`) are reused by the no-foreach fallback path. Tested in `backend/tests/test_build_command_chain.py::TestParallelBranches` (parallel branches, diamond merge, branch-without-output, disconnected subgraph, cycle, determinism).
 
-- **PC-302** `[P1]` — Per-model error isolation and partial results.
-  *Rationale:* `run_workflow` iterates models in a bare loop. One bad model raises out of the whole batch. Wrap each model in try/except, collect `{model, status, error}` rows, and return partial ZIPs with a summary report.
+- **PC-302** `[P1]` `[Size: M]` `[Mode: regular]` — Per-model error isolation and partial results.
+  *Rationale:* `run_workflow` iterates models in a bare loop. One bad model raises out of the whole batch. Wrap each model in try/except, collect `{model, status, error}` rows, and return partial ZIPs with a summary report. *(In progress — see recent PC-302 commits.)*
 
-- **PC-303** `[P1]` — Surface per-node execution logs to the UI.
+- **PC-303** `[P1]` `[Size: L]` `[Mode: feature-dev]` — Surface per-node execution logs to the UI.
   *Rationale:* Right now users see "processing" → "completed" or "error". No way to tell which node failed or see the XML that was generated. Stream per-node events via SSE/WebSocket and render them in the canvas (node border colour + log panel).
 
-- **PC-304** `[P2]` — Chain XML preview before download.
+- **PC-304** `[P2]` `[Size: S]` `[Mode: regular]` — Chain XML preview before download.
   *Rationale:* Add `GET /api/workflow/preview/{session_id}/{model_name}` that returns the generated chain as text. Lets users verify output without opening 12d.
 
 - ✅ **PC-305** `[P2]` — Edge type validation at compile time.
   *Rationale:* `WorkspaceCanvas.tsx` now passes `isValidConnection={validateConnection}` to React Flow. The validator (in `frontend/lib/workflow/edgeRules.ts`) only allows `flow→flow` and `value→param` connections; legacy unprefixed handles still pass for backward compatibility. Tested in `frontend/lib/workflow/__tests__/edgeRules.test.ts`.
 
-- **PC-306** `[P2]` — Richer control-flow nodes.
-  *Rationale:* Currently only `ifFunctionExists`. Add generic `If`, `Switch`, and `While` nodes so users can branch on variable values without writing a new command module.
+> ~~PC-306 (richer If/Switch/While control-flow nodes)~~ — **dropped**. No concrete use case in the current workflow library, and the existing graph + per-model loop already covers the real-world cases. Revisit only if a workflow actually needs it.
 
 ---
 
@@ -76,14 +87,12 @@ The current compiler handles the happy path (one `foreach` → one `chainFileOut
 
 `resolve_variable` already supports `{token}` templating and per-run / per-model scopes. Extend it rather than rewrite.
 
-- **PC-401** `[P1]` — Typed variables (string / number / boolean / path / list).
-  *Rationale:* Everything is coerced to `str` today. A boolean `continueOnFailure` typed as string "True" vs "true" has caused real issues in `clean_model_command`. Add a `type` field to `VariableBinding` and coerce at resolution.
+- **PC-401** `[P1]` `[Size: M]` `[Mode: superpowers]` — Typed variables (string / number / boolean / path / list).
+  *Rationale:* Everything is coerced to `str` today. A boolean `continueOnFailure` typed as string "True" vs "true" has caused real issues in `clean_model_command`. Add a `type` field to `VariableBinding` and coerce at resolution. Worth doing TDD-first because a regression here corrupts every chain file silently.
 
-- **PC-402** `[P2]` — Expression evaluator for computed variables.
-  *Rationale:* `modified_variable = model_name.replace('-', ' ')` is hardcoded. Let users define transforms like `{model_name | upper | replace('-', '_')}` via a minimal expression language (avoid full `eval`).
+> ~~PC-402 (expression evaluator / pipe transforms)~~ — **dropped**. The current `{token}` substitution + `modified_variable` covers the real cases; a mini-language is a maintenance liability for one user's edge case. Revisit if multiple users hit the same wall.
 
-- **PC-403** `[P2]` — Variable scope per-foreach (loop-local).
-  *Rationale:* Only `per-run` and `per-model` exist. If the user adds a second `foreachModel` with different semantics, scopes collide. Add loop-local scope keyed on the foreach node ID.
+> ~~PC-403 (loop-local variable scope)~~ — **dropped**. Speculative — there's no second-foreach use case driving it. The existing per-run / per-model split is enough.
 
 ---
 
@@ -103,20 +112,20 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 - ✅ **PC-504** `[P1]` — GitHub Actions pipeline.
   *Rationale:* Run `pytest`, `npm run lint`, `tsc --noEmit`, and `npm run build` on PR. Block merge on failure. Today PC-105's build error would have been caught months ago.
 
-- **PC-505** `[P2]` — Playwright end-to-end test.
+- **PC-505** `[P2]` `[Size: M]` `[Mode: regular]` — Playwright end-to-end test.
   *Rationale:* One golden-path test: upload Excel → drop nodes → run → download → assert ZIP contents. Catches the integration bugs unit tests miss.
 
 ---
 
 ## EPIC-06 — Developer Experience
 
-- **PC-601** `[P2]` — Dockerfile + docker-compose for local dev.
+- **PC-601** `[P2]` `[Size: S]` `[Mode: regular]` — Dockerfile + docker-compose for local dev.
   *Rationale:* Windows venv + Node setup is brittle (see README using wrong path `Python Scripts` instead of `Python Projects`). One `docker compose up` removes the onboarding friction.
 
 - ✅ **PC-602** `[P2]` — Fix README paths and remove stale instructions.
   *Rationale:* Replaced "Python Scripts" with the correct "Python Projects" path, removed the Legacy API section (those endpoints were killed in PC-101), corrected the templates-storage description to match PC-202, and updated the cleanup-on-startup wording to match PC-204.
 
-- **PC-603** `[P2]` — Contribution guide and node-authoring template.
+- **PC-603** `[P2]` `[Size: S]` `[Mode: regular]` — Contribution guide and node-authoring template.
   *Rationale:* `frontend/adding_node_params.md` is excellent but hidden. Move to `docs/`, link from README, and add a cookiecutter-style script that scaffolds the 5 files needed for a new node.
 
 - ✅ **PC-604** `[P2]` — Consolidate `start.sh` and `start.bat`, or delete both.
@@ -135,11 +144,11 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 - ✅ **PC-703** `[P2]` — Validation surface in the canvas.
   *Rationale:* New `validateNode(node, allNodes, allEdges)` in `frontend/lib/workflow/compile.ts` returns per-node warnings for excelModels-without-file, chainFileOutput-missing-fields, and any param-handle whose data field is empty AND has no incoming `param:` edge (generic check using `nodeSchemas`). `app/page.tsx` memoizes the warning map and injects `data.warnings` into each node before rendering. `BaseNode.tsx` shows an amber `AlertTriangle` badge in the top-left (so it doesn't collide with success/error in the top-right) with the warning list as a native tooltip. Tested in `frontend/lib/workflow/__tests__/validateNode.test.ts`.
 
-- **PC-704** `[P2]` — Excel column picker with preview.
-  *Rationale:* `selectedColumnIndex` is hidden in the `excelModels` node data. Render the first N rows of the parsed sheet in a table and let the user click a column header.
+- **PC-704** `[P1]` `[Size: M]` `[Mode: feature-dev]` — Excel column picker with preview.
+  *Rationale:* `selectedColumnIndex` is hidden in the `excelModels` node data. Render the first N rows of the parsed sheet in a table and let the user click a column header. *Bumped to P1 — this is currently the most confusing step for new users.*
 
-- **PC-705** `[P2]` — Dark/light theme toggle.
-  *Rationale:* Currently dark-only (hardcoded `text-gray-300` etc.). Tailwind already supports this via `dark:` prefix — refactor tokens.
+- **PC-705** `[P2]` `[Size: L]` `[Mode: feature-dev]` — Dark/light theme toggle.
+  *Rationale:* Currently dark-only (hardcoded `text-gray-300` etc.). Tailwind already supports this via `dark:` prefix — refactor tokens. Touches every component, hence Large.
 
 ---
 
@@ -147,29 +156,94 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 
 Move from "developer's laptop" to "team tool." Do this after EPIC-02 lands.
 
-- **PC-801** `[P1]` — Authentication via Supabase Auth.
-  *Rationale:* No auth today. Use Supabase Auth (GitHub/Google providers) so sessions/templates can be scoped to user IDs by the same backing store. Once user IDs are attached to rows, enable RLS on every `pynode_*` table and switch the backend from the service role key to user-scoped JWTs forwarded from the frontend.
+- **PC-801** `[P1]` `[Size: XL]` `[Mode: superpowers]` — Authentication via Supabase Auth.
+  *Rationale:* No auth today. Use Supabase Auth (GitHub/Google providers) so sessions/templates can be scoped to user IDs by the same backing store. Once user IDs are attached to rows, enable RLS on every `pynode_*` table and switch the backend from the service role key to user-scoped JWTs forwarded from the frontend. Only do this if the app graduates from single-user.
 
-- **PC-802** `[P1]` — File size and rate limits.
+- **PC-802** `[P1]` `[Size: S]` `[Mode: regular]` — File size and rate limits.
   *Rationale:* `/api/workflow/run` accepts arbitrarily large Excel uploads. Add FastAPI middleware for body-size limits and per-IP rate limiting.
 
-- **PC-803** `[P2]` — Replace BackgroundTasks with a real job queue.
-  *Rationale:* `fastapi.BackgroundTasks` runs in-process; a crashed worker loses the job. Move to RQ or Celery with Redis so retries and observability are first-class.
+> ~~PC-803 (RQ/Celery + Redis job queue)~~ — **dropped**. In-process `BackgroundTasks` is appropriate for the current scale (small team, short-running jobs). The persistence layer in PC-201 already protects against orphaned sessions on restart. Revisit only if scale demands it.
 
-- **PC-804** `[P2]` — Audit logging.
-  *Rationale:* Track who ran what workflow, how many models, which templates. Non-negotiable in a regulated engineering shop.
+> ~~PC-804 (audit logging)~~ — **dropped**. Premature for current usage. The session table already records who ran what; revisit once PC-801 attaches real user IDs and there's a regulatory driver.
 
 - ✅ **PC-805** `[P2]` — Tighten CORS + CSP headers.
   *Rationale:* Replaced wildcard `allow_methods` and `allow_headers` with explicit allowlists (`GET`/`POST`/`PUT`/`DELETE`/`OPTIONS` and `Content-Type`/`Accept`). `allow_origins` and `allow_credentials` were already correct. Will be revisited when PC-801 introduces the `Authorization` header.
 
 ---
 
+## EPIC-09 — Canvas UX & Delight
+
+These are the user-facing polish items that turn the tool from "works" into "enjoyable to use." Most are small, parallelisable wins.
+
+- **PC-901** `[P1]` `[Size: S]` `[Mode: regular]` — Toast notification system (Sonner / shadcn).
+  *Rationale:* Errors today either log silently or appear in console. Replace with a toast system that surfaces successes ("Workflow saved"), warnings ("3 models had errors — see summary"), and failures with actionable buttons ("Retry", "View logs"). Foundation for every subsequent UX improvement.
+
+- **PC-902** `[P1]` `[Size: S]` `[Mode: regular]` — Mini-map and auto-layout button.
+  *Rationale:* React Flow ships a `MiniMap` component out of the box — instant orientation aid for large workflows. Add an "Auto-layout" toolbar button using `dagre` or `elkjs` that re-flows messy graphs into a clean DAG. Both are cheap, both punch above their weight.
+
+- **PC-903** `[P1]` `[Size: S]` `[Mode: regular]` — Right-click context menu on nodes.
+  *Rationale:* Industry-standard interaction. Items: Duplicate, Copy, Delete, Disable, "Show generated XML for this node" (ties into PC-304). React Flow's `onNodeContextMenu` callback makes this straightforward.
+
+- **PC-904** `[P2]` `[Size: S]` `[Mode: regular]` — Drag-and-drop Excel drop zone.
+  *Rationale:* Currently uploads via file picker. Add a styled drop zone (with hover state and file-type validation) over the canvas/sidebar. Uses native HTML5 drag-and-drop — no library needed.
+
+- **PC-905** `[P1]` `[Size: M]` `[Mode: superpowers]` — Auto-save and draft recovery.
+  *Rationale:* Browser crashes / accidental refreshes wipe in-progress work. Persist `{nodes, edges, variables}` to `localStorage` on a debounce; on load, if a draft exists newer than the last saved template, prompt to restore. State-management is subtle (don't clobber a deliberate "new workflow") so worth a brainstorm + tests.
+
+- **PC-906** `[P1]` `[Size: L]` `[Mode: feature-dev]` — Workflow run history view.
+  *Rationale:* Backend already persists sessions to `pynode_workflow_sessions` (PC-201). Add a "Runs" page or sidebar tab listing past runs with `{timestamp, template name, model count, status, duration}`, filterable, with a "Download ZIP again" action. Users currently have no way to recover a download they closed.
+
+- **PC-907** `[P1]` `[Size: M]` `[Mode: feature-dev]` — Per-model progress indicator during run.
+  *Rationale:* Once PC-302 lands (per-model status), the UI should show "7 / 24 models complete" with a list of model names + per-row icons (✓ / ✗ / spinner). Today the user just sees a generic progress bar. Pairs naturally with PC-303's log streaming.
+
+- **PC-908** `[P2]` `[Size: S]` `[Mode: regular]` — Sticky-note / annotation nodes.
+  *Rationale:* Yellow note nodes that don't execute but document the workflow ("This branch only runs for high-detail models"). Big QoL for complex graphs. Implement as a non-flow node type that the compiler ignores.
+
+- **PC-909** `[P2]` `[Size: M]` `[Mode: regular]` — Onboarding tour for first-time users.
+  *Rationale:* Use `driver.js` or `shepherd.js` to walk new users through: upload Excel → drop a node → connect handles → run. Stored "tour completed" flag in localStorage. Removes the "what do I even do here" first impression.
+
+- **PC-910** `[P2]` `[Size: XS]` `[Mode: regular]` — Export workflow canvas as PNG/SVG.
+  *Rationale:* React Flow has an `toPng` helper via `html-to-image`. One-click export for documentation, screenshots, and Slack-shareable workflow diagrams.
+
+- **PC-911** `[P1]` `[Size: S]` `[Mode: regular]` — Actionable error messages.
+  *Rationale:* Sweep through error sites and rewrite each to (a) name the offending node by label, (b) say what's wrong in plain English, (c) suggest a fix or link to the relevant docs. E.g. "Excel file has no model column" → "Open the `excelModels` node and click 'Pick column' (PC-704)." Pairs with PC-901's toast surface.
+
+---
+
 ## Suggested Order of Attack
 
-1. **EPIC-01** (bug fixes) — cheap, unblocks everything else.
-2. **PC-504** (CI) — so every subsequent PR is protected.
-3. **EPIC-05** (tests) — paid for by the CI investment.
-4. **EPIC-02** (persistence) — the biggest unlock for users.
-5. **EPIC-03** (execution engine) — once tests exist, refactoring is safe.
-6. **EPIC-04 / 07** (variables, UX) — quality-of-life improvements.
-7. **EPIC-08** (multi-user) — only if the product graduates from single-user.
+The plan: ship the in-flight EPIC-03 work, then front-load high-impact UX polish (the user-visible wins are cheap and compound), then push deeper engineering work once the surface is pleasant to use. Production hardening sits at the end behind a "do we go multi-user?" gate.
+
+### Phase 1 — Finish the in-flight execution engine work
+1. **PC-302** — Per-model error isolation. Already in progress; finish and merge.
+2. **PC-907** — Per-model progress indicator. Natural follow-on once PC-302's status data exists.
+3. **PC-303** — Per-node execution logs over SSE. Closes the "what just happened" loop with PC-907.
+
+### Phase 2 — Cheap, high-impact UX wins (ship these in any order)
+4. **PC-901** — Toast notification system. Foundation for everything below.
+5. **PC-911** — Actionable error messages. Pairs with PC-901.
+6. **PC-902** — Mini-map + auto-layout. ~1 afternoon, instant credibility win.
+7. **PC-903** — Right-click context menu.
+8. **PC-910** — Export canvas as PNG. Trivial; useful.
+9. **PC-704** — Excel column picker with preview. Removes the single most confusing step in the current flow.
+10. **PC-904** — Drag-and-drop Excel drop zone.
+
+### Phase 3 — Bigger UX features that need a bit more care
+11. **PC-905** — Auto-save / draft recovery.
+12. **PC-906** — Workflow run history view.
+13. **PC-908** — Sticky-note nodes.
+14. **PC-304** — Chain XML preview before download. Synergises with PC-906 (re-preview an old run).
+15. **PC-909** — Onboarding tour. Do this after the canvas itself is polished — don't tour an unfinished UI.
+
+### Phase 4 — Engine quality and safety
+16. **PC-401** — Typed variables. Closes the "True" vs "true" foot-gun class.
+17. **PC-505** — Playwright golden-path E2E. Locks in everything above.
+18. **PC-705** — Dark/light theme toggle. Save for last; touches everything.
+
+### Phase 5 — Devex / docs (low urgency)
+19. **PC-603** — Contribution guide + node scaffold script.
+20. **PC-601** — Dockerfile + compose. Helpful for onboarding new contributors.
+
+### Phase 6 — Production hardening (only if going multi-user)
+21. **PC-802** — File size and rate limits.
+22. **PC-801** — Supabase Auth + RLS. The big one — do not start until you've decided to make this a team tool.

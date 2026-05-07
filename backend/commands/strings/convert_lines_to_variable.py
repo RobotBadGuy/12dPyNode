@@ -47,7 +47,7 @@ def convert_lines_to_variable_command(model_name: str, continue_on_failure: bool
         '                    <name>Model</name>',
         '                    <input_box>',
         '                      <name>Data to change - Model Name</name>',
-        f'                      <value>{prefix}/*</value>',
+        f'                      <value>{model_name}</value>',
         '                    </input_box>',
         '                    <input_box>',
         '                      <name>Data to change - Model ID Minimum</name>',

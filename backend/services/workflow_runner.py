@@ -422,9 +422,10 @@ def execute_node(
         xml_content.extend(volume_tin_to_tin_command(original_tin_name, new_tin_name, output_location, filename, continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'convertLinesToVariable':
+        resolved_model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
         continue_on_failure = data.get('continueOnFailure', True)
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
-        xml_content.extend(convert_lines_to_variable_command(model_name, continue_on_failure, comments))
+        xml_content.extend(convert_lines_to_variable_command(resolved_model_name, continue_on_failure, comments))
     
     elif node_type == 'createContourSmoothLabel':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
