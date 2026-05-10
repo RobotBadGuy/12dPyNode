@@ -175,8 +175,8 @@ Move from "developer's laptop" to "team tool." Do this after EPIC-02 lands.
 
 These are the user-facing polish items that turn the tool from "works" into "enjoyable to use." Most are small, parallelisable wins.
 
-- **PC-901** `[P1]` `[Size: S]` `[Mode: regular]` — Toast notification system (Sonner / shadcn).
-  *Rationale:* Errors today either log silently or appear in console. Replace with a toast system that surfaces successes ("Workflow saved"), warnings ("3 models had errors — see summary"), and failures with actionable buttons ("Retry", "View logs"). Foundation for every subsequent UX improvement.
+- ✅ **PC-901** `[P1]` — Toast notification system (Sonner).
+  *Rationale:* `frontend/lib/notify.ts` wraps Sonner with a `notify.{success,error,warning,info}` API; `<Toaster>` is mounted once in `app/layout.tsx` (dark theme, bottom-right, rich colors, close button). Migrated the lone `alert()` and two silent `console.warn` sites in `app/page.tsx` (template load with filtered edges, template import with filtered edges, template import parse error) plus four non-fatal `ErrorModal` template-error sites (refresh / mount fetch / save / delete failures) to `notify.error`/`notify.warning`. The Excel-error and fatal run-time `ErrorModal` cases (`:735`, `:922`, `:967`) intentionally remain modal — they are blocking and warrant full attention. `TemplateNotification` and `SuccessCelebration` are unchanged. Wrapper exposes an `action` slot on `error` for PC-911 to use. Tested in `frontend/lib/__tests__/notify.test.ts`.
 
 - **PC-902** `[P1]` `[Size: S]` `[Mode: regular]` — Mini-map and auto-layout button.
   *Rationale:* React Flow ships a `MiniMap` component out of the box — instant orientation aid for large workflows. Add an "Auto-layout" toolbar button using `dagre` or `elkjs` that re-flows messy graphs into a clean DAG. Both are cheap, both punch above their weight.
