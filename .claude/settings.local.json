@@ -68,7 +68,18 @@
       "Bash(findstr \":3000 :3001 :8001\")",
       "Bash(python -m pytest tests/test_build_command_chain.py tests/test_resolve_variable.py -v --tb=short)",
       "Bash(python -m pytest tests/test_run_workflow.py tests/test_run_workflow_job.py -v --tb=short)",
-      "Bash(python -m pytest tests/test_per_node_events.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_per_node_events.py -v --tb=short)",
+      "Bash(unset SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY)",
+      "Bash(SUPABASE_URL= SUPABASE_SERVICE_ROLE_KEY= python -m pytest tests/test_run_workflow.py tests/test_run_workflow_job.py -v --tb=line)",
+      "Bash(npm install *)",
+      "Bash(npm ls *)",
+      "Bash(npm list *)",
+      "Bash(Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue)",
+      "Bash(cat vitest.config.ts)",
+      "Bash(cat vitest.config.js)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(node -e \"const pkg = require\\('./node_modules/sonner/package.json'\\); console.log\\('sonner version:', pkg.version\\); console.log\\('peerDeps:', JSON.stringify\\(pkg.peerDependencies\\)\\)\")",
+      "Bash(node -e ' *)"
     ]
   }
 }
