@@ -984,10 +984,8 @@ export default function WorkspacePage() {
       const list = await fetchTemplates();
       setTemplates(list);
     } catch (err) {
-      setErrorModal({
-        isOpen: true,
-        title: 'Could Not Load Templates',
-        message: err instanceof Error ? err.message : 'Unknown error',
+      notify.error("Couldn't load templates", {
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     }
   }, []);
@@ -1013,10 +1011,8 @@ export default function WorkspacePage() {
         }
       } catch (err) {
         if (cancelled) return;
-        setErrorModal({
-          isOpen: true,
-          title: 'Could Not Load Templates',
-          message: err instanceof Error ? err.message : 'Unknown error',
+        notify.error("Couldn't load templates", {
+          description: err instanceof Error ? err.message : 'Unknown error',
         });
       } finally {
         if (!cancelled) setTemplatesLoading(false);
@@ -1082,10 +1078,8 @@ export default function WorkspacePage() {
           edgeCount: edges.length,
         });
       } catch (err) {
-        setErrorModal({
-          isOpen: true,
-          title: 'Could Not Save Template',
-          message: err instanceof Error ? err.message : 'Unknown error',
+        notify.error("Couldn't save template", {
+          description: err instanceof Error ? err.message : 'Unknown error',
         });
       }
     },
@@ -1149,10 +1143,8 @@ export default function WorkspacePage() {
           current?.id === template.id ? null : current
         );
       } catch (err) {
-        setErrorModal({
-          isOpen: true,
-          title: 'Could Not Delete Template',
-          message: err instanceof Error ? err.message : 'Unknown error',
+        notify.error("Couldn't delete template", {
+          description: err instanceof Error ? err.message : 'Unknown error',
         });
       }
     },
