@@ -41,6 +41,7 @@ import {
 import type { ReactFlowInstance, Viewport } from '@xyflow/react';
 import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModal';
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
+import { notify } from '@/lib/notify';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
@@ -1099,8 +1100,13 @@ export default function WorkspacePage() {
     (template: WorkflowTemplate) => {
       const validCount = applySnapshot(template);
       if (validCount < template.edges.length) {
+        const dropped = template.edges.length - validCount;
         console.warn(
-          `Filtered out ${template.edges.length - validCount} invalid edges when loading template "${template.name}"`
+          `Filtered out ${dropped} invalid edges when loading template "${template.name}"`
+        );
+        notify.warning(
+          `Filtered ${dropped} invalid edge${dropped === 1 ? '' : 's'} from "${template.name}"`,
+          { description: 'Edges referencing missing nodes were skipped.' },
         );
       }
       setLoadedTemplate({ id: template.id, name: template.name });
@@ -1196,8 +1202,13 @@ export default function WorkspacePage() {
             viewport: template.viewport,
           });
           if (validCount < importedEdges.length) {
+            const dropped = importedEdges.length - validCount;
             console.warn(
-              `Filtered out ${importedEdges.length - validCount} invalid edges when importing template`
+              `Filtered out ${dropped} invalid edges when importing template`
+            );
+            notify.warning(
+              `Filtered ${dropped} invalid edge${dropped === 1 ? '' : 's'} from imported template`,
+              { description: 'Edges referencing missing nodes were skipped.' },
             );
           }
           // The imported file isn't tied to any saved template — saving from
@@ -1210,10 +1221,9 @@ export default function WorkspacePage() {
             edgeCount: validCount,
           });
         } catch (err) {
-          alert(
-            'Error importing template: ' +
-            (err instanceof Error ? err.message : 'Unknown error')
-          );
+          notify.error("Couldn't import template", {
+            description: err instanceof Error ? err.message : 'Unknown error',
+          });
         }
       };
       reader.readAsText(file);
