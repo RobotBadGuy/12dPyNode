@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Poppins } from 'next/font/google';
+import { Toaster } from 'sonner';
 import './globals.css';
 
 const inter = Inter({
@@ -53,7 +54,15 @@ export default function RootLayout({
           crossOrigin='anonymous'
         />
       </head>
-      <body className={`${inter.className} antialiased`}>{children}</body>
+      <body className={`${inter.className} antialiased`}>
+        {children}
+        <Toaster
+          theme="dark"
+          richColors
+          position="bottom-right"
+          closeButton
+        />
+      </body>
     </html>
   );
 }
