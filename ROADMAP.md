@@ -205,8 +205,8 @@ These are the user-facing polish items that turn the tool from "works" into "enj
 - **PC-910** `[P2]` `[Size: XS]` `[Mode: regular]` — Export workflow canvas as PNG/SVG.
   *Rationale:* React Flow has an `toPng` helper via `html-to-image`. One-click export for documentation, screenshots, and Slack-shareable workflow diagrams.
 
-- **PC-911** `[P1]` `[Size: S]` `[Mode: regular]` — Actionable error messages.
-  *Rationale:* Sweep through error sites and rewrite each to (a) name the offending node by label, (b) say what's wrong in plain English, (c) suggest a fix or link to the relevant docs. E.g. "Excel file has no model column" → "Open the `excelModels` node and click 'Pick column' (PC-704)." Pairs with PC-901's toast surface.
+- ✅ **PC-911** — Actionable error messages.
+  *Rationale:* `frontend/lib/workflow/errors.ts` introduces the `ActionableError` vocabulary (`title` / `message` / `fix` / `focusNodeId`) and a `nodeLabel(node)` helper that resolves the user-facing name in priority order (`data.label` → `PALETTE_ITEMS` lookup → raw type). `validateWorkflow` and `compileWorkflow` in `compile.ts` now return that shape; every rewritten error names the offending node by label and suggests a concrete next step. `handleRunChain` pre-validates every selected Excel id before entering the run loop, so precondition failures fire a `notify.error` toast with a `Show me` action that scrolls the canvas to the relevant node via `focusNode.ts`. Genuine runtime failures (backend errors after a real run attempt) keep the existing `ErrorModal` but now use node labels and forward a `focusNodeId` so the modal's button is also wired to `focusNode` (the old `[data-node-type=...]` selector was dead code). Five template `notify.error` sites (load / mount-fetch / save / delete / import) gained retry actions or sharpened descriptions. Tested in `frontend/lib/workflow/__tests__/errors.test.ts`, `focusNode.test.ts`, and the rewritten `compile.test.ts`. Phase 6 in the order-of-attack (Suggested Order, Phase 2).
 
 ---
 
@@ -221,7 +221,7 @@ The plan: ship the in-flight EPIC-03 work, then front-load high-impact UX polish
 
 ### Phase 2 — Cheap, high-impact UX wins (ship these in any order)
 4. ✅ **PC-901** — Toast notification system. Foundation for everything below.
-5. **PC-911** — Actionable error messages. Pairs with PC-901.
+5. ✅ **PC-911** — Actionable error messages. Pairs with PC-901.
 6. **PC-902** — Mini-map + auto-layout. ~1 afternoon, instant credibility win.
 7. **PC-903** — Right-click context menu.
 8. **PC-910** — Export canvas as PNG. Trivial; useful.
