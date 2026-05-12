@@ -1043,8 +1043,12 @@ export default function WorkspacePage() {
       const list = await fetchTemplates();
       setTemplates(list);
     } catch (err) {
+      // PC-911: a fetch failure here is almost always backend-down or
+      // network. Surface the underlying error and give the user a one-click
+      // way to try again without leaving the canvas.
       notify.error("Couldn't load templates", {
-        description: err instanceof Error ? err.message : 'Unknown error',
+        description: err instanceof Error ? err.message : 'The templates service may be offline.',
+        action: { label: 'Retry', onClick: () => { void refreshTemplates(); } },
       });
     }
   }, []);
@@ -1070,8 +1074,13 @@ export default function WorkspacePage() {
         }
       } catch (err) {
         if (cancelled) return;
+        // PC-911: same shape as refreshTemplates but the retry button calls
+        // refreshTemplates directly — by mount-fail time the migration
+        // step has already either succeeded or been bypassed, so a plain
+        // re-fetch is the right retry.
         notify.error("Couldn't load templates", {
-          description: err instanceof Error ? err.message : 'Unknown error',
+          description: err instanceof Error ? err.message : 'The templates service may be offline.',
+          action: { label: 'Retry', onClick: () => { void refreshTemplates(); } },
         });
       } finally {
         if (!cancelled) setTemplatesLoading(false);
@@ -1137,8 +1146,15 @@ export default function WorkspacePage() {
           edgeCount: edges.length,
         });
       } catch (err) {
+        // PC-911: capture the exact args so 'Retry' re-runs the same save
+        // without re-opening the Save modal.
+        const retryOptions = options;
         notify.error("Couldn't save template", {
           description: err instanceof Error ? err.message : 'Unknown error',
+          action: {
+            label: 'Retry',
+            onClick: () => { void handleSaveTemplateConfirm(name, retryOptions); },
+          },
         });
       }
     },
@@ -1204,6 +1220,10 @@ export default function WorkspacePage() {
       } catch (err) {
         notify.error("Couldn't delete template", {
           description: err instanceof Error ? err.message : 'Unknown error',
+          action: {
+            label: 'Retry',
+            onClick: () => { void handleDeleteTemplate(template); },
+          },
         });
       }
     },
@@ -1272,8 +1292,13 @@ export default function WorkspacePage() {
             edgeCount: validCount,
           });
         } catch (err) {
+          // PC-911: the only failure path here is parse / shape validation
+          // (importTemplate throws on bad JSON; applySnapshot is sync and
+          // doesn't throw). So the description is always "not a valid
+          // export" — the user's underlying error message is technical
+          // (e.g. "Unexpected token <") and doesn't help them.
           notify.error("Couldn't import template", {
-            description: err instanceof Error ? err.message : 'Unknown error',
+            description: "The file isn't a valid PyChain template export.",
           });
         }
       };
