@@ -27,6 +27,8 @@ import { LandingPage } from '@/components/LandingPage';
 import { ProfilePage } from '@/components/ProfilePage';
 import { WorkflowNode, WorkflowEdge, WorkflowTemplate, WorkflowTemplateVersionSnapshot, ExcelModelsNodeData } from '@/lib/workflow/types';
 import { compileWorkflow, validateWorkflow, validateNode } from '@/lib/workflow/compile';
+import { ActionableError, nodeLabel } from '@/lib/workflow/errors';
+import { focusNode } from '@/lib/workflow/focusNode';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
 import type { FileDetail } from '@/lib/workflow/run';
 import { RunProgressPanel } from '@/components/workflow/RunProgressPanel';
@@ -84,11 +86,16 @@ export default function WorkspacePage() {
     fileDetails: FileDetail[];
     sessionId: string;
   } | null>(null);
-  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; title: string; message: string; isExcelError?: boolean }>({
+  const [errorModal, setErrorModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    isExcelError?: boolean;
+    focusNodeId?: string;
+  }>({
     isOpen: false,
     title: '',
     message: '',
-    isExcelError: false,
   });
   const [templateNotification, setTemplateNotification] = useState<{
     isOpen: boolean;
@@ -720,7 +727,6 @@ export default function WorkspacePage() {
   );
 
   const handleRunChain = useCallback(async () => {
-    // Get selected ExcelModels nodes (or default to first one if none selected)
     const excelNodes = nodes.filter((n): n is WorkflowNode & { data: ExcelModelsNodeData } =>
       n.type === 'excelModels' && 'file' in n.data && !!(n.data as any).file
     );
@@ -733,13 +739,50 @@ export default function WorkspacePage() {
         : [];
 
     if (selectedExcelIds.length === 0) {
+      // Stays modal — first thing the user sees, and the Quick Fix box is
+      // the right teaching surface for the very-first-run case. We give it
+      // a focusNodeId pointing at the first excelModels node (if any) so the
+      // existing "Find Upload" button actually works now.
+      const firstExcelNode = nodes.find((n) => n.type === 'excelModels');
       setErrorModal({
         isOpen: true,
         title: 'No Excel Models Selected',
         message: 'Please select at least one Excel Models node with a file loaded.',
         isExcelError: true,
+        focusNodeId: firstExcelNode?.id,
       });
       return;
+    }
+
+    // PC-911: pre-validate every selected Excel id BEFORE entering the run
+    // loop. A precondition failure (missing node, missing edge, missing
+    // file) is not a runtime failure — it's something the user can fix in
+    // one click, so it gets a toast with a 'Show me' action, not the
+    // blocking modal.
+    const fireActionableErrorToast = (err: ActionableError) => {
+      const description = [err.message, err.fix].filter(Boolean).join(' — ');
+      notify.error(err.title, {
+        description,
+        action: err.focusNodeId
+          ? {
+              label: 'Show me',
+              onClick: () => focusNode(err.focusNodeId!),
+            }
+          : undefined,
+      });
+    };
+
+    for (const excelNodeId of selectedExcelIds) {
+      const validation = validateWorkflow(nodes, edges, excelNodeId);
+      if (!validation.valid) {
+        fireActionableErrorToast(validation.errors[0]);
+        return;
+      }
+      const compiled = compileWorkflow(nodes, edges, excelNodeId);
+      if ('error' in compiled) {
+        fireActionableErrorToast(compiled.error);
+        return;
+      }
     }
 
     // Helper to run a single workflow and wait for completion
@@ -754,14 +797,19 @@ export default function WorkspacePage() {
       failedCount: number;
       failedModels: FailedModel[];
     }> => {
+      // PC-911: outer handleRunChain pre-validates, so reaching this path
+      // with !valid means state diverged between then and now. Format the
+      // new ActionableError shape for the defensive error.
       const validation = validateWorkflow(nodes, edges, excelNodeId);
       if (!validation.valid) {
-        throw new Error(`Validation failed for ${excelNodeId}: ${validation.errors.join(', ')}`);
+        throw new Error(
+          `Validation failed: ${validation.errors.map((e) => e.title).join(', ')}`,
+        );
       }
 
       const compiled = compileWorkflow(nodes, edges, excelNodeId);
       if ('error' in compiled) {
-        throw new Error(`Compilation failed for ${excelNodeId}: ${compiled.error}`);
+        throw new Error(`Compilation failed: ${compiled.error.title}`);
       }
 
       const response = await runWorkflow(compiled);
@@ -920,11 +968,14 @@ export default function WorkspacePage() {
               });
             }
           } catch (err) {
+            const failingNode = nodes.find((n) => n.id === excelNodeId);
+            const label = failingNode ? nodeLabel(failingNode) : '(unknown Excel node)';
             setErrorModal({
               isOpen: true,
               title: 'Workflow Failed',
-              message: `Error running workflow for ${excelNodeId}: ${err instanceof Error ? err.message : 'Unknown error'}`,
+              message: `Error running workflow for '${label}': ${err instanceof Error ? err.message : 'Unknown error'}`,
               isExcelError: false,
+              focusNodeId: excelNodeId,
             });
             setIsRunning(false);
             return;
@@ -965,11 +1016,19 @@ export default function WorkspacePage() {
         URL.revokeObjectURL(url);
       }
     } catch (err) {
+      // PC-911: only runtime failures from the backend reach here now.
+      // Precondition errors are surfaced as toasts by the pre-validation
+      // pass above. Single-Excel path doesn't know which Excel node was
+      // running, but selectedExcelIds[0] is always set when we get here.
+      const runningExcelId = selectedExcelIds[0];
+      const failingNode = nodes.find((n) => n.id === runningExcelId);
+      const label = failingNode ? nodeLabel(failingNode) : '(workflow)';
       setErrorModal({
         isOpen: true,
         title: 'Error Running Workflow',
-        message: err instanceof Error ? err.message : 'Unknown error occurred',
+        message: `${label}: ${err instanceof Error ? err.message : 'Unknown error occurred'}`,
         isExcelError: false,
+        focusNodeId: runningExcelId,
       });
     } finally {
       setIsRunning(false);
@@ -1389,6 +1448,7 @@ export default function WorkspacePage() {
               title={errorModal.title}
               message={errorModal.message}
               isExcelError={errorModal.isExcelError}
+              focusNodeId={errorModal.focusNodeId}
             />
             <TemplateNotification
               isOpen={templateNotification.isOpen}
