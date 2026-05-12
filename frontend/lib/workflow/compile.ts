@@ -1,44 +1,69 @@
 import { WorkflowNode, WorkflowEdge, CompiledWorkflow, VariableBinding } from './types';
 import { ExcelModelsNodeData } from './types';
 import { nodeSchemas, getParamHandleId } from './nodeSchemas';
+import { ActionableError, nodeLabel } from './errors';
 
 export function compileWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
-  excelNodeId?: string
-): CompiledWorkflow | { error: string } {
-  // Find Excel node (optionally scoped to a specific Excel node ID)
+  excelNodeId?: string,
+): CompiledWorkflow | { error: ActionableError } {
   const excelNodes = nodes.filter((n) => n.type === 'excelModels') as Array<
     WorkflowNode & { data: ExcelModelsNodeData }
   >;
 
   const excelNode = excelNodeId
     ? (excelNodes.find((n) => n.id === excelNodeId) as
-      | (WorkflowNode & { data: ExcelModelsNodeData })
-      | undefined)
+        | (WorkflowNode & { data: ExcelModelsNodeData })
+        | undefined)
     : excelNodes[0];
 
   if (!excelNode || !excelNode.data.file) {
-    return { error: 'Excel file node is required' };
+    return {
+      error: {
+        title: 'Load an Excel file',
+        message: excelNode
+          ? `'${nodeLabel(excelNode)}' doesn't have an Excel file loaded yet.`
+          : 'No Excel Models node has a file loaded.',
+        fix: "Click the upload area inside the Excel Models node, or drag a .xlsx file onto it.",
+        focusNodeId: excelNode?.id,
+      },
+    };
   }
 
   if (!excelNode.data.modelNames || excelNode.data.modelNames.length === 0) {
-    return { error: 'No model names found in Excel file' };
+    return {
+      error: {
+        title: 'Excel file has no model column',
+        message: `'${nodeLabel(excelNode)}' loaded a file but no model column was selected.`,
+        fix: 'Open this node and pick the column that contains model names. (PC-704 will improve this.)',
+        focusNodeId: excelNode.id,
+      },
+    };
   }
 
-  // Find Foreach node
   const foreachNode = nodes.find((n) => n.type === 'foreachModel');
   if (!foreachNode) {
-    return { error: 'Foreach Model node is required' };
+    return {
+      error: {
+        title: 'Add a Foreach Model node',
+        message: 'No Foreach Model node is on the canvas yet.',
+        fix: "Drag 'Foreach Model' from the left palette and connect the Excel node's right handle to its left handle.",
+      },
+    };
   }
 
-  // Find ChainFileOutput nodes
   const chainOutputNodes = nodes.filter((n) => n.type === 'chainFileOutput');
   if (chainOutputNodes.length === 0) {
-    return { error: 'At least one Chain File Output node is required' };
+    return {
+      error: {
+        title: 'Add a Chain File Output node',
+        message: 'No Chain File Output node is on the canvas yet.',
+        fix: "Drag 'Chain Output' from the left palette and connect a Foreach output to it.",
+      },
+    };
   }
 
-  // Extract variables from SetVariable nodes
   const variables: VariableBinding[] = [];
   nodes
     .filter((n) => n.type === 'setVariable')
@@ -53,10 +78,7 @@ export function compileWorkflow(
     excelFile: excelNode.data.file,
     modelNames: excelNode.data.modelNames,
     selectedColumnIndex: excelNode.data.selectedColumnIndex ?? 0,
-    graph: {
-      nodes,
-      edges,
-    },
+    graph: { nodes, edges },
     variables,
   };
 }
@@ -64,45 +86,55 @@ export function compileWorkflow(
 export function validateWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
-  excelNodeId?: string
-): { valid: boolean; errors: string[] } {
-  const errors: string[] = [];
+  excelNodeId?: string,
+): { valid: boolean; errors: ActionableError[] } {
+  const errors: ActionableError[] = [];
 
-  // Check for Excel node
   const excelNodes = nodes.filter((n) => n.type === 'excelModels');
   const excelNode = excelNodeId
     ? excelNodes.find((n) => n.id === excelNodeId)
     : excelNodes[0];
   if (!excelNode) {
-    errors.push('Excel Models node is required');
+    errors.push({
+      title: 'Add an Excel Models node',
+      message: 'No Excel Models node is on the canvas yet.',
+      fix: "Drag 'Excel Models' from the left palette onto the canvas, then load an .xlsx file.",
+    });
   }
 
-  // Check for Foreach node
   const foreachNode = nodes.find((n) => n.type === 'foreachModel');
   if (!foreachNode) {
-    errors.push('Foreach Model node is required');
+    errors.push({
+      title: 'Add a Foreach Model node',
+      message: 'No Foreach Model node is on the canvas yet.',
+      fix: "Drag 'Foreach Model' from the left palette and connect the Excel node's right handle to its left handle.",
+    });
   }
 
-  // Check for ChainFileOutput
   const chainOutputNodes = nodes.filter((n) => n.type === 'chainFileOutput');
   if (chainOutputNodes.length === 0) {
-    errors.push('At least one Chain File Output node is required');
+    errors.push({
+      title: 'Add a Chain File Output node',
+      message: 'No Chain File Output node is on the canvas yet.',
+      fix: "Drag 'Chain Output' from the left palette and connect a Foreach output to it.",
+    });
   }
 
-  // Check connectivity: Excel -> Foreach
   if (excelNode && foreachNode) {
     const excelToForeach = edges.find(
-      (e) => e.source === excelNode.id && e.target === foreachNode.id
+      (e) => e.source === excelNode.id && e.target === foreachNode.id,
     );
     if (!excelToForeach) {
-      errors.push('Excel Models node must connect to Foreach Model node');
+      errors.push({
+        title: "Excel isn't wired to Foreach",
+        message: `'${nodeLabel(excelNode)}' isn't connected to '${nodeLabel(foreachNode)}'.`,
+        fix: "Drag an edge from the Excel node's right handle to the Foreach node's left handle.",
+        focusNodeId: foreachNode.id,
+      });
     }
   }
 
-  return {
-    valid: errors.length === 0,
-    errors,
-  };
+  return { valid: errors.length === 0, errors };
 }
 
 /**
@@ -111,7 +143,9 @@ export function validateWorkflow(
  * required parameter is satisfied by an incoming param edge).
  *
  * Empty array means "no warnings". Used by the canvas to surface incomplete
- * configuration before the user hits Run.
+ * configuration before the user hits Run. NOTE: intentionally string[] not
+ * ActionableError[] — the warning badge surface doesn't need actions, the
+ * badge is already attached to the offending node.
  */
 export function validateNode(
   node: WorkflowNode,
@@ -121,14 +155,10 @@ export function validateNode(
   const warnings: string[] = [];
   const data = (node.data ?? {}) as Record<string, unknown>;
 
-  // Rule 1: excelModels must have a file loaded.
   if (node.type === 'excelModels' && !data.file) {
     warnings.push('No Excel file loaded');
   }
 
-  // Rules 2-3: chainFileOutput needs both modelName and projectFolder. These
-  // get embedded into the chain XML metadata; an empty value yields a broken
-  // chain file.
   if (node.type === 'chainFileOutput') {
     if (!isNonEmptyString(data.modelName)) {
       warnings.push('Model name is required');
@@ -138,12 +168,9 @@ export function validateNode(
     }
   }
 
-  // Rule 4: any param handle whose data field is empty AND has no incoming
-  // param edge satisfies it. Generic so it adapts as schemas evolve.
   const schema = node.type ? nodeSchemas[node.type] : undefined;
   if (schema) {
     for (const param of schema.parameters) {
-      // The variable-list param is a UI surface, not a wired-in parameter; skip.
       if (param.kind === 'variable-list') continue;
       const value = data[param.key];
       if (isEmptyValue(value)) {
@@ -171,4 +198,3 @@ function isEmptyValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length === 0;
   return false;
 }
-
