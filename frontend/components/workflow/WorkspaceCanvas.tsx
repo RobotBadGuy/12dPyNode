@@ -6,12 +6,14 @@ import {
   Background,
   Controls,
   MiniMap,
+  Panel,
   Node,
   Connection,
   Viewport,
   ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { LayoutGrid } from 'lucide-react';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { validateConnection } from '@/lib/workflow/edgeRules';
 import { ExcelModelsNode } from './nodes/ExcelModelsNode';
@@ -58,6 +60,7 @@ interface WorkspaceCanvasProps {
   // Lets the parent capture the ReactFlowInstance so it can drive the
   // viewport programmatically (e.g. when restoring a saved template).
   onInit?: (instance: ReactFlowInstance) => void;
+  onAutoLayout?: () => void;
 }
 
 export function WorkspaceCanvas({
@@ -70,6 +73,7 @@ export function WorkspaceCanvas({
   onNodeDoubleClick,
   onViewportChange,
   onInit,
+  onAutoLayout,
 }: WorkspaceCanvasProps) {
   const nodeTypes = {
     excelModels: ExcelModelsNode,
@@ -186,6 +190,20 @@ export function WorkspaceCanvas({
             }
           }}
         />
+        {onAutoLayout && nodes.length > 0 && (
+          <Panel position="top-right">
+            <button
+              type="button"
+              onClick={onAutoLayout}
+              className="flex items-center gap-2 bg-gray-900/80 border border-gray-700 hover:bg-gray-800 text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
+              title="Auto-layout (re-flow the graph)"
+              aria-label="Auto-layout"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              Auto-layout
+            </button>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );
