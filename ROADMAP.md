@@ -178,8 +178,8 @@ These are the user-facing polish items that turn the tool from "works" into "enj
 - ✅ **PC-901** `[P1]` — Toast notification system (Sonner).
   *Rationale:* `frontend/lib/notify.ts` wraps Sonner with a `notify.{success,error,warning,info}` API; `<Toaster>` is mounted once in `app/layout.tsx` (dark theme, bottom-right, rich colors, close button). Migrated the lone `alert()` and two silent `console.warn` sites in `app/page.tsx` (template load with filtered edges, template import with filtered edges, template import parse error) plus four non-fatal `ErrorModal` template-error sites (refresh / mount fetch / save / delete failures) to `notify.error`/`notify.warning`. The Excel-error and fatal run-time `ErrorModal` cases (`:735`, `:922`, `:967`) intentionally remain modal — they are blocking and warrant full attention. `TemplateNotification` and `SuccessCelebration` are unchanged. Wrapper exposes an `action` slot on `error` for PC-911 to use. Tested in `frontend/lib/__tests__/notify.test.ts`.
 
-- **PC-902** `[P1]` `[Size: S]` `[Mode: regular]` — Mini-map and auto-layout button.
-  *Rationale:* React Flow ships a `MiniMap` component out of the box — instant orientation aid for large workflows. Add an "Auto-layout" toolbar button using `dagre` or `elkjs` that re-flows messy graphs into a clean DAG. Both are cheap, both punch above their weight.
+- ✅ **PC-902** — Mini-map and auto-layout button.
+  *Rationale:* The `<MiniMap>` was already present in `WorkspaceCanvas.tsx` with custom node colors per type. This ticket added the auto-layout half: new pure function `frontend/lib/workflow/autoLayout.ts` runs `dagre` (~40 KB, MIT) over all edges to compute a left-to-right DAG, respecting each node's measured dimensions and falling back to a 288×140 default. A `<Panel position="top-right">` in the canvas renders an "Auto-layout" button (hidden when the graph is empty); `handleAutoLayout` in `app/page.tsx` snapshots history (so `Ctrl+Z` reverts in one step), applies the new positions, then `fitView`s with a 300 ms tween and fires a `notify.success` toast. Self-loops and edges with missing endpoints are skipped defensively. Tested in `frontend/lib/workflow/__tests__/autoLayout.test.ts` (empty graph, single node, linear chain, diamond, disconnected components, field preservation, measured-vs-default dimensions, self-loop, dangling edge, TB direction).
 
 - **PC-903** `[P1]` `[Size: S]` `[Mode: regular]` — Right-click context menu on nodes.
   *Rationale:* Industry-standard interaction. Items: Duplicate, Copy, Delete, Disable, "Show generated XML for this node" (ties into PC-304). React Flow's `onNodeContextMenu` callback makes this straightforward.
@@ -222,7 +222,7 @@ The plan: ship the in-flight EPIC-03 work, then front-load high-impact UX polish
 ### Phase 2 — Cheap, high-impact UX wins (ship these in any order)
 4. ✅ **PC-901** — Toast notification system. Foundation for everything below.
 5. ✅ **PC-911** — Actionable error messages. Pairs with PC-901.
-6. **PC-902** — Mini-map + auto-layout. ~1 afternoon, instant credibility win.
+6. ✅ **PC-902** — Mini-map + auto-layout.
 7. **PC-903** — Right-click context menu.
 8. **PC-910** — Export canvas as PNG. Trivial; useful.
 9. **PC-704** — Excel column picker with preview. Removes the single most confusing step in the current flow.
