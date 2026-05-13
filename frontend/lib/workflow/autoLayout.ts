@@ -17,18 +17,6 @@ const DEFAULTS: Required<AutoLayoutOptions> = {
   defaultHeight: 140,
 };
 
-function getDimensions(
-  node: WorkflowNode,
-  fallbackW: number,
-  fallbackH: number,
-): { width: number; height: number } {
-  const measured = (node as unknown as { measured?: { width?: number; height?: number } }).measured;
-  return {
-    width: measured?.width ?? fallbackW,
-    height: measured?.height ?? fallbackH,
-  };
-}
-
 export function autoLayout(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
@@ -47,7 +35,8 @@ export function autoLayout(
 
   const nodeIds = new Set<string>();
   for (const node of nodes) {
-    const { width, height } = getDimensions(node, opts.defaultWidth, opts.defaultHeight);
+    const width = node.measured?.width ?? opts.defaultWidth;
+    const height = node.measured?.height ?? opts.defaultHeight;
     g.setNode(node.id, { width, height });
     nodeIds.add(node.id);
   }
@@ -62,12 +51,11 @@ export function autoLayout(
 
   return nodes.map((node) => {
     const laid = g.node(node.id);
-    const { width, height } = getDimensions(node, opts.defaultWidth, opts.defaultHeight);
     return {
       ...node,
       position: {
-        x: laid.x - width / 2,
-        y: laid.y - height / 2,
+        x: laid.x - laid.width / 2,
+        y: laid.y - laid.height / 2,
       },
     };
   });
