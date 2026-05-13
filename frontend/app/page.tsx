@@ -43,6 +43,7 @@ import {
 import type { ReactFlowInstance, Viewport } from '@xyflow/react';
 import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModal';
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
+import { autoLayout } from '@/lib/workflow/autoLayout';
 import { notify } from '@/lib/notify';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
@@ -161,6 +162,21 @@ export default function WorkspacePage() {
       setEdges(next.edges);
       return rest;
     });
+  }, [nodes, edges]);
+
+  const handleAutoLayout = useCallback(() => {
+    if (nodes.length === 0) {
+      notify.info('Nothing to lay out');
+      return;
+    }
+    setHistory((prev) => [...prev, { nodes, edges }]);
+    setFuture([]);
+    const next = autoLayout(nodes, edges);
+    setNodes(next);
+    requestAnimationFrame(() => {
+      reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
+    });
+    notify.success('Workflow auto-laid out');
   }, [nodes, edges]);
 
   // Copy handler: capture selected nodes and internal edges
@@ -1412,6 +1428,7 @@ export default function WorkspacePage() {
                   onConnect={onConnect}
                   onNodeClick={onNodeClick}
                   onNodeDoubleClick={onNodeDoubleClick}
+                  onAutoLayout={handleAutoLayout}
                   onViewportChange={setViewport}
                   onInit={(instance) => {
                     reactFlowInstanceRef.current = instance;
