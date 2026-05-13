@@ -171,11 +171,8 @@ export default function WorkspacePage() {
     }
     setHistory((prev) => [...prev, { nodes, edges }]);
     setFuture([]);
-    const next = autoLayout(nodes, edges);
-    setNodes(next);
-    requestAnimationFrame(() => {
-      reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
-    });
+    setNodes(autoLayout(nodes, edges));
+    reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
     notify.success('Workflow auto-laid out');
   }, [nodes, edges]);
 
