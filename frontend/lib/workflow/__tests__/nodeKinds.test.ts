@@ -1,0 +1,21 @@
+import { describe, it, expect } from 'vitest';
+import { isControlFlowNode, CONTROL_FLOW_NODE_TYPES } from '../nodeKinds';
+
+describe('isControlFlowNode', () => {
+  it('is true for the four control-flow types', () => {
+    expect(isControlFlowNode('excelModels')).toBe(true);
+    expect(isControlFlowNode('foreachModel')).toBe(true);
+    expect(isControlFlowNode('chainFileOutput')).toBe(true);
+    expect(isControlFlowNode('setVariable')).toBe(true);
+  });
+
+  it('is false for command nodes and undefined', () => {
+    expect(isControlFlowNode('import')).toBe(false);
+    expect(isControlFlowNode('createView')).toBe(false);
+    expect(isControlFlowNode(undefined)).toBe(false);
+  });
+
+  it('exposes the set with exactly four members', () => {
+    expect(CONTROL_FLOW_NODE_TYPES.size).toBe(4);
+  });
+});

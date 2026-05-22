@@ -372,9 +372,16 @@ export type NodeType =
   | 'chainFileOutput'
   | 'runFunction';
 
+// Optional fields that can ride on ANY node's data regardless of node type.
+// PC-903: `disabled` excludes the node from generation while keeping it on the
+// canvas. (Transient UI fields like warnings/nodeState are still read via casts.)
+export interface NodeDataExtras {
+  disabled?: boolean;
+}
+
 export interface WorkflowNode extends Node {
   type: NodeType;
-  data: WorkflowNodeData;
+  data: WorkflowNodeData & NodeDataExtras;
 }
 
 export interface WorkflowEdge extends Edge { }
