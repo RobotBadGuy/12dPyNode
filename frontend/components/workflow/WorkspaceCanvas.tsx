@@ -56,6 +56,7 @@ interface WorkspaceCanvasProps {
   onConnect: (connection: Connection) => void;
   onNodeClick: (event: React.MouseEvent, node: Node) => void;
   onNodeDoubleClick?: (event: React.MouseEvent, node: Node) => void;
+  onNodeContextMenu?: (event: React.MouseEvent, node: Node) => void;
   onViewportChange?: (viewport: Viewport) => void;
   // Lets the parent capture the ReactFlowInstance so it can drive the
   // viewport programmatically (e.g. when restoring a saved template).
@@ -71,6 +72,7 @@ export function WorkspaceCanvas({
   onConnect,
   onNodeClick,
   onNodeDoubleClick,
+  onNodeContextMenu,
   onViewportChange,
   onInit,
   onAutoLayout,
@@ -147,6 +149,10 @@ export function WorkspaceCanvas({
         isValidConnection={validateConnection}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onNodeContextMenu={(event, node) => {
+          event.preventDefault(); // suppress the native browser context menu
+          onNodeContextMenu?.(event, node);
+        }}
         onMoveEnd={(_, viewport) => {
           if (onViewportChange) {
             onViewportChange(viewport);
