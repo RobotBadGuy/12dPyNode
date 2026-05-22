@@ -454,6 +454,34 @@ body {
   animation: node-glow-pulse 2s ease-in-out infinite;
 }
 
+/* PC-903: a disabled node is dimmed/desaturated and tagged, so the muted look
+   reads as intentional rather than as an unselected node. The class is attached
+   to the React Flow node wrapper in app/page.tsx. */
+.pynode-disabled {
+  opacity: 0.45;
+  filter: grayscale(0.85);
+  transition: opacity 150ms ease, filter 150ms ease;
+}
+.pynode-disabled::after {
+  content: 'Disabled';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 1px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fde68a;                      /* amber-200 */
+  background: rgba(120, 53, 15, 0.92); /* amber-900-ish */
+  border: 1px solid rgba(245, 158, 11, 0.6);
+  border-radius: 9999px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
