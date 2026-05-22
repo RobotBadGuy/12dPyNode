@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compileWorkflow, validateWorkflow } from '../compile';
+import { compileWorkflow, validateWorkflow, validateNode } from '../compile';
 import type { WorkflowNode, WorkflowEdge } from '../types';
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -249,5 +249,32 @@ describe('validateWorkflow', () => {
       expect(typeof err.title).toBe('string');
       expect(typeof err.message).toBe('string');
     }
+  });
+});
+
+// ── disabled nodes (PC-903) ─────────────────────────────────────────────
+
+describe('disabled nodes', () => {
+  it('validateNode returns no warnings for a disabled node', () => {
+    // An import node with no params would normally warn; disabled suppresses it.
+    const n = makeNode('x', 'import', { disabled: true });
+    expect(validateNode(n, [n], [])).toEqual([]);
+  });
+
+  it('validateNode still warns for the same node when not disabled', () => {
+    const n = makeNode('x', 'import', {});
+    expect(validateNode(n, [n], []).length).toBeGreaterThan(0);
+  });
+
+  it('validateWorkflow treats a disabled chainFileOutput as absent', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['M1'] }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput', { disabled: true }),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2')];
+    const result = validateWorkflow(nodes, edges);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.title === 'Add a Chain File Output node')).toBe(true);
   });
 });

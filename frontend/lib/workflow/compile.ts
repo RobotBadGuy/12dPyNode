@@ -88,6 +88,10 @@ export function validateWorkflow(
   edges: WorkflowEdge[],
   excelNodeId?: string,
 ): { valid: boolean; errors: ActionableError[] } {
+  // PC-903: disabled nodes are treated as absent — so e.g. disabling the only
+  // Chain File Output still correctly raises "Add a Chain File Output node".
+  nodes = nodes.filter((n) => !n.data?.disabled);
+
   const errors: ActionableError[] = [];
 
   const excelNodes = nodes.filter((n) => n.type === 'excelModels');
@@ -152,6 +156,9 @@ export function validateNode(
   _allNodes: WorkflowNode[],
   allEdges: WorkflowEdge[],
 ): string[] {
+  // PC-903: a disabled node won't run, so it shouldn't nag with warnings.
+  if (node.data?.disabled) return [];
+
   const warnings: string[] = [];
   const data = (node.data ?? {}) as Record<string, unknown>;
 
