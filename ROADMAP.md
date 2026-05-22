@@ -181,8 +181,8 @@ These are the user-facing polish items that turn the tool from "works" into "enj
 - ✅ **PC-902** — Mini-map and auto-layout button.
   *Rationale:* The `<MiniMap>` was already present in `WorkspaceCanvas.tsx` with custom node colors per type. This ticket added the auto-layout half: new pure function `frontend/lib/workflow/autoLayout.ts` runs `dagre` (~40 KB, MIT) over all edges to compute a left-to-right DAG, respecting each node's measured dimensions and falling back to a 288×140 default. A `<Panel position="top-right">` in the canvas renders an "Auto-layout" button (hidden when the graph is empty); `handleAutoLayout` in `app/page.tsx` snapshots history (so `Ctrl+Z` reverts in one step), applies the new positions, then `fitView`s with a 300 ms tween and fires a `notify.success` toast. Self-loops and edges with missing endpoints are skipped defensively. Tested in `frontend/lib/workflow/__tests__/autoLayout.test.ts` (empty graph, single node, linear chain, diamond, disconnected components, field preservation, measured-vs-default dimensions, self-loop, dangling edge, TB direction).
 
-- **PC-903** `[P1]` `[Size: S]` `[Mode: regular]` — Right-click context menu on nodes.
-  *Rationale:* Industry-standard interaction. Items: Duplicate, Copy, Delete, Disable, "Show generated XML for this node" (ties into PC-304). React Flow's `onNodeContextMenu` callback makes this straightforward.
+- ✅ **PC-903** — Right-click context menu on nodes.
+  *Rationale:* `frontend/components/workflow/NodeContextMenu.tsx` renders a cursor-positioned menu (clamped on-screen, dismissed on outside-click / Escape / scroll) wired through React Flow's `onNodeContextMenu` (with `preventDefault` to suppress the native menu). Items: **Duplicate** (clone +40/+40, selected, one-step undo), **Copy** (into the existing paste clipboard), **Delete** (node + its edges), and **Disable/Enable**. Action logic lives in the pure `frontend/lib/workflow/nodeOps.ts` (`duplicateNode` / `removeNode` / `setNodeDisabled`) so it's unit-tested without RTL. "Disable" is end-to-end: a `data.disabled` flag dims the node via a `.pynode-disabled` class attached at the single `nodesWithWarnings` memo chokepoint (no per-node-file churn), suppresses its warnings, is treated as absent by `validateNode`/`validateWorkflow`, and is skipped by the backend in `_execute_node_with_capture` (covering both execution-order loops) so it becomes a no-op while flow still routes through it. Disable is hidden for control-flow node types (`excelModels`, `foreachModel`, `chainFileOutput`, `setVariable`) via `frontend/lib/workflow/nodeKinds.ts`. "Show generated XML" was deferred to PC-304. Tested in `nodeKinds.test.ts`, `nodeOps.test.ts`, the disabled cases in `compile.test.ts`, and `backend/tests/test_per_node_events.py`.
 
 - **PC-904** `[P2]` `[Size: S]` `[Mode: regular]` — Drag-and-drop Excel drop zone.
   *Rationale:* Currently uploads via file picker. Add a styled drop zone (with hover state and file-type validation) over the canvas/sidebar. Uses native HTML5 drag-and-drop — no library needed.
@@ -223,7 +223,7 @@ The plan: ship the in-flight EPIC-03 work, then front-load high-impact UX polish
 4. ✅ **PC-901** — Toast notification system. Foundation for everything below.
 5. ✅ **PC-911** — Actionable error messages. Pairs with PC-901.
 6. ✅ **PC-902** — Mini-map + auto-layout.
-7. **PC-903** — Right-click context menu.
+7. ✅ **PC-903** — Right-click context menu.
 8. **PC-910** — Export canvas as PNG. Trivial; useful.
 9. **PC-704** — Excel column picker with preview. Removes the single most confusing step in the current flow.
 10. **PC-904** — Drag-and-drop Excel drop zone.
