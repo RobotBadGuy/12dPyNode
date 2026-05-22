@@ -45,6 +45,8 @@ import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModa
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import { autoLayout } from '@/lib/workflow/autoLayout';
 import { notify } from '@/lib/notify';
+import { NodeContextMenu } from '@/components/workflow/NodeContextMenu';
+import { duplicateNode, removeNode, setNodeDisabled } from '@/lib/workflow/nodeOps';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
 
@@ -57,6 +59,14 @@ function sameWarnings(a: string[] | undefined, b: string[] | undefined): boolean
     if (a![i] !== b![i]) return false;
   }
   return true;
+}
+
+// Stable across renders so it never needs to be a hook dependency. Mirrors the
+// inline scheme handlePaste already uses.
+function newNodeId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `node_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 }
 
 export default function WorkspacePage() {
@@ -141,6 +151,10 @@ export default function WorkspacePage() {
     zoom: 1,
   });
 
+  // PC-903: right-click context menu target + screen position.
+  const [contextMenu, setContextMenu] =
+    useState<{ nodeId: string; x: number; y: number } | null>(null);
+
   const handleUndo = useCallback(() => {
     setHistory((prev) => {
       if (prev.length === 0) return prev;
@@ -174,6 +188,58 @@ export default function WorkspacePage() {
     setNodes(autoLayout(nodes, edges));
     reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 300 });
     notify.success('Workflow auto-laid out');
+  }, [nodes, edges]);
+
+  // PC-903 — open the context menu on the right-clicked node.
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node);                // reflect target in the right sidebar
+    setSelectedExcelNodeIds(new Set());   // single-node intent: drop multi-select
+    setContextMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
+  }, []);
+
+  const handleDuplicateNode = useCallback((nodeId: string) => {
+    const original = nodes.find((n) => n.id === nodeId);
+    if (!original) return;
+    setHistory((prev) => [...prev, { nodes, edges }]);
+    setFuture([]);
+    const copy = duplicateNode(original, newNodeId);
+    setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), copy]);
+    notify.success('Node duplicated');
+  }, [nodes, edges]);
+
+  const handleCopyNode = useCallback((nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    const { x, y } = node.position;
+    clipboardRef.current = {
+      nodes: [structuredClone(node)],
+      edges: [],
+      bounds: { minX: x, minY: y, maxX: x, maxY: y },
+    };
+    notify.info('Copied');
+  }, [nodes]);
+
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    setHistory((prev) => [...prev, { nodes, edges }]);
+    setFuture([]);
+    const next = removeNode(nodes, edges, nodeId);
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    setSelectedNode((cur) => (cur && cur.id === nodeId ? null : cur));
+    notify.success('Node deleted');
+  }, [nodes, edges]);
+
+  const handleToggleDisableNode = useCallback((nodeId: string) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    const next = !node.data?.disabled;
+    setHistory((prev) => [...prev, { nodes, edges }]);
+    setFuture([]);
+    setNodes((nds) => setNodeDisabled(nds, nodeId, next));
+    setSelectedNode((cur) =>
+      cur && cur.id === nodeId ? { ...cur, data: { ...cur.data, disabled: next } } : cur,
+    );
+    notify.info(next ? 'Node disabled' : 'Node enabled');
   }, [nodes, edges]);
 
   // Copy handler: capture selected nodes and internal edges
@@ -1350,18 +1416,22 @@ export default function WorkspacePage() {
   const nodesWithWarnings = useMemo(
     () =>
       nodes.map((n) => {
-        const w = nodeWarnings.get(n.id);
+        const disabled = !!n.data?.disabled;
+        const w = disabled ? [] : (nodeWarnings.get(n.id) ?? []);
         const nodeState = nodeStates.get(n.id) ?? 'idle';
         const existingWarnings = (n.data as any)?.warnings as string[] | undefined;
         const existingState = (n.data as any)?.nodeState as string | undefined;
-        // Skip rewrap when neither warnings nor nodeState have changed —
-        // avoids needlessly breaking React Flow's memoized node reconciliation.
+        const desiredClass = disabled ? 'pynode-disabled' : undefined;
+        // Skip rewrap when nothing relevant changed — avoids needlessly breaking
+        // React Flow's memoized node reconciliation.
         const warningsUnchanged = sameWarnings(existingWarnings, w);
         const stateUnchanged = (existingState ?? 'idle') === nodeState;
-        if (warningsUnchanged && stateUnchanged) return n;
+        const classUnchanged = (n.className ?? undefined) === desiredClass;
+        if (warningsUnchanged && stateUnchanged && classUnchanged) return n;
         return {
           ...n,
-          data: { ...n.data, warnings: w ?? [], nodeState },
+          className: desiredClass,
+          data: { ...n.data, warnings: w, nodeState },
         };
       }),
     [nodes, nodeWarnings, nodeStates],
@@ -1425,6 +1495,7 @@ export default function WorkspacePage() {
                   onConnect={onConnect}
                   onNodeClick={onNodeClick}
                   onNodeDoubleClick={onNodeDoubleClick}
+                  onNodeContextMenu={handleNodeContextMenu}
                   onAutoLayout={handleAutoLayout}
                   onViewportChange={setViewport}
                   onInit={(instance) => {
@@ -1461,6 +1532,22 @@ export default function WorkspacePage() {
               onChange={handleImportFile}
               className="hidden"
             />
+            {contextMenu && (() => {
+              const node = nodes.find((n) => n.id === contextMenu.nodeId);
+              if (!node) return null;
+              return (
+                <NodeContextMenu
+                  x={contextMenu.x}
+                  y={contextMenu.y}
+                  node={node}
+                  onClose={() => setContextMenu(null)}
+                  onDuplicate={() => handleDuplicateNode(node.id)}
+                  onCopy={() => handleCopyNode(node.id)}
+                  onDelete={() => handleDeleteNode(node.id)}
+                  onToggleDisable={() => handleToggleDisableNode(node.id)}
+                />
+              );
+            })()}
             {runProgress && (
               <RunProgressPanel
                 fileDetails={runProgress.fileDetails}
