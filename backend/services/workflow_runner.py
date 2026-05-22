@@ -740,6 +740,13 @@ def _execute_node_with_capture(
     node_type = node.get('type', '')
     node_label = (node.get('data') or {}).get('label')
 
+    # PC-903 — a disabled node is a no-op: skip emission entirely but keep its
+    # place in flow ordering, so execution still routes through it. Both
+    # execution-order loops in build_command_chain funnel through here, so this
+    # single guard covers the foreach and no-foreach paths.
+    if (node.get('data') or {}).get('disabled'):
+        return
+
     xml_start = len(xml_content)
     try:
         execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder)

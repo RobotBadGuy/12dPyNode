@@ -309,3 +309,51 @@ def test_run_workflow_job_persists_node_xml_to_disk(monkeypatch, tmp_path):
     base = output_dir / session_id / "_node_xml"
     assert (base / "Bridge-01" / "createView_1.xml").read_text(encoding="utf-8") == "<v>\n</v>"
     assert (base / "Bridge-02" / "createView_1.xml").read_text(encoding="utf-8") == "<v2>"
+
+
+# ----------------------------------------------------------------------------
+# PC-903 — disabled nodes are skipped during emission
+# ----------------------------------------------------------------------------
+
+def test_disabled_node_is_skipped(monkeypatch):
+    """A disabled middle node emits nothing and records no event, while the
+    flow still routes through it to the downstream node."""
+    nodes = [_node("a"), _node("b"), _node("c")]
+    nodes[1]["data"]["disabled"] = True  # disable 'b'
+    edges = [_flow_edge("a", "b"), _flow_edge("b", "c")]
+
+    def patched_execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder):
+        xml_content.append(f"<{node['id']}>line")
+
+    monkeypatch.setattr(workflow_runner, "execute_node", patched_execute_node)
+
+    events: List[Dict[str, Any]] = []
+    xml_by_node: Dict[str, List[str]] = {}
+    out = build_command_chain(
+        nodes, edges, "M", [], {}, "Model", "/tmp",
+        node_events_out=events,
+        node_xml_out=xml_by_node,
+    )
+
+    assert [e["node_id"] for e in events] == ["a", "c"]   # 'b' skipped
+    assert "b" not in xml_by_node
+    assert out == ["<a>line", "<c>line"]
+
+
+def test_non_disabled_node_still_runs(monkeypatch):
+    """Regression: the same graph without the disabled flag runs all three."""
+    nodes = [_node("a"), _node("b"), _node("c")]
+    edges = [_flow_edge("a", "b"), _flow_edge("b", "c")]
+
+    def patched_execute_node(node, model_name, variables, per_run_vars, xml_content, output_folder):
+        xml_content.append(f"<{node['id']}>line")
+
+    monkeypatch.setattr(workflow_runner, "execute_node", patched_execute_node)
+
+    events: List[Dict[str, Any]] = []
+    out = build_command_chain(
+        nodes, edges, "M", [], {}, "Model", "/tmp",
+        node_events_out=events,
+    )
+    assert [e["node_id"] for e in events] == ["a", "b", "c"]
+    assert out == ["<a>line", "<b>line", "<c>line"]
