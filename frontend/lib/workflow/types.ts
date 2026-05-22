@@ -377,6 +377,10 @@ export type NodeType =
 // canvas. (Transient UI fields like warnings/nodeState are still read via casts.)
 export interface NodeDataExtras {
   disabled?: boolean;
+  // Keep an index signature so `WorkflowNodeData & NodeDataExtras` stays
+  // assignable to React Flow's `Node['data']` (Record<string, unknown>) — some
+  // union members (e.g. `{ mappings? }`) have no index signature on their own.
+  [key: string]: unknown;
 }
 
 export interface WorkflowNode extends Node {
