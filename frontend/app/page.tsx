@@ -44,6 +44,7 @@ import type { ReactFlowInstance, Viewport } from '@xyflow/react';
 import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModal';
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import { autoLayout } from '@/lib/workflow/autoLayout';
+import { isSourceNode, isReadySource, hasReadyModelSource } from '@/lib/workflow/modelSources';
 import { notify } from '@/lib/notify';
 import { NodeContextMenu } from '@/components/workflow/NodeContextMenu';
 import { duplicateNode, removeNode, setNodeDisabled } from '@/lib/workflow/nodeOps';
@@ -73,7 +74,7 @@ export default function WorkspacePage() {
   const [nodes, setNodes] = useState<WorkflowNode[]>([]);
   const [edges, setEdges] = useState<WorkflowEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [selectedExcelNodeIds, setSelectedExcelNodeIds] = useState<Set<string>>(new Set());
+  const [selectedSourceNodeIds, setSelectedSourceNodeIds] = useState<Set<string>>(new Set());
   const [modelFiles, setModelFiles] = useState<File[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -193,7 +194,7 @@ export default function WorkspacePage() {
   // PC-903 — open the context menu on the right-clicked node.
   const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node);                // reflect target in the right sidebar
-    setSelectedExcelNodeIds(new Set());   // single-node intent: drop multi-select
+    setSelectedSourceNodeIds(new Set());   // single-node intent: drop multi-select
     setContextMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
   }, []);
 
@@ -531,11 +532,11 @@ export default function WorkspacePage() {
   );
 
   const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    // Handle multi-select for ExcelModels nodes with Ctrl/Cmd+click
-    if (node.type === 'excelModels') {
+    // Handle multi-select for source nodes (excelModels, manualModels, etc.) with Ctrl/Cmd+click
+    if (isSourceNode(node as WorkflowNode)) {
       if (event.ctrlKey || event.metaKey) {
         // Toggle selection
-        setSelectedExcelNodeIds((prev) => {
+        setSelectedSourceNodeIds((prev) => {
           const next = new Set(prev);
           if (next.has(node.id)) {
             next.delete(node.id);
@@ -546,11 +547,11 @@ export default function WorkspacePage() {
         });
       } else {
         // Single select - clear others and select this one
-        setSelectedExcelNodeIds(new Set([node.id]));
+        setSelectedSourceNodeIds(new Set([node.id]));
         setSelectedNode(node);
       }
     } else {
-      // For non-ExcelModels nodes, just set as selected
+      // For non-source nodes, just set as selected
       setSelectedNode(node);
     }
   }, []);
@@ -806,29 +807,23 @@ export default function WorkspacePage() {
   );
 
   const handleRunChain = useCallback(async () => {
-    const excelNodes = nodes.filter((n): n is WorkflowNode & { data: ExcelModelsNodeData } =>
-      n.type === 'excelModels' && 'file' in n.data && !!(n.data as any).file
-    );
-    const selectedExcelIds = selectedExcelNodeIds.size > 0
-      ? Array.from(selectedExcelNodeIds).filter((id) =>
-        excelNodes.some((n) => n.id === id)
+    const sourceNodes = nodes.filter((n) => isReadySource(n));
+    const selectedSourceIds = selectedSourceNodeIds.size > 0
+      ? Array.from(selectedSourceNodeIds).filter((id) =>
+        sourceNodes.some((n) => n.id === id)
       )
-      : excelNodes.length > 0
-        ? [excelNodes[0].id]
+      : sourceNodes.length > 0
+        ? [sourceNodes[0].id]
         : [];
 
-    if (selectedExcelIds.length === 0) {
-      // Stays modal — first thing the user sees, and the Quick Fix box is
-      // the right teaching surface for the very-first-run case. We give it
-      // a focusNodeId pointing at the first excelModels node (if any) so the
-      // existing "Find Upload" button actually works now.
-      const firstExcelNode = nodes.find((n) => n.type === 'excelModels');
+    if (selectedSourceIds.length === 0) {
+      const firstSourceNode = nodes.find((n) => isSourceNode(n));
       setErrorModal({
         isOpen: true,
-        title: 'No Excel Models Selected',
-        message: 'Please select at least one Excel Models node with a file loaded.',
+        title: 'No model source selected',
+        message: 'Add an Excel Models node with a file, or a Model List with names, then run.',
         isExcelError: true,
-        focusNodeId: firstExcelNode?.id,
+        focusNodeId: firstSourceNode?.id,
       });
       return;
     }
@@ -851,7 +846,7 @@ export default function WorkspacePage() {
       });
     };
 
-    for (const excelNodeId of selectedExcelIds) {
+    for (const excelNodeId of selectedSourceIds) {
       const validation = validateWorkflow(nodes, edges, excelNodeId);
       if (!validation.valid) {
         fireActionableErrorToast(validation.errors[0]);
@@ -958,11 +953,11 @@ export default function WorkspacePage() {
       throw new Error('Processing timeout');
     };
 
-    // PC-907: derive a friendly per-Excel label for the progress panel header.
+    // PC-907: derive a friendly per-source label for the progress panel header.
     const excelLabelFor = (excelNodeId: string): string => {
       const node = nodes.find((n) => n.id === excelNodeId);
       const file = (node?.data as any)?.file as File | undefined;
-      return file?.name ?? '(unknown.xlsx)';
+      return file?.name ?? ((node?.data as any)?.label as string | undefined) ?? 'Model List';
     };
 
     setIsRunning(true);
@@ -972,12 +967,12 @@ export default function WorkspacePage() {
     // for the first tick of the new run.
     setLastRunDetails(null);
     try {
-      if (selectedExcelIds.length === 1) {
+      if (selectedSourceIds.length === 1) {
         // Single workflow - use existing behavior
-        const result = await runSingleWorkflow(selectedExcelIds[0], {
+        const result = await runSingleWorkflow(selectedSourceIds[0], {
           currentExcel: 1,
           totalExcels: 1,
-          excelLabel: excelLabelFor(selectedExcelIds[0]),
+          excelLabel: excelLabelFor(selectedSourceIds[0]),
         });
         const { sessionId, zipBlob, succeededCount, failedCount, failedModels } = result;
         setSessionId(sessionId);
@@ -1019,12 +1014,12 @@ export default function WorkspacePage() {
         let totalFailed = 0;
         const combinedFailedModels: FailedModel[] = [];
 
-        for (let i = 0; i < selectedExcelIds.length; i++) {
-          const excelNodeId = selectedExcelIds[i];
+        for (let i = 0; i < selectedSourceIds.length; i++) {
+          const excelNodeId = selectedSourceIds[i];
           try {
             const result = await runSingleWorkflow(excelNodeId, {
               currentExcel: i + 1,
-              totalExcels: selectedExcelIds.length,
+              totalExcels: selectedSourceIds.length,
               excelLabel: excelLabelFor(excelNodeId),
             });
             results.push(result);
@@ -1097,9 +1092,9 @@ export default function WorkspacePage() {
     } catch (err) {
       // PC-911: only runtime failures from the backend reach here now.
       // Precondition errors are surfaced as toasts by the pre-validation
-      // pass above. Single-Excel path doesn't know which Excel node was
-      // running, but selectedExcelIds[0] is always set when we get here.
-      const runningExcelId = selectedExcelIds[0];
+      // pass above. Single-source path doesn't know which source node was
+      // running, but selectedSourceIds[0] is always set when we get here.
+      const runningExcelId = selectedSourceIds[0];
       const failingNode = nodes.find((n) => n.id === runningExcelId);
       const label = failingNode ? nodeLabel(failingNode) : '(workflow)';
       setErrorModal({
@@ -1115,7 +1110,7 @@ export default function WorkspacePage() {
       // now own the user's attention.
       setRunProgress(null);
     }
-  }, [nodes, edges, selectedExcelNodeIds]);
+  }, [nodes, edges, selectedSourceNodeIds]);
 
   const refreshTemplates = useCallback(async () => {
     try {
@@ -1188,7 +1183,7 @@ export default function WorkspacePage() {
       setEdges(validEdges as WorkflowEdge[]);
       // Stale node IDs would dangle in selection state.
       setSelectedNode(null);
-      setSelectedExcelNodeIds(new Set());
+      setSelectedSourceNodeIds(new Set());
       if (snapshot.viewport) {
         setViewport(snapshot.viewport);
         reactFlowInstanceRef.current?.setViewport(snapshot.viewport);
@@ -1387,7 +1382,7 @@ export default function WorkspacePage() {
   );
 
   const canRun =
-    (nodes || []).some((n) => n.type === 'excelModels' && (n.data as any)?.file) &&
+    hasReadyModelSource(nodes) &&
     (nodes || []).some((n) => n.type === 'foreachModel') &&
     (nodes || []).some((n) => n.type === 'chainFileOutput');
 
