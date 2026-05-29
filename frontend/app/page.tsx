@@ -88,6 +88,9 @@ export default function WorkspacePage() {
   const [edges, setEdges] = useState<WorkflowEdge[]>([]);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [selectedSourceNodeIds, setSelectedSourceNodeIds] = useState<Set<string>>(new Set());
+  // PC-1005: source node id of the last single-source run, so the success modal's
+  // "Re-run failed" can target the same source. null for multi-source runs.
+  const [lastRunSourceId, setLastRunSourceId] = useState<string | null>(null);
   const [modelFiles, setModelFiles] = useState<File[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -812,7 +815,7 @@ export default function WorkspacePage() {
     [nodes]
   );
 
-  const handleRunChain = useCallback(async (explicitSourceId?: string, options?: { testRun?: boolean }) => {
+  const handleRunChain = useCallback(async (explicitSourceId?: string, options?: { testRun?: boolean; modelSubset?: string[] }) => {
     // PC-1003: the toolbar wires this as onClick={onRunChain}, which would pass
     // a MouseEvent as the first arg — only treat a real string as a source id.
     const sourceId = typeof explicitSourceId === 'string' ? explicitSourceId : undefined;
@@ -874,7 +877,7 @@ export default function WorkspacePage() {
     const runSingleWorkflow = async (
       excelNodeId: string,
       progressContext: { currentExcel: number; totalExcels: number; excelLabel: string },
-      testRun: boolean,
+      runOpts: { testRun?: boolean; modelSubset?: string[] },
     ): Promise<{
       sessionId: string;
       zipBlob: Blob;
@@ -893,7 +896,7 @@ export default function WorkspacePage() {
         );
       }
 
-      const compiled = compileWorkflow(nodes, edges, excelNodeId, { testRun });
+      const compiled = compileWorkflow(nodes, edges, excelNodeId, runOpts);
       if ('error' in compiled) {
         throw new Error(`Compilation failed: ${compiled.error.title}`);
       }
@@ -985,9 +988,11 @@ export default function WorkspacePage() {
           currentExcel: 1,
           totalExcels: 1,
           excelLabel: excelLabelFor(selectedSourceIds[0]),
-        }, options?.testRun ?? false);
+        }, { testRun: options?.testRun ?? false, modelSubset: options?.modelSubset });
         const { sessionId, zipBlob, succeededCount, failedCount, failedModels } = result;
         setSessionId(sessionId);
+        // PC-1005: remember this source so the success modal can re-run its failed models.
+        setLastRunSourceId(selectedSourceIds[0]);
 
         // Prefer the structured succeeded_count from the backend; fall back to
         // counting non-_summary entries in the ZIP for legacy sessions.
@@ -1033,7 +1038,7 @@ export default function WorkspacePage() {
               currentExcel: i + 1,
               totalExcels: selectedSourceIds.length,
               excelLabel: excelLabelFor(excelNodeId),
-            }, false);
+            }, { testRun: false });
             results.push(result);
 
             // Prefer structured counts; fall back to ZIP inspection (excluding _summary.txt).
@@ -1089,6 +1094,9 @@ export default function WorkspacePage() {
         setSuccessFileCount(totalSucceeded);
         setSuccessTotalModels(totalSucceeded + totalFailed);
         setSuccessFailedModels(combinedFailedModels);
+        // PC-1005: multi-source failed names are folder-prefixed, so re-run-by-name
+        // isn't supported — clear the source so the modal hides "Re-run failed".
+        setLastRunSourceId(null);
         setShowSuccess(true);
 
         // Trigger download of combined ZIP
@@ -1608,6 +1616,15 @@ export default function WorkspacePage() {
               fileCount={successFileCount}
               totalModels={successTotalModels}
               failedModels={successFailedModels}
+              onRerunFailed={
+                lastRunSourceId && successFailedModels.length > 0
+                  ? () => {
+                      const failedNames = successFailedModels.map((f) => f.model);
+                      setShowSuccess(false);
+                      void handleRunChain(lastRunSourceId, { modelSubset: failedNames });
+                    }
+                  : undefined
+              }
             />
             <ErrorModal
               isOpen={errorModal.isOpen}

@@ -255,6 +255,34 @@ describe('compileWorkflow', () => {
       expect(result.graph.selectedModelNames).toBeUndefined();
     }
   });
+
+  it('re-run subset (PC-1005) sets selectedModelNames to the given models', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['A', 'B', 'C'], selectedColumnIndex: 0 }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges, undefined, { modelSubset: ['B', 'C'] });
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.graph.selectedModelNames).toEqual(['B', 'C']);
+    }
+  });
+
+  it('modelSubset takes precedence over testRun', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['A', 'B', 'C'], selectedColumnIndex: 0 }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges, undefined, { testRun: true, modelSubset: ['C'] });
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.graph.selectedModelNames).toEqual(['C']);
+    }
+  });
 });
 
 // ── validateWorkflow ───────────────────────────────────────────────────

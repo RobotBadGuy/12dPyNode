@@ -15,6 +15,10 @@ interface SuccessCelebrationProps {
   fileCount?: number;
   totalModels?: number;
   failedModels?: FailedModel[];
+  // PC-1005: when provided and there are failures, shows a "Re-run failed (N)"
+  // button that re-runs just the failed models. Omitted when re-run isn't
+  // applicable (e.g. a multi-source run, where failed names are folder-prefixed).
+  onRerunFailed?: () => void;
 }
 
 export function SuccessCelebration({
@@ -23,6 +27,7 @@ export function SuccessCelebration({
   fileCount,
   totalModels,
   failedModels,
+  onRerunFailed,
 }: SuccessCelebrationProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [failuresExpanded, setFailuresExpanded] = useState(false);
@@ -158,18 +163,36 @@ export function SuccessCelebration({
             </div>
           )}
 
-          <Button
-            onClick={onClose}
-            className={
-              tone === 'success'
-                ? 'w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-emerald-500/50'
-                : tone === 'warning'
-                  ? 'w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-amber-500/50'
-                  : 'w-full bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-rose-500/50'
-            }
-          >
-            {tone === 'success' ? 'Awesome!' : 'Close'}
-          </Button>
+          {failed.length > 0 && onRerunFailed ? (
+            // PC-1005: partial/all-failed runs get a re-run action alongside Close.
+            <div className="flex gap-2">
+              <Button
+                onClick={onRerunFailed}
+                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-amber-500/50"
+              >
+                Re-run failed ({failed.length})
+              </Button>
+              <Button
+                onClick={onClose}
+                className="flex-1 bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-500 hover:to-slate-600 text-white font-semibold py-2 rounded-lg transition-all duration-200"
+              >
+                Close
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={onClose}
+              className={
+                tone === 'success'
+                  ? 'w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-emerald-500/50'
+                  : tone === 'warning'
+                    ? 'w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-amber-500/50'
+                    : 'w-full bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-semibold py-2 rounded-lg transition-all duration-200 shadow-lg hover:shadow-rose-500/50'
+              }
+            >
+              {tone === 'success' ? 'Awesome!' : 'Close'}
+            </Button>
+          )}
         </div>
       </div>
     </>

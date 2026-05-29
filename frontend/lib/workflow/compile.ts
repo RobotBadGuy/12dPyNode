@@ -7,7 +7,7 @@ export function compileWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
   sourceNodeId?: string,
-  options?: { testRun?: boolean },
+  options?: { testRun?: boolean; modelSubset?: string[] },
 ): CompiledWorkflow | { error: ActionableError } {
   const sourceNodes = nodes.filter((n) => SOURCE_NODE_TYPES.has(n.type));
   const sourceNode = sourceNodeId
@@ -88,24 +88,26 @@ export function compileWorkflow(
       }
     });
 
-  // PC-1004: a "Test run" narrows the batch to a single model via the existing
-  // selectedModelNames filter. For an Excel source, pick the first model
-  // header-aware (mirroring run_workflow's header-row skip) so it matches the
-  // model the backend runs first; a manual list has no header, so use its first
-  // entry verbatim. source.modelNames is non-empty here (checked above), so the
-  // subset is always one concrete name — a test run never silently widens to a
-  // full run.
-  const testRunSubset = options?.testRun
-    ? [
-        (source.kind === 'excel'
-          ? firstModelForTestRun(source.modelNames)
-          : undefined) ?? source.modelNames[0],
-      ]
-    : undefined;
+  // PC-1004/PC-1005: narrow the batch to a subset via the existing
+  // selectedModelNames filter. PC-1005 passes an explicit modelSubset (e.g. the
+  // failed models to re-run) and it wins; otherwise PC-1004's "Test run" derives
+  // the first model — header-aware for Excel (mirroring run_workflow's header
+  // skip), verbatim for a manual list. source.modelNames is non-empty here, so a
+  // test-run subset is always one concrete name (never silently a full run).
+  const selectedSubset =
+    options?.modelSubset && options.modelSubset.length > 0
+      ? options.modelSubset
+      : options?.testRun
+        ? [
+            (source.kind === 'excel'
+              ? firstModelForTestRun(source.modelNames)
+              : undefined) ?? source.modelNames[0],
+          ]
+        : undefined;
 
   if (source.kind === 'excel') {
     const graph: CompiledWorkflow['graph'] = { nodes, edges };
-    if (testRunSubset) graph.selectedModelNames = testRunSubset;
+    if (selectedSubset) graph.selectedModelNames = selectedSubset;
     return {
       excelFile: source.file,
       modelNames: source.modelNames,
@@ -116,7 +118,7 @@ export function compileWorkflow(
   }
 
   const graph: CompiledWorkflow['graph'] = { nodes, edges, modelNames: source.modelNames };
-  if (testRunSubset) graph.selectedModelNames = testRunSubset;
+  if (selectedSubset) graph.selectedModelNames = selectedSubset;
   return {
     modelNames: source.modelNames,
     graph,
