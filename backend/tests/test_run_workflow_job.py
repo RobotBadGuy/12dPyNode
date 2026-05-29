@@ -306,3 +306,19 @@ def test_status_endpoint_omits_results_when_processing_with_no_progress_yet(
 
     assert result["status"] == "processing"
     assert "results" not in result
+
+
+def test_run_workflow_job_no_excel_path(monkeypatch, _isolate_dirs):
+    """PC-1001: run_workflow_job tolerates excel_file_path=None (manual source)."""
+    _, output_dir = _isolate_dirs
+    paths = _write_chain_files(output_dir, ["A.chain"])
+    file_details = [_success_row("A", paths[0])]
+    _patch_run_workflow(monkeypatch, ([paths[0]], "/proj", file_details))
+
+    session_id = _seed_session()
+    backend_main.run_workflow_job(session_id, None, {"modelNames": ["A"]}, [])
+
+    session = backend_main.session_store.get(session_id)
+    zip_path = session["results"]["zip_path"]
+    with zipfile.ZipFile(zip_path) as zf:
+        assert "A.chain" in set(zf.namelist())

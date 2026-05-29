@@ -10,7 +10,7 @@ load_dotenv()
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks, Form, Body, Response
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from contextlib import asynccontextmanager
 from datetime import datetime
 import os
@@ -250,18 +250,19 @@ async def upload_files(
 @app.post("/api/workflow/run")
 async def run_workflow_endpoint(
     background_tasks: BackgroundTasks,
-    excel_file: UploadFile = File(...),
     workflow_graph: UploadFile = File(...),
     variables: UploadFile = File(...),
+    excel_file: Optional[UploadFile] = File(None),
     selected_column_index: str = Form("0"),
 ):
     """
-    Run a workflow graph
+    Run a workflow graph.
+
+    PC-1001: excel_file is optional. When omitted, model names are taken from
+    workflow_graph.modelNames (the manual Model List source) instead of an
+    Excel column.
     """
     try:
-        if not excel_file.filename.endswith('.xlsx'):
-            raise HTTPException(status_code=400, detail="Excel file must be .xlsx format")
-
         # Read and parse workflow graph and variables
         workflow_content = await workflow_graph.read()
         variables_content = await variables.read()
@@ -272,15 +273,24 @@ async def run_workflow_endpoint(
         # Generate unique session ID
         session_id = str(uuid.uuid4())
 
-        # Save uploaded Excel file
-        excel_path = UPLOAD_DIR / f"{session_id}_{excel_file.filename}"
-        content = await excel_file.read()
-        excel_path.write_bytes(content)
+        # Save the uploaded Excel file when present; otherwise require a manual list.
+        excel_path = None
+        if excel_file is not None and excel_file.filename:
+            if not excel_file.filename.endswith('.xlsx'):
+                raise HTTPException(status_code=400, detail="Excel file must be .xlsx format")
+            excel_path = UPLOAD_DIR / f"{session_id}_{excel_file.filename}"
+            content = await excel_file.read()
+            excel_path.write_bytes(content)
+        elif not (workflow_json.get('modelNames') or []):
+            raise HTTPException(
+                status_code=400,
+                detail="No model source: upload an Excel file or provide a non-empty model list.",
+            )
 
         # Initialize session
         session_store.create(session_id, {
             "status": "processing",
-            "excel_file": str(excel_path),
+            "excel_file": str(excel_path) if excel_path else None,
             "workflow_graph": workflow_json,
             "variables": variables_json,
             "results": None,
@@ -291,7 +301,7 @@ async def run_workflow_endpoint(
         background_tasks.add_task(
             run_workflow_job,
             session_id,
-            str(excel_path),
+            str(excel_path) if excel_path else None,
             workflow_json,
             variables_json,
             column_index,
@@ -303,6 +313,10 @@ async def run_workflow_endpoint(
             "message": "Workflow started",
         }
 
+    except HTTPException:
+        # Pre-existing bug: the broad `except Exception` below would otherwise
+        # re-wrap our 400s as 500s. Let HTTPExceptions through unchanged.
+        raise
     except Exception as e:
         logger.error(f"Error in workflow run: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -356,7 +370,7 @@ def _build_summary_text(
 
 def run_workflow_job(
     session_id: str,
-    excel_file_path: str,
+    excel_file_path: Optional[str],
     workflow_graph: Dict,
     variables: List[Dict],
     selected_column_index: int = 0,
