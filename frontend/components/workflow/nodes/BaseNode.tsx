@@ -163,38 +163,43 @@ export function BaseNode({
           {/* Node Content */}
           {children && <div className="px-4 py-3">{children}</div>}
         </div>
-
-        {/* Success Badge */}
-        {nodeState === 'success' && (
-          <div
-            className="absolute -top-2 -right-2 bg-emerald-500 rounded-full p-1.5 shadow-lg node-badge-enter z-20"
-            style={{ boxShadow: '0 0 20px rgba(16, 185, 129, 0.6)' }}
-          >
-            <CheckCircle2 className="w-4 h-4 text-white" />
-          </div>
-        )}
-
-        {/* Error Badge */}
-        {nodeState === 'error' && (
-          <div
-            className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1.5 shadow-lg node-badge-enter z-20"
-            style={{ boxShadow: '0 0 20px rgba(239, 68, 68, 0.6)' }}
-          >
-            <AlertCircle className="w-4 h-4 text-white" />
-          </div>
-        )}
-
-        {/* Warning Badge — top-left so it doesn't collide with success/error in top-right */}
-        {showWarnings && (
-          <div
-            className="absolute -top-2 -left-2 bg-amber-500 rounded-full p-1.5 shadow-lg z-20 cursor-help"
-            style={{ boxShadow: '0 0 14px rgba(245, 158, 11, 0.5)' }}
-            title={warnings.join('\n')}
-          >
-            <AlertTriangle className="w-4 h-4 text-white" />
-          </div>
-        )}
       </div>
+
+      {/* Status badges sit OUTSIDE the node container: that container uses
+          overflow-hidden to clip its rounded background + running border, which
+          would also clip these corner badges (they overhang via -top/-left/-right).
+          The wrapper shrink-wraps the container, so the offsets land identically. */}
+
+      {/* Success Badge */}
+      {nodeState === 'success' && (
+        <div
+          className="absolute -top-2 -right-2 bg-emerald-500 rounded-full p-1.5 shadow-lg node-badge-enter z-20"
+          style={{ boxShadow: '0 0 20px rgba(16, 185, 129, 0.6)' }}
+        >
+          <CheckCircle2 className="w-4 h-4 text-white" />
+        </div>
+      )}
+
+      {/* Error Badge */}
+      {nodeState === 'error' && (
+        <div
+          className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1.5 shadow-lg node-badge-enter z-20"
+          style={{ boxShadow: '0 0 20px rgba(239, 68, 68, 0.6)' }}
+        >
+          <AlertCircle className="w-4 h-4 text-white" />
+        </div>
+      )}
+
+      {/* Warning Badge — top-left so it doesn't collide with success/error in top-right */}
+      {showWarnings && (
+        <div
+          className="absolute -top-2 -left-2 bg-amber-500 rounded-full p-1.5 shadow-lg z-20 cursor-help"
+          style={{ boxShadow: '0 0 14px rgba(245, 158, 11, 0.5)' }}
+          title={warnings.join('\n')}
+        >
+          <AlertTriangle className="w-4 h-4 text-white" />
+        </div>
+      )}
 
       {/* Output Handles */}
       {allOutputs.map((output, idx) => {
