@@ -14,6 +14,8 @@ import { isReadySource } from '@/lib/workflow/modelSources';
 export interface WorkflowRunContextValue {
   /** Run the chain from a single source node, identified by its id. */
   onRunFromSource: (nodeId: string) => void;
+  /** PC-1004: run the chain for just the first model of a source ("Test run"). */
+  onTestRunFromSource: (nodeId: string) => void;
   /** Graph-level precondition: a Foreach Model and a Chain File Output exist. */
   canRun: boolean;
   /** A run is currently in flight (global lock — disables every ▶). */
@@ -22,6 +24,7 @@ export interface WorkflowRunContextValue {
 
 const WorkflowRunContext = createContext<WorkflowRunContextValue>({
   onRunFromSource: () => {},
+  onTestRunFromSource: () => {},
   canRun: false,
   isRunning: false,
 });
@@ -43,8 +46,14 @@ export function useSourceRunButton(
   type: NodeType,
   data: Record<string, unknown>,
   notReadyMessage: string,
-): { onRun: () => void; runDisabled: boolean; runTooltip: string } {
-  const { onRunFromSource, canRun, isRunning } = useWorkflowRun();
+): {
+  onRun: () => void;
+  onTestRun: () => void;
+  runDisabled: boolean;
+  runTooltip: string;
+  testRunTooltip: string;
+} {
+  const { onRunFromSource, onTestRunFromSource, canRun, isRunning } = useWorkflowRun();
   const ready = isReadySource({ id, type, data } as unknown as WorkflowNode);
   const runDisabled = isRunning || !canRun || !ready;
   // Tooltip order mirrors runDisabled's left-to-right evaluation: the
@@ -57,5 +66,16 @@ export function useSourceRunButton(
       : !ready
         ? notReadyMessage
         : 'Run the chain from this source';
-  return { onRun: () => onRunFromSource(id), runDisabled, runTooltip };
+  // PC-1004: the test-run button shares the same gate; when runnable it explains
+  // that it generates only the first model.
+  const testRunTooltip = runDisabled
+    ? runTooltip
+    : 'Test run — generate just the first model';
+  return {
+    onRun: () => onRunFromSource(id),
+    onTestRun: () => onTestRunFromSource(id),
+    runDisabled,
+    runTooltip,
+    testRunTooltip,
+  };
 }

@@ -20,7 +20,7 @@ export function ManualModelsNode(props: NodeProps) {
   const [expanded, setExpanded] = useState(false);
 
   // PC-1003: inline ▶ run button (runs the chain from this source).
-  const { onRun, runDisabled, runTooltip } = useSourceRunButton(
+  const { onRun, onTestRun, runDisabled, runTooltip, testRunTooltip } = useSourceRunButton(
     id,
     'manualModels',
     data,
@@ -40,8 +40,10 @@ export function ManualModelsNode(props: NodeProps) {
       outputs={schema.flowOutputs}
       selected={selected}
       onRun={onRun}
+      onTestRun={onTestRun}
       runDisabled={runDisabled}
       runTooltip={runTooltip}
+      testRunTooltip={testRunTooltip}
     >
       <div className="text-xs text-white/80 space-y-2">
         {modelNames.length > 0 ? (

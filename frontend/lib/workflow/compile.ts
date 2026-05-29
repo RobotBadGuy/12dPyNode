@@ -1,12 +1,13 @@
 import { WorkflowNode, WorkflowEdge, CompiledWorkflow, VariableBinding } from './types';
 import { nodeSchemas, getParamHandleId } from './nodeSchemas';
 import { ActionableError, nodeLabel } from './errors';
-import { SOURCE_NODE_TYPES, getModelSource } from './modelSources';
+import { SOURCE_NODE_TYPES, getModelSource, firstModelForTestRun } from './modelSources';
 
 export function compileWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
   sourceNodeId?: string,
+  options?: { testRun?: boolean },
 ): CompiledWorkflow | { error: ActionableError } {
   const sourceNodes = nodes.filter((n) => SOURCE_NODE_TYPES.has(n.type));
   const sourceNode = sourceNodeId
@@ -87,19 +88,33 @@ export function compileWorkflow(
       }
     });
 
+  // PC-1004: a "Test run" narrows the batch to a single model via the existing
+  // selectedModelNames filter. Pick the first model header-aware so it matches
+  // the model the backend would run first.
+  const testRunSubset = options?.testRun
+    ? (() => {
+        const first = firstModelForTestRun(source.modelNames);
+        return first ? [first] : [];
+      })()
+    : undefined;
+
   if (source.kind === 'excel') {
+    const graph: CompiledWorkflow['graph'] = { nodes, edges };
+    if (testRunSubset) graph.selectedModelNames = testRunSubset;
     return {
       excelFile: source.file,
       modelNames: source.modelNames,
       selectedColumnIndex: source.selectedColumnIndex ?? 0,
-      graph: { nodes, edges },
+      graph,
       variables,
     };
   }
 
+  const graph: CompiledWorkflow['graph'] = { nodes, edges, modelNames: source.modelNames };
+  if (testRunSubset) graph.selectedModelNames = testRunSubset;
   return {
     modelNames: source.modelNames,
-    graph: { nodes, edges, modelNames: source.modelNames },
+    graph,
     variables,
   };
 }

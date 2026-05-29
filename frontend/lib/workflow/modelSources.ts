@@ -63,3 +63,15 @@ export function parseModelList(text: string): string[] {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
 }
+
+// PC-1004: the model a "Test run" should generate — the first real model name,
+// skipping a header-looking first entry to mirror the backend's header-row skip
+// in run_workflow (so it matches the model the backend would run first).
+// Returns undefined for an empty list.
+const TEST_RUN_HEADER_NAMES = ['filename', 'name', 'model', 'model_name', 'model name'];
+
+export function firstModelForTestRun(modelNames: string[]): string | undefined {
+  if (modelNames.length === 0) return undefined;
+  const start = TEST_RUN_HEADER_NAMES.includes(modelNames[0].trim().toLowerCase()) ? 1 : 0;
+  return modelNames[start];
+}

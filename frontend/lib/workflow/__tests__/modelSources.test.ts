@@ -6,6 +6,7 @@ import {
   isReadySource,
   hasReadyModelSource,
   parseModelList,
+  firstModelForTestRun,
 } from '../modelSources';
 import type { WorkflowNode } from '../types';
 
@@ -61,5 +62,18 @@ describe('isReadySource / hasReadyModelSource', () => {
     expect(hasReadyModelSource(nodes)).toBe(true);
     expect(hasReadyModelSource(nodes, '1')).toBe(false);
     expect(hasReadyModelSource(nodes, '2')).toBe(true);
+  });
+});
+
+describe('firstModelForTestRun', () => {
+  it('returns the first name when there is no header', () => {
+    expect(firstModelForTestRun(['A', 'B', 'C'])).toBe('A');
+  });
+  it('skips a common-header first entry (mirrors the backend)', () => {
+    expect(firstModelForTestRun(['Model', 'A', 'B'])).toBe('A');
+    expect(firstModelForTestRun(['Filename', 'X'])).toBe('X');
+  });
+  it('returns undefined for an empty list', () => {
+    expect(firstModelForTestRun([])).toBeUndefined();
   });
 });

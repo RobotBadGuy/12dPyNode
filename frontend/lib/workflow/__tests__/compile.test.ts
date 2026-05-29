@@ -199,6 +199,48 @@ describe('compileWorkflow', () => {
       expect(result.excelFile).toBeUndefined();
     }
   });
+
+  it('test-run narrows to the first model (excel)', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['A', 'B', 'C'], selectedColumnIndex: 0 }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges, undefined, { testRun: true });
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.graph.selectedModelNames).toEqual(['A']);
+    }
+  });
+
+  it('test-run narrows to the first model (manual), keeping the full list', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'manualModels', { rawText: 'A\nB', modelNames: ['A', 'B'] }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges, undefined, { testRun: true });
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.graph.selectedModelNames).toEqual(['A']);
+      expect(result.graph.modelNames).toEqual(['A', 'B']);
+    }
+  });
+
+  it('a normal run does not set selectedModelNames', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['A', 'B'], selectedColumnIndex: 0 }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const result = compileWorkflow(nodes, [makeEdge('1', '2'), makeEdge('2', '3')]);
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.graph.selectedModelNames).toBeUndefined();
+    }
+  });
 });
 
 // ── validateWorkflow ───────────────────────────────────────────────────

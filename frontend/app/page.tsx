@@ -812,7 +812,7 @@ export default function WorkspacePage() {
     [nodes]
   );
 
-  const handleRunChain = useCallback(async (explicitSourceId?: string) => {
+  const handleRunChain = useCallback(async (explicitSourceId?: string, options?: { testRun?: boolean }) => {
     // PC-1003: the toolbar wires this as onClick={onRunChain}, which would pass
     // a MouseEvent as the first arg — only treat a real string as a source id.
     const sourceId = typeof explicitSourceId === 'string' ? explicitSourceId : undefined;
@@ -874,6 +874,7 @@ export default function WorkspacePage() {
     const runSingleWorkflow = async (
       excelNodeId: string,
       progressContext: { currentExcel: number; totalExcels: number; excelLabel: string },
+      testRun: boolean,
     ): Promise<{
       sessionId: string;
       zipBlob: Blob;
@@ -892,7 +893,7 @@ export default function WorkspacePage() {
         );
       }
 
-      const compiled = compileWorkflow(nodes, edges, excelNodeId);
+      const compiled = compileWorkflow(nodes, edges, excelNodeId, { testRun });
       if ('error' in compiled) {
         throw new Error(`Compilation failed: ${compiled.error.title}`);
       }
@@ -984,7 +985,7 @@ export default function WorkspacePage() {
           currentExcel: 1,
           totalExcels: 1,
           excelLabel: excelLabelFor(selectedSourceIds[0]),
-        });
+        }, options?.testRun ?? false);
         const { sessionId, zipBlob, succeededCount, failedCount, failedModels } = result;
         setSessionId(sessionId);
 
@@ -1032,7 +1033,7 @@ export default function WorkspacePage() {
               currentExcel: i + 1,
               totalExcels: selectedSourceIds.length,
               excelLabel: excelLabelFor(excelNodeId),
-            });
+            }, false);
             results.push(result);
 
             // Prefer structured counts; fall back to ZIP inspection (excluding _summary.txt).
@@ -1404,6 +1405,9 @@ export default function WorkspacePage() {
     () => ({
       onRunFromSource: (nodeId: string) => {
         void handleRunChain(nodeId);
+      },
+      onTestRunFromSource: (nodeId: string) => {
+        void handleRunChain(nodeId, { testRun: true });
       },
       canRun,
       isRunning,
