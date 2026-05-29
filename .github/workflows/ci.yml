@@ -66,15 +66,15 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      # The committed package-lock.json is maintained with npm 11 (local dev runs
-      # Node 24). npm 10 (bundled with Node 20) rejects it via `npm ci` because it
-      # treats wasm-fallback optional deps (@emnapi/*) as required and reports them
-      # missing. Pin npm 11 here so `npm ci` matches how the lockfile is generated.
-      - name: Use npm 11 (matches the committed lockfile)
-        run: npm install -g npm@11
-
+      # NOTE: `npm install`, not `npm ci`, is intentional. The committed
+      # package-lock.json is generated on the Windows dev machine and omits the
+      # Linux-only optional transitive deps (@emnapi/* — unrs-resolver's wasm
+      # fallback), so strict `npm ci` fails on this Linux runner with
+      # "missing @emnapi/... from lock file". `npm install` reconciles those
+      # platform optionals against the lockfile and installs cleanly. To switch
+      # back to `npm ci`, regenerate the lockfile on Linux and commit it.
       - name: Install dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Lint
         run: npm run lint
