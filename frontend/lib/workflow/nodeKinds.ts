@@ -3,6 +3,7 @@
 // of these is nonsensical, so the context menu hides "Disable" for them.
 export const CONTROL_FLOW_NODE_TYPES = new Set<string>([
   'excelModels',
+  'manualModels',
   'foreachModel',
   'chainFileOutput',
   'setVariable',

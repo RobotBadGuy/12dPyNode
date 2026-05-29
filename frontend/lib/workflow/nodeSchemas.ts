@@ -27,6 +27,12 @@ export const nodeSchemas: Record<string, NodeSchema> = {
     flowOutputs: [{ id: 'flow:models', label: 'models' }],
     valueOutputs: [],
   },
+  manualModels: {
+    parameters: [],
+    flowInputs: [],
+    flowOutputs: [{ id: 'flow:models', label: 'models' }],
+    valueOutputs: [],
+  },
   foreachModel: {
     parameters: [
       {

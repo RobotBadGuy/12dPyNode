@@ -46,6 +46,7 @@ export const CATEGORY_LABELS: Record<PaletteCategory, string> = {
 export const PALETTE_ITEMS: PaletteItem[] = [
   // Core
   { type: 'excelModels', label: 'Excel Models', category: 'core', keywords: ['xlsx', 'spreadsheet', 'input'] },
+  { type: 'manualModels', label: 'Model List', category: 'core', keywords: ['manual', 'names', 'list', 'typed', 'no excel'] },
   { type: 'foreachModel', label: 'Foreach Model', category: 'core', keywords: ['loop', 'iterate'] },
   { type: 'setVariable', label: 'Set Variable', category: 'core', keywords: ['var'] },
 

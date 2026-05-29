@@ -17,6 +17,7 @@ import { LayoutGrid } from 'lucide-react';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { validateConnection } from '@/lib/workflow/edgeRules';
 import { ExcelModelsNode } from './nodes/ExcelModelsNode';
+import { ManualModelsNode } from './nodes/ManualModelsNode';
 import { ForeachModelNode } from './nodes/ForeachModelNode';
 import { ChainFileOutputNode } from './nodes/ChainFileOutputNode';
 import { ImportNode } from './nodes/ImportNode';
@@ -79,6 +80,7 @@ export function WorkspaceCanvas({
 }: WorkspaceCanvasProps) {
   const nodeTypes = {
     excelModels: ExcelModelsNode,
+    manualModels: ManualModelsNode,
     foreachModel: ForeachModelNode,
     chainFileOutput: ChainFileOutputNode,
     import: ImportNode,
@@ -186,6 +188,8 @@ export function WorkspaceCanvas({
           nodeColor={(node) => {
             switch (node.type) {
               case 'excelModels':
+                return '#10b981';
+              case 'manualModels':
                 return '#10b981';
               case 'foreachModel':
                 return '#3b82f6';

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
 import { NodeRunDetails } from '@/components/workflow/NodeRunDetails';
 import type { FileDetail } from '@/lib/workflow/run';
+import { parseModelList } from '@/lib/workflow/modelSources';
 
 interface RightSidebarProps {
   selectedNode: Node | null;
@@ -111,6 +112,49 @@ export function RightSidebar({
   }
 
   const nodeData = selectedNode.data as any;
+
+  // PC-1002: Manual Model List editor — paste-friendly textarea, one name/line.
+  if (selectedNode.type === 'manualModels') {
+    const rawText = (nodeData.rawText as string) ?? '';
+    const modelNames = (nodeData.modelNames as string[]) ?? [];
+
+    const handleChange = (text: string) => {
+      onUpdateNode(selectedNode.id, {
+        rawText: text,
+        modelNames: parseModelList(text),
+      } as Partial<WorkflowNodeData>);
+    };
+
+    return (
+      <EditorShell
+        selectedNodeId={selectedNode.id}
+        runFileDetails={runFileDetails}
+        runSessionId={runSessionId}
+      >
+        <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node Type</Label>
+            <p className="text-sm text-gray-400">{selectedNode.type}</p>
+          </div>
+          <div>
+            <Label className="text-sm font-semibold text-gray-300 mb-1 block">
+              Model names (one per line)
+            </Label>
+            <textarea
+              className="w-full h-48 bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 font-mono resize-y"
+              placeholder={'Model-A\nModel-B\nModel-C'}
+              value={rawText}
+              onChange={(e) => handleChange(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {modelNames.length} model{modelNames.length === 1 ? '' : 's'}
+            </p>
+          </div>
+        </div>
+      </EditorShell>
+    );
+  }
 
   // Render SetVariable editor
   if (selectedNode.type === 'setVariable') {

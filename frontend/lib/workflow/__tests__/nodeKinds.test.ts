@@ -15,7 +15,12 @@ describe('isControlFlowNode', () => {
     expect(isControlFlowNode(undefined)).toBe(false);
   });
 
-  it('exposes the set with exactly four members', () => {
-    expect(CONTROL_FLOW_NODE_TYPES.size).toBe(4);
+  it('exposes the set with exactly five members', () => {
+    expect(CONTROL_FLOW_NODE_TYPES.size).toBe(5);
+  });
+
+  it('classifies manualModels as a control-flow node', () => {
+    expect(CONTROL_FLOW_NODE_TYPES.has('manualModels')).toBe(true);
+    expect(isControlFlowNode('manualModels')).toBe(true);
   });
 });
