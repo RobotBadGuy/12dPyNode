@@ -1612,6 +1612,7 @@ export default function WorkspacePage() {
                 setSuccessFileCount(undefined);
                 setSuccessTotalModels(undefined);
                 setSuccessFailedModels([]);
+                setLastRunSourceId(null);
               }}
               fileCount={successFileCount}
               totalModels={successTotalModels}
