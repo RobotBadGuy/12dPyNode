@@ -66,6 +66,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # The committed package-lock.json is maintained with npm 11 (local dev runs
+      # Node 24). npm 10 (bundled with Node 20) rejects it via `npm ci` because it
+      # treats wasm-fallback optional deps (@emnapi/*) as required and reports them
+      # missing. Pin npm 11 here so `npm ci` matches how the lockfile is generated.
+      - name: Use npm 11 (matches the committed lockfile)
+        run: npm install -g npm@11
+
       - name: Install dependencies
         run: npm ci
 
