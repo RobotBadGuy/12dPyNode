@@ -680,7 +680,7 @@ def build_command_chain(
 
         execution_order = _kahn_sort(reach_set, edges, is_flow_edge)
 
-        control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
+        control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'manualModels', 'setVariable'}
         for node_id in execution_order:
             node = id_to_node.get(node_id)
             if node and node.get('type') not in control_flow_types:
@@ -711,7 +711,7 @@ def build_command_chain(
 
     execution_order = _kahn_sort(all_node_ids, edges, is_flow_edge)
 
-    control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'setVariable'}
+    control_flow_types = {'foreachModel', 'chainFileOutput', 'excelModels', 'manualModels', 'setVariable'}
     for node_id in execution_order:
         node = id_to_node.get(node_id)
         if node and node.get('type') not in control_flow_types:
