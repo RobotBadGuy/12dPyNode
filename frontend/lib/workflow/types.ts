@@ -21,6 +21,12 @@ export interface ExcelModelsNodeData {
   [key: string]: unknown;
 }
 
+export interface ManualModelsNodeData {
+  rawText: string;
+  modelNames: string[];
+  [key: string]: unknown;
+}
+
 export interface ForeachModelNodeData {
   currentModel: string | null;
   [key: string]: unknown;
@@ -306,6 +312,7 @@ export interface ValidationOutputNodeData {
 // Union type for all node data
 export type WorkflowNodeData =
   | ExcelModelsNodeData
+  | ManualModelsNodeData
   | ForeachModelNodeData
   | SetVariableNodeData
   | ImportNodeData
@@ -341,6 +348,7 @@ export type WorkflowNodeData =
 // Node type identifiers
 export type NodeType =
   | 'excelModels'
+  | 'manualModels'
   | 'foreachModel'
   | 'setVariable'
   | 'import'
