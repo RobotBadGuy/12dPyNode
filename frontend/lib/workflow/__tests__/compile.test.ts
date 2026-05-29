@@ -229,6 +229,20 @@ describe('compileWorkflow', () => {
     }
   });
 
+  it('test-run on a manual source uses the first entry verbatim (no header skip)', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'manualModels', { rawText: 'model\nA', modelNames: ['model', 'A'] }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges, undefined, { testRun: true });
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.graph.selectedModelNames).toEqual(['model']);
+    }
+  });
+
   it('a normal run does not set selectedModelNames', () => {
     const nodes: WorkflowNode[] = [
       makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['A', 'B'], selectedColumnIndex: 0 }),

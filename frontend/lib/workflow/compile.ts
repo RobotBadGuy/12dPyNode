@@ -89,13 +89,18 @@ export function compileWorkflow(
     });
 
   // PC-1004: a "Test run" narrows the batch to a single model via the existing
-  // selectedModelNames filter. Pick the first model header-aware so it matches
-  // the model the backend would run first.
+  // selectedModelNames filter. For an Excel source, pick the first model
+  // header-aware (mirroring run_workflow's header-row skip) so it matches the
+  // model the backend runs first; a manual list has no header, so use its first
+  // entry verbatim. source.modelNames is non-empty here (checked above), so the
+  // subset is always one concrete name — a test run never silently widens to a
+  // full run.
   const testRunSubset = options?.testRun
-    ? (() => {
-        const first = firstModelForTestRun(source.modelNames);
-        return first ? [first] : [];
-      })()
+    ? [
+        (source.kind === 'excel'
+          ? firstModelForTestRun(source.modelNames)
+          : undefined) ?? source.modelNames[0],
+      ]
     : undefined;
 
   if (source.kind === 'excel') {
