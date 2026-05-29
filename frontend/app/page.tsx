@@ -45,6 +45,7 @@ import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModa
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import { autoLayout } from '@/lib/workflow/autoLayout';
 import { isSourceNode, isReadySource, hasReadyModelSource } from '@/lib/workflow/modelSources';
+import { WorkflowRunProvider } from '@/lib/workflow/WorkflowRunContext';
 import { notify } from '@/lib/notify';
 import { NodeContextMenu } from '@/components/workflow/NodeContextMenu';
 import { duplicateNode, removeNode, setNodeDisabled } from '@/lib/workflow/nodeOps';
@@ -806,15 +807,20 @@ export default function WorkspacePage() {
     [nodes]
   );
 
-  const handleRunChain = useCallback(async () => {
+  const handleRunChain = useCallback(async (explicitSourceId?: string) => {
+    // PC-1003: the toolbar wires this as onClick={onRunChain}, which would pass
+    // a MouseEvent as the first arg — only treat a real string as a source id.
+    const sourceId = typeof explicitSourceId === 'string' ? explicitSourceId : undefined;
     const sourceNodes = nodes.filter((n) => isReadySource(n));
-    const selectedSourceIds = selectedSourceNodeIds.size > 0
-      ? Array.from(selectedSourceNodeIds).filter((id) =>
-        sourceNodes.some((n) => n.id === id)
-      )
-      : sourceNodes.length > 0
-        ? [sourceNodes[0].id]
-        : [];
+    const selectedSourceIds = sourceId
+      ? (sourceNodes.some((n) => n.id === sourceId) ? [sourceId] : [])
+      : selectedSourceNodeIds.size > 0
+        ? Array.from(selectedSourceNodeIds).filter((id) =>
+          sourceNodes.some((n) => n.id === id)
+        )
+        : sourceNodes.length > 0
+          ? [sourceNodes[0].id]
+          : [];
 
     if (selectedSourceIds.length === 0) {
       const firstSourceNode = nodes.find((n) => isSourceNode(n));
@@ -1386,6 +1392,41 @@ export default function WorkspacePage() {
     (nodes || []).some((n) => n.type === 'foreachModel') &&
     (nodes || []).some((n) => n.type === 'chainFileOutput');
 
+  // PC-1003: context value for the in-node ▶ run buttons. Memoized so source
+  // nodes only re-render when the run state actually changes.
+  const runContextValue = useMemo(
+    () => ({
+      onRunFromSource: (nodeId: string) => {
+        void handleRunChain(nodeId);
+      },
+      canRun,
+      isRunning,
+    }),
+    [handleRunChain, canRun, isRunning],
+  );
+
+  // PC-1003: Ctrl/Cmd+Enter runs the chain (mirrors the toolbar Run button). A
+  // separate effect from the editing-shortcuts one because handleRunChain /
+  // canRun are defined later in this component and can't be its dependencies.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!((e.ctrlKey || e.metaKey) && e.key === 'Enter')) return;
+      const target = e.target as HTMLElement | null;
+      const isInputLike =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.getAttribute('contenteditable') === 'true');
+      if (isInputLike) return;
+      e.preventDefault();
+      if (canRun && !isRunning) {
+        void handleRunChain();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [canRun, isRunning, handleRunChain]);
+
   // PC-703: derive a per-node warning list from the current graph and inject
   // it into each node's data so BaseNode can render the warning badge. Spread
   // ...n preserves React Flow's `selected` / `position` / etc. The map -> map
@@ -1468,7 +1509,7 @@ export default function WorkspacePage() {
         )}
 
         {currentPage === 'editor' && (
-          <>
+          <WorkflowRunProvider value={runContextValue}>
             <div className="flex-1 flex overflow-hidden">
               <LeftSidebar
                 onAddNode={handleAddNode}
@@ -1607,7 +1648,7 @@ export default function WorkspacePage() {
               isOpen={showShortcuts}
               onClose={() => setShowShortcuts(false)}
             />
-          </>
+          </WorkflowRunProvider>
         )}
       </div>
     </ReactFlowProvider>

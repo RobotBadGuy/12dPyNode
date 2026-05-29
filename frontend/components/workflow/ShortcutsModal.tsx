@@ -20,6 +20,12 @@ const mod = isMac ? '⌘' : 'Ctrl';
 
 const SHORTCUTS: ShortcutGroup[] = [
   {
+    category: 'Workflow',
+    items: [
+      { keys: [mod, 'Enter'], description: 'Run workflow' },
+    ],
+  },
+  {
     category: 'Editing',
     items: [
       { keys: [mod, 'Z'], description: 'Undo' },

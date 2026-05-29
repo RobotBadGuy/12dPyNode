@@ -4,18 +4,33 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { ListChecks, ChevronDown, ChevronRight } from 'lucide-react';
-import { ManualModelsNodeData } from '@/lib/workflow/types';
+import { ManualModelsNodeData, WorkflowNode } from '@/lib/workflow/types';
 import { nodeSchemas } from '@/lib/workflow/nodeSchemas';
+import { useWorkflowRun } from '@/lib/workflow/WorkflowRunContext';
+import { isReadySource } from '@/lib/workflow/modelSources';
 
 export function ManualModelsNode(props: NodeProps) {
-  const { data, selected } = props as unknown as {
+  const { data, selected, id } = props as unknown as {
     data: ManualModelsNodeData;
     selected?: boolean;
+    id: string;
   };
   const schema = nodeSchemas.manualModels;
   const modelNames = (data as unknown as ManualModelsNodeData).modelNames || [];
 
   const [expanded, setExpanded] = useState(false);
+
+  // PC-1003: inline ▶ run button (runs the chain from this source).
+  const { onRunFromSource, canRun, isRunning } = useWorkflowRun();
+  const ready = isReadySource({ id, type: 'manualModels', data } as unknown as WorkflowNode);
+  const runDisabled = isRunning || !canRun || !ready;
+  const runTooltip = isRunning
+    ? 'A run is already in progress'
+    : !ready
+      ? 'Add model names first'
+      : !canRun
+        ? 'Add a Foreach Model and Chain Output node to run'
+        : 'Run the chain from this source';
 
   return (
     <BaseNode
@@ -29,6 +44,9 @@ export function ManualModelsNode(props: NodeProps) {
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected}
+      onRun={() => onRunFromSource(id)}
+      runDisabled={runDisabled}
+      runTooltip={runTooltip}
     >
       <div className="text-xs text-white/80 space-y-2">
         {modelNames.length > 0 ? (

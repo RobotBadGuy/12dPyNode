@@ -3,7 +3,7 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, AlertTriangle, Play } from 'lucide-react';
 import { NodeExecutionState } from '@/lib/workflow/types';
 
 interface BaseNodeProps {
@@ -20,6 +20,11 @@ interface BaseNodeProps {
   valueOutputs?: Array<{ id: string; label: string }>;
   children?: React.ReactNode;
   selected?: boolean;
+  // PC-1003: when provided, renders a ▶ run button in the header (source nodes
+  // only). `runDisabled` greys it out; `runTooltip` explains the current state.
+  onRun?: () => void;
+  runDisabled?: boolean;
+  runTooltip?: string;
 }
 
 // Default fallback colors if borderColor/glowColor not provided
@@ -69,6 +74,9 @@ export function BaseNode({
   valueOutputs = [],
   children,
   selected,
+  onRun,
+  runDisabled = false,
+  runTooltip,
 }: BaseNodeProps) {
   const showWarnings = nodeState === 'idle' && warnings.length > 0;
   const allInputs = [...inputs, ...paramInputs];
@@ -157,6 +165,24 @@ export function BaseNode({
                 </div>
               )}
               <h3 className="font-bold text-white text-sm">{title}</h3>
+              {/* PC-1003: per-source run button. `nodrag` stops React Flow from
+                  starting a node drag; stopPropagation stops node selection. */}
+              {onRun && (
+                <button
+                  type="button"
+                  className="nodrag ml-auto shrink-0 p-1.5 rounded-md text-emerald-300 hover:text-white hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  disabled={runDisabled}
+                  title={runTooltip}
+                  aria-label={runTooltip ?? 'Run from this source'}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!runDisabled) onRun();
+                  }}
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                </button>
+              )}
             </div>
           </div>
 
