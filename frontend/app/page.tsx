@@ -45,7 +45,7 @@ import type { SaveTemplateOptions } from '@/components/workflow/SaveTemplateModa
 import { filterValidEdges } from '@/lib/workflow/nodeSchemas';
 import { autoLayout } from '@/lib/workflow/autoLayout';
 import { isSourceNode, isReadySource, hasReadyModelSource } from '@/lib/workflow/modelSources';
-import { WorkflowRunProvider } from '@/lib/workflow/WorkflowRunContext';
+import { WorkflowRunProvider } from '@/components/workflow/WorkflowRunContext';
 import { notify } from '@/lib/notify';
 import { NodeContextMenu } from '@/components/workflow/NodeContextMenu';
 import { duplicateNode, removeNode, setNodeDisabled } from '@/lib/workflow/nodeOps';
@@ -69,6 +69,18 @@ function newNodeId(): string {
   return typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
     : `node_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+// Shared input-focus guard for global keyboard shortcuts: don't fire while the
+// user is typing in a field.
+function isEditableTarget(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  return (
+    !!target &&
+    (target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.getAttribute('contenteditable') === 'true')
+  );
 }
 
 export default function WorkspacePage() {
@@ -392,14 +404,7 @@ export default function WorkspacePage() {
   // Keyboard shortcuts: Ctrl+Z / Ctrl+Y / Ctrl+C / Ctrl+V
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isInputLike =
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.getAttribute('contenteditable') === 'true');
-
-      if (isInputLike) return;
+      if (isEditableTarget(e)) return;
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
@@ -1392,8 +1397,9 @@ export default function WorkspacePage() {
     (nodes || []).some((n) => n.type === 'foreachModel') &&
     (nodes || []).some((n) => n.type === 'chainFileOutput');
 
-  // PC-1003: context value for the in-node ▶ run buttons. Memoized so source
-  // nodes only re-render when the run state actually changes.
+  // PC-1003: context value for the in-node ▶ run buttons. Memoized so it isn't a
+  // new object every render; it changes when canRun / isRunning or handleRunChain
+  // (which closes over the graph) change.
   const runContextValue = useMemo(
     () => ({
       onRunFromSource: (nodeId: string) => {
@@ -1406,18 +1412,13 @@ export default function WorkspacePage() {
   );
 
   // PC-1003: Ctrl/Cmd+Enter runs the chain (mirrors the toolbar Run button). A
-  // separate effect from the editing-shortcuts one because handleRunChain /
-  // canRun are defined later in this component and can't be its dependencies.
+  // separate effect because handleRunChain / canRun are declared later in this
+  // component than the editing-shortcuts effect above — referencing them in that
+  // effect's dependency array would hit the temporal dead zone.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (!((e.ctrlKey || e.metaKey) && e.key === 'Enter')) return;
-      const target = e.target as HTMLElement | null;
-      const isInputLike =
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.getAttribute('contenteditable') === 'true');
-      if (isInputLike) return;
+      if (isEditableTarget(e)) return;
       e.preventDefault();
       if (canRun && !isRunning) {
         void handleRunChain();

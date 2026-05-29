@@ -4,10 +4,9 @@ import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
 import { FileText, ChevronDown, ChevronRight } from 'lucide-react';
-import { ExcelModelsNodeData, WorkflowNode } from '@/lib/workflow/types';
+import { ExcelModelsNodeData } from '@/lib/workflow/types';
 import { nodeSchemas } from '@/lib/workflow/nodeSchemas';
-import { useWorkflowRun } from '@/lib/workflow/WorkflowRunContext';
-import { isReadySource } from '@/lib/workflow/modelSources';
+import { useSourceRunButton } from '@/components/workflow/WorkflowRunContext';
 
 export function ExcelModelsNode(props: NodeProps) {
   const { data, selected, id } = props as unknown as {
@@ -22,16 +21,12 @@ export function ExcelModelsNode(props: NodeProps) {
   const [expanded, setExpanded] = useState(false);
 
   // PC-1003: inline ▶ run button (runs the chain from this source).
-  const { onRunFromSource, canRun, isRunning } = useWorkflowRun();
-  const ready = isReadySource({ id, type: 'excelModels', data } as unknown as WorkflowNode);
-  const runDisabled = isRunning || !canRun || !ready;
-  const runTooltip = isRunning
-    ? 'A run is already in progress'
-    : !ready
-      ? 'Load an Excel file first'
-      : !canRun
-        ? 'Add a Foreach Model and Chain Output node to run'
-        : 'Run the chain from this source';
+  const { onRun, runDisabled, runTooltip } = useSourceRunButton(
+    id,
+    'excelModels',
+    data,
+    'Load an Excel file first',
+  );
 
   return (
     <BaseNode
@@ -45,7 +40,7 @@ export function ExcelModelsNode(props: NodeProps) {
       inputs={schema.flowInputs}
       outputs={schema.flowOutputs}
       selected={selected}
-      onRun={() => onRunFromSource(id)}
+      onRun={onRun}
       runDisabled={runDisabled}
       runTooltip={runTooltip}
     >

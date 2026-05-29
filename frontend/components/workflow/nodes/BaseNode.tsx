@@ -177,7 +177,7 @@ export function BaseNode({
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!runDisabled) onRun();
+                    onRun();
                   }}
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
