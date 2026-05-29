@@ -73,8 +73,8 @@ The current compiler handles the happy path (one `foreach` → one `chainFileOut
 - ✅ **PC-303** `[P1]` — Surface per-node execution logs to the UI.
   *Rationale:* `build_command_chain` now wraps every `execute_node` call in `_execute_node_with_capture`, snapshotting `len(xml_content)` before each call so the per-node XML slice is captured on success. Each call also appends a `{model, node_id, node_type, node_label, status, error}` entry to a `node_events_out` list passed in by the caller; on exception the error event is appended before re-raising so PC-302's per-model isolation still kicks in. `run_workflow` exposes a `node_xml_callback` invoked once per model with `(model_name, {node_id: List[str]})`. `run_workflow_job` wires it to disk: `OUTPUT_DIR/<session_id>/_node_xml/<safe_model>/<safe_node_id>.xml`. New endpoint `GET /api/workflow/node-xml/{session_id}/{model_name}/{node_id}` reads the slice back; path segments go through `_safe_path_segment` on both sides so '/' / '..' can never escape OUTPUT_DIR. On the frontend, `lib/workflow/runStatus.ts` aggregates per-node events into `'idle' | 'running' | 'success' | 'error'`; `app/page.tsx` injects this into each node's `data.nodeState` (the existing BaseNode plumbing handles the visuals). New `NodeRunDetails` panel in the right sidebar shows per-model events for the selected node, with an inline "View XML" button that fetches the per-node slice on demand. Polling-based (no SSE/WebSocket needed at this scale) — events ride the existing PC-907 `/api/workflow/status` channel via `results.file_details[*].node_events`. Tested in `backend/tests/test_per_node_events.py` and `frontend/lib/workflow/__tests__/runStatus.test.ts`.
 
-- **PC-304** `[P2]` `[Size: S]` `[Mode: regular]` — Chain XML preview before download.
-  *Rationale:* Add `GET /api/workflow/preview/{session_id}/{model_name}` that returns the generated chain as text. Lets users verify output without opening 12d.
+- **PC-304** `[P2]` `[Size: M]` `[Mode: regular]` — Chain XML preview before download (whole-file + per-node).
+  *Rationale:* Add `GET /api/workflow/preview/{session_id}/{model_name}` that returns the full generated chain as text so users can verify output without opening 12d. Also wire the per-node **"Show generated XML"** action that PC-903 deferred: right-click a node (or use the Run Details panel) to see exactly the XML slice that node emitted, reading the per-node capture already written to disk by PC-303 via `GET /api/workflow/node-xml/...`. This is per-node *inspection*, not per-node execution — the right answer to "is this node working?" for a tool that generates XML rather than running 12d. Pairs with PC-1004 (test-run one model, then inspect each node's slice). Size bumped S→M for the per-node half.
 
 - ✅ **PC-305** `[P2]` — Edge type validation at compile time.
   *Rationale:* `WorkspaceCanvas.tsx` now passes `isValidConnection={validateConnection}` to React Flow. The validator (in `frontend/lib/workflow/edgeRules.ts`) only allows `flow→flow` and `value→param` connections; legacy unprefixed handles still pass for backward compatibility. Tested in `frontend/lib/workflow/__tests__/edgeRules.test.ts`.
@@ -145,7 +145,7 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
   *Rationale:* New `validateNode(node, allNodes, allEdges)` in `frontend/lib/workflow/compile.ts` returns per-node warnings for excelModels-without-file, chainFileOutput-missing-fields, and any param-handle whose data field is empty AND has no incoming `param:` edge (generic check using `nodeSchemas`). `app/page.tsx` memoizes the warning map and injects `data.warnings` into each node before rendering. `BaseNode.tsx` shows an amber `AlertTriangle` badge in the top-left (so it doesn't collide with success/error in the top-right) with the warning list as a native tooltip. Tested in `frontend/lib/workflow/__tests__/validateNode.test.ts`.
 
 - **PC-704** `[P1]` `[Size: M]` `[Mode: feature-dev]` — Excel column picker with preview.
-  *Rationale:* `selectedColumnIndex` is hidden in the `excelModels` node data. Render the first N rows of the parsed sheet in a table and let the user click a column header. *Bumped to P1 — this is currently the most confusing step for new users.*
+  *Rationale:* `selectedColumnIndex` is hidden in the `excelModels` node data. Render the first N rows of the parsed sheet in a table and let the user click a column header. *Bumped to P1 — this is currently the most confusing step for new users.* (The Manual "Model List" node from PC-1002 is the no-Excel alternative when you'd rather type names than pick a column.)
 
 - **PC-705** `[P2]` `[Size: L]` `[Mode: feature-dev]` — Dark/light theme toggle.
   *Rationale:* Currently dark-only (hardcoded `text-gray-300` etc.). Tailwind already supports this via `dark:` prefix — refactor tokens. Touches every component, hence Large.
@@ -210,40 +210,71 @@ These are the user-facing polish items that turn the tool from "works" into "enj
 
 ---
 
+## EPIC-10 — Flexible Run Entry & Fast Iteration
+
+Today a run is fused to "Excel + the toolbar" in three places: the trigger lives in `TopBar.tsx` (`handleRunChain` hunts for `excelModels` nodes that have a file), the `canRun` / `validateWorkflow` / `compileWorkflow` gates all require an `excelModels` node with a loaded file, and the backend's `POST /api/workflow/run` takes `excel_file: UploadFile = File(...)` as mandatory while `run_workflow` reads model names only via `pd.read_excel`. This epic decouples **how you trigger a run** from **where the model names come from** — so you can launch from a node on the canvas and drive a batch from a hand-typed list with no Excel at all.
+
+- **PC-1001** `[P1]` `[Size: L]` `[Mode: superpowers]` — Decouple the model-name source from Excel.
+  *Rationale:* The enabling layer for the rest of this epic. Backend: make `excel_file` optional on `/api/workflow/run` and accept an explicit `model_names` list (a new multipart part, or carried inside `workflow_graph`); `run_workflow` branches — read names from the selected Excel column when a file is present, otherwise use the supplied list. Everything downstream (the per-model loop, PC-301 reachability, PC-302 isolation, PC-907 progress) is unchanged. Frontend: `compileWorkflow` / `validateWorkflow` / `canRun` accept either an `excelModels` **or** a manual source, and `CompiledWorkflow.excelFile` becomes optional. superpowers because this touches the compile/validate/runner seam where a regression silently corrupts or blocks every run — worth a brainstorm + TDD-first.
+
+- **PC-1002** `[P1]` `[Size: M]` `[Mode: feature-dev]` — Manual "Model List" source node.
+  *Rationale:* A new `manualModels` source node, sibling to `excelModels`, that produces `modelNames: string[]` from a hand-edited, paste-friendly list (one name per line / chip editor) instead of an Excel column. Same flow-output contract as `excelModels` so it wires into `foreachModel` identically and emits one `.chain` per name. Names-only — per-model variable values are deferred to PC-1006. Register it across the usual layers: `palette.ts`, `nodeKinds.ts` (it's control-flow), `types.ts`, `nodeSchemas.ts`, and a node component. Depends on PC-1001.
+
+- **PC-1003** `[P1]` `[Size: M]` `[Mode: feature-dev]` — Inline "play" run button on source nodes.
+  *Rationale:* Add a ▶ button to the title bar of source nodes (`excelModels` + `manualModels`). Pressing it runs the entire chain reachable from that source — the source node is already the graph root, so this is identical to today's run, just triggered where the inputs live (the awkward "select the node, then hunt for Run Chain in the toolbar" flow goes away). Reuse `handleRunChain` keyed by the source node id; gate the button on the existing `canRun` precondition (Foreach + Chain Output present). The toolbar button stays as "Run all sources" for multi-source batches. Add a Run keyboard shortcut (Ctrl/Cmd+Enter, listed in `ShortcutsModal`). A dedicated "Start" trigger node was considered and deferred — the source node already marks the entry point; revisit only if run-level config (column choice, model filter, output folder) is worth consolidating into one hub.
+
+- **PC-1004** `[P2]` `[Size: S]` `[Mode: regular]` — Single-model "Test run".
+  *Rationale:* Generate the chain for just one model — the first, or a user-picked one — so the whole graph can be validated in seconds instead of churning the full list. Reuses the existing `selectedModelNames` filter (PC-301) with a one-element subset; surfaced as a "Test run" affordance next to the play button. A big iteration-speed win while authoring, and pairs with PC-304's per-node XML view to confirm each node emits what you expect.
+
+- **PC-1005** `[P2]` `[Size: S]` `[Mode: regular]` — Re-run failed models only.
+  *Rationale:* PC-302 already isolates per-model failures and the frontend already renders a `FailedModel[]` list in the success/celebration modal. Add a "Re-run failed (N)" action that resubmits just the failed model names through the PC-1001 manual-names path — no Excel re-pick, and the models that already succeeded aren't re-run. Closes the loop on partial runs.
+
+- **PC-1006** `[P2]` `[Size: M]` `[Mode: feature-dev]` — Model List variable grid (extends PC-1002).
+  *Rationale:* Let each row in the Model List carry per-model variable values (a mini-spreadsheet with user-defined columns), so the manual source can fully replace a multi-column Excel sheet rather than just the name column. Each row maps to the existing per-model variable scope in `run_workflow`. Deferred until the names-only list (PC-1002) proves useful in practice — YAGNI until then.
+
+---
+
 ## Suggested Order of Attack
 
-The plan: ship the in-flight EPIC-03 work, then front-load high-impact UX polish (the user-visible wins are cheap and compound), then push deeper engineering work once the surface is pleasant to use. Production hardening sits at the end behind a "do we go multi-user?" gate.
+The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rework (the current focus — run the chain from a node on the canvas and from a hand-typed model list, no Excel required), then front-load the remaining high-impact UX polish (the user-visible wins are cheap and compound), then push deeper engineering work once the surface is pleasant to use. Production hardening sits at the end behind a "do we go multi-user?" gate.
 
 ### Phase 1 — Finish the in-flight execution engine work
 1. ✅ **PC-302** — Per-model error isolation. Already in progress; finish and merge.
 2. ✅ **PC-907** — Per-model progress indicator. Natural follow-on once PC-302's status data exists.
 3. ✅ **PC-303** — Per-node execution logs over SSE. Closes the "what just happened" loop with PC-907.
 
-### Phase 2 — Cheap, high-impact UX wins (ship these in any order)
-4. ✅ **PC-901** — Toast notification system. Foundation for everything below.
-5. ✅ **PC-911** — Actionable error messages. Pairs with PC-901.
-6. ✅ **PC-902** — Mini-map + auto-layout.
-7. ✅ **PC-903** — Right-click context menu.
-8. **PC-910** — Export canvas as PNG. Trivial; useful.
-9. **PC-704** — Excel column picker with preview. Removes the single most confusing step in the current flow.
-10. **PC-904** — Drag-and-drop Excel drop zone.
+### Phase 2 — Flexible run entry (EPIC-10, current priority)
+4. **PC-1001** — Decouple the model-name source from Excel. Enabling layer; do first.
+5. **PC-1002** — Manual "Model List" source node. Run from a hand-typed list, no Excel.
+6. **PC-1003** — Inline ▶ play button on source nodes. Run the whole chain from the canvas.
+7. **PC-1004** — Single-model "Test run". Fast graph validation while authoring.
+   *(PC-1005 re-run-failed and PC-1006 Model List variable grid follow on once the above lands.)*
 
-### Phase 3 — Bigger UX features that need a bit more care
-11. **PC-905** — Auto-save / draft recovery.
-12. **PC-906** — Workflow run history view.
-13. **PC-908** — Sticky-note nodes.
-14. **PC-304** — Chain XML preview before download. Synergises with PC-906 (re-preview an old run).
-15. **PC-909** — Onboarding tour. Do this after the canvas itself is polished — don't tour an unfinished UI.
+### Phase 3 — Cheap, high-impact UX wins (ship these in any order)
+8. ✅ **PC-901** — Toast notification system. Foundation for everything below.
+9. ✅ **PC-911** — Actionable error messages. Pairs with PC-901.
+10. ✅ **PC-902** — Mini-map + auto-layout.
+11. ✅ **PC-903** — Right-click context menu.
+12. **PC-910** — Export canvas as PNG. Trivial; useful.
+13. **PC-704** — Excel column picker with preview. Removes the single most confusing step in the current flow.
+14. **PC-904** — Drag-and-drop Excel drop zone.
 
-### Phase 4 — Engine quality and safety
-16. **PC-401** — Typed variables. Closes the "True" vs "true" foot-gun class.
-17. **PC-505** — Playwright golden-path E2E. Locks in everything above.
-18. **PC-705** — Dark/light theme toggle. Save for last; touches everything.
+### Phase 4 — Bigger UX features that need a bit more care
+15. **PC-905** — Auto-save / draft recovery.
+16. **PC-906** — Workflow run history view.
+17. **PC-908** — Sticky-note nodes.
+18. **PC-304** — Chain XML preview before download (whole-file + per-node). Synergises with PC-906 (re-preview an old run) and PC-1004 (inspect a test run).
+19. **PC-909** — Onboarding tour. Do this after the canvas itself is polished — don't tour an unfinished UI.
 
-### Phase 5 — Devex / docs (low urgency)
-19. **PC-603** — Contribution guide + node scaffold script.
-20. **PC-601** — Dockerfile + compose. Helpful for onboarding new contributors.
+### Phase 5 — Engine quality and safety
+20. **PC-401** — Typed variables. Closes the "True" vs "true" foot-gun class.
+21. **PC-505** — Playwright golden-path E2E. Locks in everything above.
+22. **PC-705** — Dark/light theme toggle. Save for last; touches everything.
 
-### Phase 6 — Production hardening (only if going multi-user)
-21. **PC-802** — File size and rate limits.
-22. **PC-801** — Supabase Auth + RLS. The big one — do not start until you've decided to make this a team tool.
+### Phase 6 — Devex / docs (low urgency)
+23. **PC-603** — Contribution guide + node scaffold script.
+24. **PC-601** — Dockerfile + compose. Helpful for onboarding new contributors.
+
+### Phase 7 — Production hardening (only if going multi-user)
+25. **PC-802** — File size and rate limits.
+26. **PC-801** — Supabase Auth + RLS. The big one — do not start until you've decided to make this a team tool.
