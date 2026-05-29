@@ -427,15 +427,18 @@ export interface WorkflowTemplateVersionSnapshot extends WorkflowTemplateVersion
   viewport: { x: number; y: number; zoom: number };
 }
 
-// Graph compilation result
+// Graph compilation result. PC-1001: excelFile/selectedColumnIndex are optional
+// because a manual Model List source produces names without an Excel file;
+// graph.modelNames is the wire field the backend reads in that case.
 export interface CompiledWorkflow {
-  excelFile: File;
+  excelFile?: File;
   modelNames: string[];
-  selectedColumnIndex: number;
+  selectedColumnIndex?: number;
   graph: {
     nodes: WorkflowNode[];
     edges: WorkflowEdge[];
     selectedModelNames?: string[];
+    modelNames?: string[];
   };
   variables: VariableBinding[];
 }

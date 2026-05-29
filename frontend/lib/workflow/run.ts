@@ -87,7 +87,7 @@ export async function runWorkflow(
   }
 
   const formData = new FormData();
-  formData.append('excel_file', compiled.excelFile);
+  formData.append('excel_file', compiled.excelFile as File);
 
   // Send JSON parts as actual Files so FastAPI can reliably parse them as UploadFile
   const workflowFile = new File([JSON.stringify(compiled.graph)], 'workflow_graph.json', {

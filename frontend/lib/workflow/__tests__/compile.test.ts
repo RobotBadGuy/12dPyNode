@@ -50,7 +50,7 @@ describe('compileWorkflow', () => {
     }
   });
 
-  it('returns "Load an Excel file" when no excel node has a file', () => {
+  it('returns "Add a model source" when no source node exists', () => {
     const nodes: WorkflowNode[] = [
       makeNode('2', 'foreachModel'),
       makeNode('3', 'chainFileOutput'),
@@ -58,8 +58,7 @@ describe('compileWorkflow', () => {
     const result = compileWorkflow(nodes, []);
     expect('error' in result).toBe(true);
     if ('error' in result) {
-      expect(result.error.title).toBe('Load an Excel file');
-      expect(result.error.fix).toMatch(/upload area/);
+      expect(result.error.title).toBe('Add a model source');
       expect(result.error.focusNodeId).toBeUndefined();
     }
   });
@@ -154,6 +153,52 @@ describe('compileWorkflow', () => {
       expect(result.variables[0].name).toBe('project_folder');
     }
   });
+
+  it('compiles a manual Model List source (no excel file)', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'manualModels', { rawText: 'A\nB', modelNames: ['A', 'B'] }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('1', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges);
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.excelFile).toBeUndefined();
+      expect(result.modelNames).toEqual(['A', 'B']);
+      expect(result.graph.modelNames).toEqual(['A', 'B']);
+    }
+  });
+
+  it('returns "Model List is empty" when a manual source has no names', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'manualModels', { rawText: '', modelNames: [] }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const result = compileWorkflow(nodes, []);
+    expect('error' in result).toBe(true);
+    if ('error' in result) {
+      expect(result.error.title).toBe('Model List is empty');
+      expect(result.error.focusNodeId).toBe('1');
+    }
+  });
+
+  it('targets the source node identified by id in a mixed graph', () => {
+    const nodes: WorkflowNode[] = [
+      makeNode('1', 'excelModels', { file: fakeFile, modelNames: ['X'], selectedColumnIndex: 0 }),
+      makeNode('m', 'manualModels', { rawText: 'A\nB', modelNames: ['A', 'B'] }),
+      makeNode('2', 'foreachModel'),
+      makeNode('3', 'chainFileOutput'),
+    ];
+    const edges: WorkflowEdge[] = [makeEdge('m', '2'), makeEdge('2', '3')];
+    const result = compileWorkflow(nodes, edges, 'm');
+    expect('error' in result).toBe(false);
+    if (!('error' in result)) {
+      expect(result.modelNames).toEqual(['A', 'B']);
+      expect(result.excelFile).toBeUndefined();
+    }
+  });
 });
 
 // ── validateWorkflow ───────────────────────────────────────────────────
@@ -172,16 +217,14 @@ describe('validateWorkflow', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('returns "Add an Excel Models node" for missing excel node', () => {
+  it('returns "Add a model source" for a missing source node', () => {
     const nodes: WorkflowNode[] = [
       makeNode('2', 'foreachModel'),
       makeNode('3', 'chainFileOutput'),
     ];
     const result = validateWorkflow(nodes, []);
     expect(result.valid).toBe(false);
-    expect(result.errors.map((e) => e.title)).toContain(
-      'Add an Excel Models node',
-    );
+    expect(result.errors.map((e) => e.title)).toContain('Add a model source');
   });
 
   it('returns "Add a Foreach Model node" for missing foreach', () => {

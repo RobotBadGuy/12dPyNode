@@ -1,44 +1,57 @@
 import { WorkflowNode, WorkflowEdge, CompiledWorkflow, VariableBinding } from './types';
-import { ExcelModelsNodeData } from './types';
 import { nodeSchemas, getParamHandleId } from './nodeSchemas';
 import { ActionableError, nodeLabel } from './errors';
+import { SOURCE_NODE_TYPES, getModelSource } from './modelSources';
 
 export function compileWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
-  excelNodeId?: string,
+  sourceNodeId?: string,
 ): CompiledWorkflow | { error: ActionableError } {
-  const excelNodes = nodes.filter((n) => n.type === 'excelModels') as Array<
-    WorkflowNode & { data: ExcelModelsNodeData }
-  >;
+  const sourceNodes = nodes.filter((n) => SOURCE_NODE_TYPES.has(n.type));
+  const sourceNode = sourceNodeId
+    ? sourceNodes.find((n) => n.id === sourceNodeId)
+    : sourceNodes[0];
 
-  const excelNode = excelNodeId
-    ? (excelNodes.find((n) => n.id === excelNodeId) as
-        | (WorkflowNode & { data: ExcelModelsNodeData })
-        | undefined)
-    : excelNodes[0];
-
-  if (!excelNode || !excelNode.data.file) {
+  if (!sourceNode) {
     return {
       error: {
-        title: 'Load an Excel file',
-        message: excelNode
-          ? `'${nodeLabel(excelNode)}' doesn't have an Excel file loaded yet.`
-          : 'No Excel Models node has a file loaded.',
-        fix: "Click the upload area inside the Excel Models node, or drag a .xlsx file onto it.",
-        focusNodeId: excelNode?.id,
+        title: 'Add a model source',
+        message: 'No Excel Models or Model List node is on the canvas yet.',
+        fix: "Drag 'Excel Models' or 'Model List' from the left palette onto the canvas.",
       },
     };
   }
 
-  if (!excelNode.data.modelNames || excelNode.data.modelNames.length === 0) {
+  const source = getModelSource(sourceNode)!; // sourceNode is a source type
+
+  if (source.kind === 'excel' && !source.file) {
     return {
       error: {
-        title: 'Excel file has no model column',
-        message: `'${nodeLabel(excelNode)}' loaded a file but no model column was selected.`,
-        fix: 'Open this node and pick the column that contains model names. (PC-704 will improve this.)',
-        focusNodeId: excelNode.id,
+        title: 'Load an Excel file',
+        message: `'${nodeLabel(sourceNode)}' doesn't have an Excel file loaded yet.`,
+        fix: 'Click the upload area inside the Excel Models node, or drag a .xlsx file onto it.',
+        focusNodeId: sourceNode.id,
       },
+    };
+  }
+
+  if (!source.modelNames || source.modelNames.length === 0) {
+    return {
+      error:
+        source.kind === 'excel'
+          ? {
+              title: 'Excel file has no model column',
+              message: `'${nodeLabel(sourceNode)}' loaded a file but no model column was selected.`,
+              fix: 'Open this node and pick the column that contains model names. (PC-704 will improve this.)',
+              focusNodeId: sourceNode.id,
+            }
+          : {
+              title: 'Model List is empty',
+              message: `'${nodeLabel(sourceNode)}' has no model names yet.`,
+              fix: 'Select the node and type one model name per line in the Properties panel.',
+              focusNodeId: sourceNode.id,
+            },
     };
   }
 
@@ -48,7 +61,7 @@ export function compileWorkflow(
       error: {
         title: 'Add a Foreach Model node',
         message: 'No Foreach Model node is on the canvas yet.',
-        fix: "Drag 'Foreach Model' from the left palette and connect the Excel node's right handle to its left handle.",
+        fix: "Drag 'Foreach Model' from the left palette and connect the source node's right handle to its left handle.",
       },
     };
   }
@@ -74,11 +87,19 @@ export function compileWorkflow(
       }
     });
 
+  if (source.kind === 'excel') {
+    return {
+      excelFile: source.file,
+      modelNames: source.modelNames,
+      selectedColumnIndex: source.selectedColumnIndex ?? 0,
+      graph: { nodes, edges },
+      variables,
+    };
+  }
+
   return {
-    excelFile: excelNode.data.file,
-    modelNames: excelNode.data.modelNames,
-    selectedColumnIndex: excelNode.data.selectedColumnIndex ?? 0,
-    graph: { nodes, edges },
+    modelNames: source.modelNames,
+    graph: { nodes, edges, modelNames: source.modelNames },
     variables,
   };
 }
@@ -86,7 +107,7 @@ export function compileWorkflow(
 export function validateWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
-  excelNodeId?: string,
+  sourceNodeId?: string,
 ): { valid: boolean; errors: ActionableError[] } {
   // PC-903: disabled nodes are treated as absent — so e.g. disabling the only
   // Chain File Output still correctly raises "Add a Chain File Output node".
@@ -94,15 +115,15 @@ export function validateWorkflow(
 
   const errors: ActionableError[] = [];
 
-  const excelNodes = nodes.filter((n) => n.type === 'excelModels');
-  const excelNode = excelNodeId
-    ? excelNodes.find((n) => n.id === excelNodeId)
-    : excelNodes[0];
-  if (!excelNode) {
+  const sourceNodes = nodes.filter((n) => SOURCE_NODE_TYPES.has(n.type));
+  const sourceNode = sourceNodeId
+    ? sourceNodes.find((n) => n.id === sourceNodeId)
+    : sourceNodes[0];
+  if (!sourceNode) {
     errors.push({
-      title: 'Add an Excel Models node',
-      message: 'No Excel Models node is on the canvas yet.',
-      fix: "Drag 'Excel Models' from the left palette onto the canvas, then load an .xlsx file.",
+      title: 'Add a model source',
+      message: 'No Excel Models or Model List node is on the canvas yet.',
+      fix: "Drag 'Excel Models' or 'Model List' from the left palette onto the canvas.",
     });
   }
 
@@ -111,7 +132,7 @@ export function validateWorkflow(
     errors.push({
       title: 'Add a Foreach Model node',
       message: 'No Foreach Model node is on the canvas yet.',
-      fix: "Drag 'Foreach Model' from the left palette and connect the Excel node's right handle to its left handle.",
+      fix: "Drag 'Foreach Model' from the left palette and connect the source node's right handle to its left handle.",
     });
   }
 
@@ -124,15 +145,15 @@ export function validateWorkflow(
     });
   }
 
-  if (excelNode && foreachNode) {
-    const excelToForeach = edges.find(
-      (e) => e.source === excelNode.id && e.target === foreachNode.id,
+  if (sourceNode && foreachNode) {
+    const sourceToForeach = edges.find(
+      (e) => e.source === sourceNode.id && e.target === foreachNode.id,
     );
-    if (!excelToForeach) {
+    if (!sourceToForeach) {
       errors.push({
-        title: "Excel isn't wired to Foreach",
-        message: `'${nodeLabel(excelNode)}' isn't connected to '${nodeLabel(foreachNode)}'.`,
-        fix: "Drag an edge from the Excel node's right handle to the Foreach node's left handle.",
+        title: "Source isn't wired to Foreach",
+        message: `'${nodeLabel(sourceNode)}' isn't connected to '${nodeLabel(foreachNode)}'.`,
+        fix: "Drag an edge from the source node's right handle to the Foreach node's left handle.",
         focusNodeId: foreachNode.id,
       });
     }
@@ -164,6 +185,13 @@ export function validateNode(
 
   if (node.type === 'excelModels' && !data.file) {
     warnings.push('No Excel file loaded');
+  }
+
+  if (
+    node.type === 'manualModels' &&
+    (!Array.isArray(data.modelNames) || (data.modelNames as string[]).length === 0)
+  ) {
+    warnings.push('No model names');
   }
 
   if (node.type === 'chainFileOutput') {
