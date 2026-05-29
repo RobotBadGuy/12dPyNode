@@ -77,29 +77,41 @@ export interface WorkflowStatusResponse {
   error?: string;
 }
 
-export async function runWorkflow(
-  compiled: CompiledWorkflow
-): Promise<WorkflowRunResponse> {
-  // Defensive: if excelFile isn't a real File, FormData will stringify it to "[object Object]"
-  // and FastAPI will return 422 "Expected UploadFile".
-  if (typeof File !== 'undefined' && !(compiled.excelFile instanceof File)) {
-    throw new Error('Excel file missing/invalid. Please re-upload the .xlsx file before running.');
+// PC-1001: build the multipart body for a run. excel_file is appended only when
+// a real File is present; in manual mode the names ride inside workflow_graph.
+export function buildRunFormData(compiled: CompiledWorkflow): FormData {
+  const hasExcel =
+    typeof File !== 'undefined' ? compiled.excelFile instanceof File : !!compiled.excelFile;
+  const hasManualNames = (compiled.graph.modelNames?.length ?? 0) > 0;
+  if (!hasExcel && !hasManualNames) {
+    throw new Error(
+      'No model source: load an Excel file or add a non-empty Model List before running.',
+    );
   }
 
   const formData = new FormData();
-  formData.append('excel_file', compiled.excelFile as File);
+  if (hasExcel) {
+    formData.append('excel_file', compiled.excelFile as File);
+    formData.append('selected_column_index', String(compiled.selectedColumnIndex ?? 0));
+  }
 
-  // Send JSON parts as actual Files so FastAPI can reliably parse them as UploadFile
+  // Send JSON parts as actual Files so FastAPI can reliably parse them as UploadFile.
   const workflowFile = new File([JSON.stringify(compiled.graph)], 'workflow_graph.json', {
     type: 'application/json',
   });
   const variablesFile = new File([JSON.stringify(compiled.variables)], 'variables.json', {
     type: 'application/json',
   });
-
   formData.append('workflow_graph', workflowFile);
   formData.append('variables', variablesFile);
-  formData.append('selected_column_index', String(compiled.selectedColumnIndex ?? 0));
+
+  return formData;
+}
+
+export async function runWorkflow(
+  compiled: CompiledWorkflow
+): Promise<WorkflowRunResponse> {
+  const formData = buildRunFormData(compiled);
 
   try {
     const response = await api.post<WorkflowRunResponse>(
