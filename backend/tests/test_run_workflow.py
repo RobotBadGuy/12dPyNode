@@ -286,3 +286,64 @@ def test_no_progress_callback_keeps_legacy_signature_working(
     assert len(generated) == 3
     # Final return never carries 'queued'
     assert all(r["status"] in ("success", "error") for r in details)
+
+
+def test_manual_model_names_no_excel(monkeypatch, output_dir):
+    """PC-1001: with no Excel file, model names come from workflow_graph.modelNames."""
+    def fake_generate(model_name, *args, **kwargs):
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    graph = {**_minimal_graph(), "modelNames": ["A", "B", "C"]}
+    generated, _project, details = run_workflow(None, graph, [], str(output_dir))
+
+    assert len(generated) == 3
+    assert [r["model"] for r in details] == ["A", "B", "C"]
+    assert all(r["status"] == "success" for r in details)
+
+
+def test_manual_model_names_whitespace_and_blanks(monkeypatch, output_dir):
+    """PC-1001: manual names are trimmed; blank/'nan' entries are dropped."""
+    def fake_generate(model_name, *args, **kwargs):
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    graph = {**_minimal_graph(), "modelNames": ["  A ", "", "   ", "B", "nan"]}
+    generated, _project, details = run_workflow(None, graph, [], str(output_dir))
+
+    assert [r["model"] for r in details] == ["A", "B"]
+
+
+def test_manual_model_names_empty_list(monkeypatch, output_dir):
+    """PC-1001: an empty manual list yields no generated files and no rows."""
+    def boom(*a, **k):
+        raise AssertionError("generate_chain_file should not be called for an empty list")
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", boom)
+
+    graph = {**_minimal_graph(), "modelNames": []}
+    generated, _project, details = run_workflow(None, graph, [], str(output_dir))
+
+    assert generated == []
+    assert details == []
+
+
+def test_manual_model_names_respect_selected_subset(monkeypatch, output_dir):
+    """PC-1001: selectedModelNames still narrows a manual list (powers PC-1004 test-run)."""
+    def fake_generate(model_name, *args, **kwargs):
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    graph = {**_minimal_graph(), "modelNames": ["A", "B", "C"], "selectedModelNames": ["B"]}
+    generated, _project, details = run_workflow(None, graph, [], str(output_dir))
+
+    assert [r["model"] for r in details] == ["B"]

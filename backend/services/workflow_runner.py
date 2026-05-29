@@ -844,8 +844,46 @@ def generate_chain_file(
     return output_file
 
 
+def _read_model_names_from_excel(excel_file_path: str, selected_column_index: int) -> List[str]:
+    """PC-1001 — extracted verbatim from run_workflow. Read the selected column
+    from the Excel file (no header), then clean it: drop empty/'nan' values and
+    skip a header-looking first row."""
+    try:
+        df_raw = pd.read_excel(excel_file_path, engine='openpyxl', header=None)
+        col_index = min(selected_column_index, max(0, len(df_raw.columns) - 1))
+        model_names_raw = df_raw.iloc[:, col_index].astype(str).tolist()
+    except Exception:
+        naming_data = load_naming_data(excel_file_path)
+        if naming_data is None:
+            raise ValueError("Error loading naming data from Excel file")
+        model_names_raw = naming_data.iloc[:, 0].astype(str).tolist()
+
+    common_headers = ['filename', 'name', 'model', 'model_name', 'model name']
+    model_names: List[str] = []
+    for i, m in enumerate(model_names_raw):
+        m_clean = m.strip() if m else ''
+        if not m_clean or m_clean.lower() == 'nan':
+            continue
+        if i == 0 and m_clean.lower() in common_headers:
+            continue
+        model_names.append(m_clean)
+    return model_names
+
+
+def _clean_manual_model_names(raw_names: List[Any]) -> List[str]:
+    """PC-1001 — clean a hand-supplied model-name list: stringify, trim, drop
+    blanks and 'nan'. No header-row skipping — a typed list has no header."""
+    cleaned: List[str] = []
+    for name in raw_names:
+        s = str(name).strip() if name is not None else ''
+        if not s or s.lower() == 'nan':
+            continue
+        cleaned.append(s)
+    return cleaned
+
+
 def run_workflow(
-    excel_file_path: str,
+    excel_file_path: Optional[str],
     workflow_graph: Dict[str, Any],
     variables: List[Dict[str, Any]],
     output_folder: str,
@@ -886,34 +924,12 @@ def run_workflow(
         Final return value never contains 'queued' rows — the loop converts
         each row to 'success' or 'error' before returning.
     """
-    # Parse Excel to get model names
-    # Read Excel file directly without header to ensure we get ALL rows including first
-    # This prevents pandas from treating the first row as a header and losing it
-    try:
-        df_raw = pd.read_excel(excel_file_path, engine='openpyxl', header=None)
-        # Use the selected column index (clamped to valid range)
-        col_index = min(selected_column_index, max(0, len(df_raw.columns) - 1))
-        model_names_raw = df_raw.iloc[:, col_index].astype(str).tolist()
-    except Exception as e:
-        # Fallback to using load_naming_data if direct read fails
-        naming_data = load_naming_data(excel_file_path)
-        if naming_data is None:
-            raise ValueError("Error loading naming data from Excel file")
-        model_names_raw = naming_data.iloc[:, 0].astype(str).tolist()
-    
-    # Filter out empty strings and 'nan'
-    # Check if first value looks like a header (common header names)
-    common_headers = ['filename', 'name', 'model', 'model_name', 'model name']
-    model_names = []
-    for i, m in enumerate(model_names_raw):
-        m_clean = m.strip() if m else ''
-        # Skip if empty or 'nan'
-        if not m_clean or m_clean.lower() == 'nan':
-            continue
-        # Skip first row only if it matches a common header name
-        if i == 0 and m_clean.lower() in common_headers:
-            continue
-        model_names.append(m_clean)
+    # PC-1001: resolve model names from the active source — an Excel column when
+    # a file was uploaded, otherwise the explicit list carried in the graph.
+    if excel_file_path:
+        model_names = _read_model_names_from_excel(excel_file_path, selected_column_index)
+    else:
+        model_names = _clean_manual_model_names(workflow_graph.get('modelNames') or [])
     
     # Extract nodes and edges from graph
     nodes = workflow_graph.get('nodes', [])
