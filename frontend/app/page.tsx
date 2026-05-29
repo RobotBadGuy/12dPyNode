@@ -1043,7 +1043,7 @@ export default function WorkspacePage() {
             }
           } catch (err) {
             const failingNode = nodes.find((n) => n.id === excelNodeId);
-            const label = failingNode ? nodeLabel(failingNode) : '(unknown Excel node)';
+            const label = failingNode ? nodeLabel(failingNode) : '(unknown source node)';
             setErrorModal({
               isOpen: true,
               title: 'Workflow Failed',
