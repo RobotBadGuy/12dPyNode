@@ -223,8 +223,8 @@ Today a run is fused to "Excel + the toolbar" in three places: the trigger lives
 - ✅ **PC-1003** — Inline "play" run button on source nodes.
   *Rationale:* A ▶ button in the title bar of `excelModels`/`manualModels` runs the chain from that source via `handleRunChain(explicitSourceId)` (guarded with `typeof === 'string'` against the `MouseEvent` the toolbar's `onClick={onRunChain}` passes). The in-node button reaches the page-level handler through `frontend/components/workflow/WorkflowRunContext.tsx` — a `useSourceRunButton` hook shared by both source nodes that centralizes readiness/disabled/tooltip and keeps callbacks out of `node.data` (memo-safe, no leak into template snapshots). `BaseNode` gained optional `onRun`/`runDisabled`/`runTooltip` props (`nodrag` + `stopPropagation` so the click doesn't drag/select the node). The ▶ is always visible, disabled with an explanatory tooltip when the source isn't ready or the graph lacks a Foreach/Chain Output (`canRun`). A `Ctrl/Cmd+Enter` shortcut mirrors the toolbar Run (separate keydown effect to avoid a TDZ on `handleRunChain`/`canRun`) and is listed in `ShortcutsModal`. TopBar's "Run Chain" stays as the run-selected/first trigger. The "Start" trigger node remains deferred. Verified by `tsc`/build + a 3-way code review; UI behaviour not yet covered by an automated (RTL/Playwright) test.
 
-- **PC-1004** `[P2]` `[Size: S]` `[Mode: regular]` — Single-model "Test run".
-  *Rationale:* Generate the chain for just one model — the first, or a user-picked one — so the whole graph can be validated in seconds instead of churning the full list. Reuses the existing `selectedModelNames` filter (PC-301) with a one-element subset; surfaced as a "Test run" affordance next to the play button. A big iteration-speed win while authoring, and pairs with PC-304's per-node XML view to confirm each node emits what you expect.
+- ✅ **PC-1004** — Single-model "Test run".
+  *Rationale:* A second per-source button (a `FlaskConical` icon next to the PC-1003 ▶) generates the chain for just the first model, validating the whole graph in seconds. Reuses the existing `selectedModelNames` filter (PC-301) — no backend change: `compileWorkflow` gained `options.testRun` that sets `graph.selectedModelNames` to a one-element subset. The first model is chosen header-aware for Excel (`firstModelForTestRun` mirrors `run_workflow`'s header-row skip so it matches the model the backend runs first) and verbatim for a manual list (no header). Wired via `onTestRunFromSource` on the PC-1003 `WorkflowRunContext` → `handleRunChain(id, { testRun: true })`; the test button shares the play button's disabled gate. A user-picked (rather than first) model was deferred. Tested in `compile.test.ts` and `modelSources.test.ts` (`firstModelForTestRun`).
 
 - **PC-1005** `[P2]` `[Size: S]` `[Mode: regular]` — Re-run failed models only.
   *Rationale:* PC-302 already isolates per-model failures and the frontend already renders a `FailedModel[]` list in the success/celebration modal. Add a "Re-run failed (N)" action that resubmits just the failed model names through the PC-1001 manual-names path — no Excel re-pick, and the models that already succeeded aren't re-run. Closes the loop on partial runs.
@@ -247,7 +247,7 @@ The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rew
 4. ✅ **PC-1001** — Decouple the model-name source from Excel. Enabling layer; do first.
 5. ✅ **PC-1002** — Manual "Model List" source node. Run from a hand-typed list, no Excel.
 6. ✅ **PC-1003** — Inline ▶ play button on source nodes. Run the whole chain from the canvas.
-7. **PC-1004** — Single-model "Test run". Fast graph validation while authoring.
+7. ✅ **PC-1004** — Single-model "Test run". Fast graph validation while authoring.
    *(PC-1005 re-run-failed and PC-1006 Model List variable grid follow on once the above lands.)*
 
 ### Phase 3 — Cheap, high-impact UX wins (ship these in any order)
