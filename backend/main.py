@@ -604,6 +604,35 @@ async def download_workflow_results(session_id: str):
     )
 
 
+@app.get("/api/workflow/preview/{session_id}/{model_name}")
+async def preview_chain_file(session_id: str, model_name: str):
+    """PC-304 — return the full generated .chain text for one model so users can
+    verify output without opening 12d Model. 404 if the session, model, or file
+    is gone (e.g. cleaned up after the TTL)."""
+    session = session_store.get(session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    results = session.get("results") or {}
+    file_details = results.get("file_details") or []
+    row = next((d for d in file_details if d.get("model") == model_name), None)
+    if row is None or not row.get("output_path"):
+        raise HTTPException(status_code=404, detail="No generated chain for this model")
+
+    # The output_path is server-generated under OUTPUT_DIR; defend against any
+    # stored path escaping it before reading from disk.
+    output_path = Path(row["output_path"]).resolve()
+    try:
+        output_path.relative_to(Path(OUTPUT_DIR).resolve())
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Chain file not found")
+    if not output_path.is_file():
+        raise HTTPException(status_code=404, detail="Chain file not found (it may have expired)")
+
+    text = output_path.read_text(encoding="utf-8")
+    return Response(content=text, media_type="text/plain; charset=utf-8")
+
+
 # ── Templates (PC-202) ─────────────────────────────────────────────────────
 
 

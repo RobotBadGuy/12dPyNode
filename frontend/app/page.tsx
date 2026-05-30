@@ -30,10 +30,11 @@ import { WorkflowNode, WorkflowEdge, WorkflowTemplate, WorkflowTemplateVersionSn
 import { compileWorkflow, validateWorkflow, validateNode } from '@/lib/workflow/compile';
 import { ActionableError, nodeLabel } from '@/lib/workflow/errors';
 import { focusNode } from '@/lib/workflow/focusNode';
-import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl } from '@/lib/workflow/run';
+import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl, getNodeXml } from '@/lib/workflow/run';
+import { ChainPreviewModal } from '@/components/workflow/ChainPreviewModal';
 import type { FileDetail } from '@/lib/workflow/run';
 import { RunProgressPanel } from '@/components/workflow/RunProgressPanel';
-import { aggregateNodeStates } from '@/lib/workflow/runStatus';
+import { aggregateNodeStates, eventsForNode } from '@/lib/workflow/runStatus';
 import { exportTemplate, importTemplate, migrateLocalStorageToServer } from '@/lib/workflow/templates';
 import {
   fetchTemplates,
@@ -125,6 +126,13 @@ export default function WorkspacePage() {
   const [lastRunDetails, setLastRunDetails] = useState<{
     fileDetails: FileDetail[];
     sessionId: string;
+  } | null>(null);
+  // PC-304: per-node "Show generated XML" preview (editor context menu).
+  const [chainPreview, setChainPreview] = useState<{
+    title: string;
+    subtitle?: string;
+    fetcher: () => Promise<string>;
+    downloadFileName?: string;
   } | null>(null);
   const [errorModal, setErrorModal] = useState<{
     isOpen: boolean;
@@ -304,6 +312,26 @@ export default function WorkspacePage() {
     );
     notify.info(next ? 'Node disabled' : 'Node enabled');
   }, [nodes, edges]);
+
+  // PC-304: open the per-node generated-XML preview for the most recent run's
+  // first model. Only meaningful after a run has produced node events.
+  const handleShowNodeXml = useCallback((nodeId: string) => {
+    const sessionId = lastRunDetails?.sessionId;
+    if (!sessionId) return;
+    // Pick a model where this node actually ran (prefer a successful one) so the
+    // slice exists instead of 404-ing on a model the node was never reached for.
+    const events = eventsForNode(lastRunDetails?.fileDetails, nodeId);
+    const model = (events.find((e) => e.status === 'success') ?? events[0])?.model;
+    if (!model) return;
+    const node = nodes.find((n) => n.id === nodeId);
+    const label = node ? nodeLabel(node as WorkflowNode) : nodeId;
+    setChainPreview({
+      title: `${label} — generated XML`,
+      subtitle: `model: ${model}`,
+      fetcher: () => getNodeXml(sessionId, model, nodeId),
+      downloadFileName: `${label}.xml`,
+    });
+  }, [lastRunDetails, nodes]);
 
   // Copy handler: capture selected nodes and internal edges
   const handleCopy = useCallback(() => {
@@ -1720,6 +1748,12 @@ export default function WorkspacePage() {
                   onCopy={() => handleCopyNode(node.id)}
                   onDelete={() => handleDeleteNode(node.id)}
                   onToggleDisable={() => handleToggleDisableNode(node.id)}
+                  onShowXml={
+                    lastRunDetails?.sessionId &&
+                    eventsForNode(lastRunDetails.fileDetails, node.id).length > 0
+                      ? () => handleShowNodeXml(node.id)
+                      : undefined
+                  }
                 />
               );
             })()}
@@ -1824,6 +1858,14 @@ export default function WorkspacePage() {
               onRestore={handleRestoreDraft}
               onDiscard={handleDiscardDraft}
               onDismiss={handleDismissDraft}
+            />
+            <ChainPreviewModal
+              isOpen={chainPreview !== null}
+              title={chainPreview?.title ?? ''}
+              subtitle={chainPreview?.subtitle}
+              fetcher={chainPreview?.fetcher ?? null}
+              downloadFileName={chainPreview?.downloadFileName}
+              onClose={() => setChainPreview(null)}
             />
           </WorkflowRunProvider>
         )}

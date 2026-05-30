@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Copy, CopyPlus, Trash2, EyeOff, Eye } from 'lucide-react';
+import { Copy, CopyPlus, Trash2, EyeOff, Eye, FileCode2 } from 'lucide-react';
 import type { WorkflowNode } from '@/lib/workflow/types';
 import { isControlFlowNode } from '@/lib/workflow/nodeKinds';
 
@@ -17,6 +17,8 @@ interface NodeContextMenuProps {
   onCopy: () => void;
   onDelete: () => void;
   onToggleDisable: () => void;
+  // PC-304: present only when a run's per-node XML is available for this node.
+  onShowXml?: () => void;
 }
 
 export function NodeContextMenu({
@@ -28,6 +30,7 @@ export function NodeContextMenu({
   onCopy,
   onDelete,
   onToggleDisable,
+  onShowXml,
 }: NodeContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -82,6 +85,11 @@ export function NodeContextMenu({
         <button type="button" role="menuitem" className={itemClass} onClick={run(onToggleDisable)}>
           {isDisabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
           {isDisabled ? 'Enable' : 'Disable'}
+        </button>
+      )}
+      {onShowXml && (
+        <button type="button" role="menuitem" className={itemClass} onClick={run(onShowXml)}>
+          <FileCode2 className="w-4 h-4" /> Show generated XML
         </button>
       )}
       <div className="my-1 border-t border-gray-700/50" />

@@ -11,9 +11,14 @@ import {
   XCircle,
   AlertCircle,
   ArrowLeft,
+  ChevronRight,
+  ChevronDown,
+  FileCode2,
 } from 'lucide-react';
 import { listRuns, downloadRunZip, type RunSummary } from '@/lib/workflow/runsApi';
+import { getWorkflowStatus, getChainPreview, type FileDetail } from '@/lib/workflow/run';
 import { formatRelativeTime, formatDuration } from '@/lib/workflow/runFormat';
+import { ChainPreviewModal } from '@/components/workflow/ChainPreviewModal';
 import { notify } from '@/lib/notify';
 
 interface RunsPageProps {
@@ -21,6 +26,13 @@ interface RunsPageProps {
 }
 
 type StatusFilter = 'all' | 'completed' | 'error' | 'processing';
+
+interface PreviewState {
+  title: string;
+  subtitle?: string;
+  fetcher: () => Promise<string>;
+  downloadFileName?: string;
+}
 
 const STATUS_BADGE: Record<string, string> = {
   completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
@@ -43,6 +55,7 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -89,6 +102,15 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
     } finally {
       setDownloadingId(null);
     }
+  }, []);
+
+  const openPreview = useCallback((run: RunSummary, model: string) => {
+    setPreview({
+      title: model,
+      subtitle: `${run.templateName || run.sourceName || 'Run'} · chain preview`,
+      fetcher: () => getChainPreview(run.id, model),
+      downloadFileName: `${model}.chain`,
+    });
   }, []);
 
   const now = Date.now();
@@ -170,75 +192,188 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
         </div>
       ) : (
         <ul className="space-y-2">
-          {filtered.map((run) => {
-            const title = run.templateName || run.sourceName || 'Untitled run';
-            // Only finished runs have a meaningful duration; an in-flight run's
-            // updated_at moves on every progress tick, so a "duration" there
-            // would be misleading.
-            const duration =
-              run.status === 'completed' || run.status === 'error'
-                ? formatDuration(run.created_at, run.updated_at)
-                : null;
-            const isDownloading = downloadingId === run.id;
-            return (
-              <li
-                key={run.id}
-                className="bg-gray-800/60 hover:bg-gray-800 border border-gray-700 rounded-lg p-3 transition-colors flex items-start justify-between gap-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white font-semibold truncate">{title}</span>
-                    <StatusBadge status={run.status} />
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
-                    <span>{formatRelativeTime(run.created_at, now)}</span>
-                    {duration && <span>· {duration}</span>}
-                    {run.sourceName && run.templateName && (
-                      <span className="truncate">· {run.sourceName}</span>
-                    )}
-                    {typeof run.modelCount === 'number' && (
-                      <span className="inline-flex items-center gap-2">
-                        · {run.modelCount} model{run.modelCount === 1 ? '' : 's'}
-                        {typeof run.succeededCount === 'number' && (
-                          <span className="inline-flex items-center gap-0.5 text-emerald-400">
-                            <CheckCircle2 className="w-3 h-3" />
-                            {run.succeededCount}
-                          </span>
-                        )}
-                        {typeof run.failedCount === 'number' && run.failedCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 text-rose-400">
-                            <XCircle className="w-3 h-3" />
-                            {run.failedCount}
-                          </span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  {run.status === 'error' && run.error && (
-                    <p className="text-xs font-mono text-rose-300/90 mt-1 break-all">{run.error}</p>
-                  )}
-                </div>
-                {run.status === 'completed' && (
-                  <button
-                    type="button"
-                    onClick={() => void handleDownload(run)}
-                    disabled={isDownloading}
-                    className="shrink-0 flex items-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
-                    title="Download the generated ZIP again"
-                  >
-                    {isDownloading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Download className="w-3.5 h-3.5" />
-                    )}
-                    Download
-                  </button>
-                )}
-              </li>
-            );
-          })}
+          {filtered.map((run) => (
+            <RunRow
+              key={run.id}
+              run={run}
+              now={now}
+              downloading={downloadingId === run.id}
+              onDownload={handleDownload}
+              onPreview={openPreview}
+            />
+          ))}
         </ul>
       )}
+
+      <ChainPreviewModal
+        isOpen={preview !== null}
+        title={preview?.title ?? ''}
+        subtitle={preview?.subtitle}
+        fetcher={preview?.fetcher ?? null}
+        downloadFileName={preview?.downloadFileName}
+        onClose={() => setPreview(null)}
+      />
     </div>
+  );
+}
+
+type DetailState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'loaded'; models: FileDetail[] }
+  | { kind: 'error'; message: string };
+
+interface RunRowProps {
+  run: RunSummary;
+  now: number;
+  downloading: boolean;
+  onDownload: (run: RunSummary) => void;
+  onPreview: (run: RunSummary, model: string) => void;
+}
+
+function RunRow({ run, now, downloading, onDownload, onPreview }: RunRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [detail, setDetail] = useState<DetailState>({ kind: 'idle' });
+
+  const title = run.templateName || run.sourceName || 'Untitled run';
+  const duration =
+    run.status === 'completed' || run.status === 'error'
+      ? formatDuration(run.created_at, run.updated_at)
+      : null;
+  // Only a completed run has generated chains to inspect.
+  const canInspect = run.status === 'completed' && (run.modelCount ?? 0) > 0;
+
+  const toggle = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next && detail.kind === 'idle') {
+      setDetail({ kind: 'loading' });
+      try {
+        const status = await getWorkflowStatus(run.id);
+        setDetail({ kind: 'loaded', models: status.results?.file_details ?? [] });
+      } catch (err) {
+        setDetail({
+          kind: 'error',
+          message: err instanceof Error ? err.message : 'Could not load run details.',
+        });
+      }
+    }
+  };
+
+  return (
+    <li className="bg-gray-800/60 border border-gray-700 rounded-lg overflow-hidden">
+      <div className="hover:bg-gray-800 transition-colors p-3 flex items-start justify-between gap-4">
+        <button
+          type="button"
+          onClick={canInspect ? toggle : undefined}
+          className={`flex items-start gap-2 min-w-0 flex-1 text-left ${canInspect ? '' : 'cursor-default'}`}
+          aria-expanded={canInspect ? expanded : undefined}
+        >
+          {canInspect ? (
+            expanded ? (
+              <ChevronDown className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+            )
+          ) : (
+            <span className="w-4 shrink-0" />
+          )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-white font-semibold truncate">{title}</span>
+              <StatusBadge status={run.status} />
+            </div>
+            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+              <span>{formatRelativeTime(run.created_at, now)}</span>
+              {duration && <span>· {duration}</span>}
+              {run.sourceName && run.templateName && (
+                <span className="truncate">· {run.sourceName}</span>
+              )}
+              {typeof run.modelCount === 'number' && (
+                <span className="inline-flex items-center gap-2">
+                  · {run.modelCount} model{run.modelCount === 1 ? '' : 's'}
+                  {typeof run.succeededCount === 'number' && (
+                    <span className="inline-flex items-center gap-0.5 text-emerald-400">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {run.succeededCount}
+                    </span>
+                  )}
+                  {typeof run.failedCount === 'number' && run.failedCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-rose-400">
+                      <XCircle className="w-3 h-3" />
+                      {run.failedCount}
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
+            {run.status === 'error' && run.error && (
+              <p className="text-xs font-mono text-rose-300/90 mt-1 break-all">{run.error}</p>
+            )}
+          </div>
+        </button>
+        {run.status === 'completed' && (
+          <button
+            type="button"
+            onClick={() => onDownload(run)}
+            disabled={downloading}
+            className="shrink-0 flex items-center gap-1.5 bg-emerald-600/90 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-md transition-colors"
+            title="Download the generated ZIP again"
+          >
+            {downloading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Download className="w-3.5 h-3.5" />
+            )}
+            Download
+          </button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="border-t border-gray-700/50 bg-gray-900/40 px-3 py-2">
+          {detail.kind === 'loading' && (
+            <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading models…
+            </div>
+          )}
+          {detail.kind === 'error' && (
+            <p className="text-xs text-rose-300 py-2">{detail.message}</p>
+          )}
+          {detail.kind === 'loaded' && detail.models.length === 0 && (
+            <p className="text-xs text-gray-500 py-2">No per-model details for this run.</p>
+          )}
+          {detail.kind === 'loaded' && detail.models.length > 0 && (
+            <ul className="space-y-1">
+              {detail.models.map((m, i) => {
+                const model = m.model;
+                const ok = m.status === 'success';
+                return (
+                  <li key={model ?? i} className="flex items-center gap-2 text-xs py-0.5">
+                    {ok ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    ) : (
+                      <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    )}
+                    <span className="text-gray-200 truncate flex-1">{model ?? '(unnamed)'}</span>
+                    {ok && model && (
+                      <button
+                        type="button"
+                        onClick={() => onPreview(run, model)}
+                        className="shrink-0 inline-flex items-center gap-1 text-blue-300 hover:text-blue-200"
+                        title="Preview the generated chain"
+                      >
+                        <FileCode2 className="w-3.5 h-3.5" />
+                        Preview
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </li>
   );
 }

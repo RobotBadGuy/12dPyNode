@@ -177,3 +177,23 @@ export async function getNodeXml(
   }
 }
 
+// PC-304: fetch the full generated .chain text for one model so the user can
+// verify output without opening 12d. Returns plain text; throws on 404 (the
+// model wasn't generated, or the run / file has expired).
+export async function getChainPreview(sessionId: string, modelName: string): Promise<string> {
+  const url = `${API_URL}/api/workflow/preview/${encodeURIComponent(sessionId)}/${encodeURIComponent(modelName)}`;
+  try {
+    const response = await api.get<string>(url, {
+      responseType: 'text',
+      transformResponse: (body) => body,
+      baseURL: '',
+    });
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(error.response?.data || error.message);
+    }
+    throw error;
+  }
+}
+
