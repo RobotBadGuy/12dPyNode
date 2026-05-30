@@ -1,6 +1,4 @@
 """Tests for services/type_coercion — PC-401 typed-variable coercion."""
-import math
-
 import pytest
 
 from services.type_coercion import coerce_value, VariableCoercionError
