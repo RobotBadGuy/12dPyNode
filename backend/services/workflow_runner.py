@@ -488,7 +488,7 @@ def execute_node(
     
     elif node_type == 'drapeToTin':
         data_to_drape = resolve_variable(data.get('dataToDrape', 'data_to_drape'), model_name, variables, per_run_vars)
-        z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
+        z_offset = str(resolve_typed(data.get('zOffset', '0'), model_name, variables, per_run_vars, 'number', var_name_for_error='zOffset'))
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
         continue_on_failure = coerce_value(
             data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
@@ -510,8 +510,8 @@ def execute_node(
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
         trimesh_name = resolve_variable(data.get('trimeshName', 'trimesh_name'), model_name, variables, per_run_vars)
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
-        z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
-        depth = resolve_variable(data.get('depth', '1'), model_name, variables, per_run_vars)
+        z_offset = str(resolve_typed(data.get('zOffset', '0'), model_name, variables, per_run_vars, 'number', var_name_for_error='zOffset'))
+        depth = str(resolve_typed(data.get('depth', '1'), model_name, variables, per_run_vars, 'number', var_name_for_error='depth'))
         colour = resolve_variable(data.get('colour', 'colour'), model_name, variables, per_run_vars)
         continue_on_failure = coerce_value(
             data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
@@ -668,9 +668,9 @@ def execute_node(
     elif node_type == 'createTemplateFile':
         # Generate a .tpl file as a side-effect; this does not add XML commands.
         template_name = resolve_variable(data.get('templateName', 'template_name'), model_name, variables, per_run_vars)
-        final_cut_slope = resolve_variable(data.get('finalCutSlope', '2'), model_name, variables, per_run_vars)
-        final_fill_slope = resolve_variable(data.get('finalFillSlope', '2'), model_name, variables, per_run_vars)
-        final_search_distance = resolve_variable(data.get('finalSearchDistance', '100'), model_name, variables, per_run_vars)
+        final_cut_slope = str(resolve_typed(data.get('finalCutSlope', '2'), model_name, variables, per_run_vars, 'number', var_name_for_error='finalCutSlope'))
+        final_fill_slope = str(resolve_typed(data.get('finalFillSlope', '2'), model_name, variables, per_run_vars, 'number', var_name_for_error='finalFillSlope'))
+        final_search_distance = str(resolve_typed(data.get('finalSearchDistance', '100'), model_name, variables, per_run_vars, 'number', var_name_for_error='finalSearchDistance'))
         try:
             create_template(template_name, final_cut_slope, final_fill_slope, final_search_distance, output_dir=output_folder)
         except Exception as e:

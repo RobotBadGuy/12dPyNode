@@ -427,4 +427,104 @@ def test_selected_subset_matches_numeric_excel_column(monkeypatch, tmp_path, out
 
     assert [r["model"] for r in details] == ["13.0", "14.0"]
     assert all(r["status"] == "success" for r in details)
+
+
+class TestTypedNumberCoercion:
+    """PC-401: numeric params lose a spurious '.0' and a bad number fails that
+    model only (PC-302 isolation)."""
+
+    def test_z_offset_strips_trailing_zero(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "drape", "type": "drapeToTin",
+             "data": {"dataToDrape": "D", "zOffset": "13.0", "tinName": "T",
+                      "continueOnFailure": True, "comments": ""}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "drape", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "drape", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "13.0" not in xml
+        assert "13" in xml
+
+    def test_bad_number_fails_only_that_model(self, tmp_path):
+        """A coercion failure produces an error row (PC-302), not a crash of the run."""
+        excel = tmp_path / "models.xlsx"
+        _write_excel(excel, ["Good", "Bad"])
+        out = tmp_path / "out"
+        out.mkdir()
+        graph = {
+            "nodes": [
+                {"id": "fe", "type": "foreachModel", "data": {}},
+                {"id": "drape", "type": "drapeToTin",
+                 "data": {"dataToDrape": "D", "zOffset": "abc", "tinName": "T",
+                          "continueOnFailure": True, "comments": ""}},
+                {"id": "out", "type": "chainFileOutput",
+                 "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+            ],
+            "edges": [
+                {"source": "fe", "target": "drape", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+                {"source": "drape", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            ],
+        }
+        generated, _pf, details = run_workflow(str(excel), graph, [], str(out))
+        statuses = {r["model"]: r["status"] for r in details}
+        assert statuses["Good"] == "error"
+        assert statuses["Bad"] == "error"
+        assert any("number" in (r["error"] or "") for r in details)
     assert len(generated) == 2
+
+
+class TestTypedNumberCoercion:
+    """PC-401: numeric params lose a spurious '.0' and a bad number fails that
+    model only (PC-302 isolation)."""
+
+    def test_z_offset_strips_trailing_zero(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "drape", "type": "drapeToTin",
+             "data": {"dataToDrape": "D", "zOffset": "13.0", "tinName": "T",
+                      "continueOnFailure": True, "comments": ""}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "drape", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "drape", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "13.0" not in xml
+        assert "13" in xml
+
+    def test_bad_number_fails_only_that_model(self, tmp_path):
+        """A coercion failure produces an error row (PC-302), not a crash of the run."""
+        excel = tmp_path / "models.xlsx"
+        _write_excel(excel, ["Good", "Bad"])
+        out = tmp_path / "out"
+        out.mkdir()
+        graph = {
+            "nodes": [
+                {"id": "fe", "type": "foreachModel", "data": {}},
+                {"id": "drape", "type": "drapeToTin",
+                 "data": {"dataToDrape": "D", "zOffset": "abc", "tinName": "T",
+                          "continueOnFailure": True, "comments": ""}},
+                {"id": "out", "type": "chainFileOutput",
+                 "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+            ],
+            "edges": [
+                {"source": "fe", "target": "drape", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+                {"source": "drape", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            ],
+        }
+        generated, _pf, details = run_workflow(str(excel), graph, [], str(out))
+        statuses = {r["model"]: r["status"] for r in details}
+        assert statuses["Good"] == "error"
+        assert statuses["Bad"] == "error"
+        assert any("number" in (r["error"] or "") for r in details)
