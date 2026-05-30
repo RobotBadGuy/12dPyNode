@@ -1,7 +1,9 @@
 """
 Tests for services/workflow_runner — resolve_variable.
 """
-from services.workflow_runner import resolve_variable
+import pytest
+from services.workflow_runner import resolve_variable, resolve_typed
+from services.type_coercion import VariableCoercionError
 
 
 class TestDirectVariableName:
@@ -77,3 +79,26 @@ class TestRecursionGuard:
     def test_unknown_returns_as_is(self):
         result = resolve_variable("not_a_var", "M", [], {})
         assert result == "not_a_var"
+
+
+class TestResolveTyped:
+    def test_string_default(self):
+        assert resolve_typed("hello", "M", [], {}, "string") == "hello"
+
+    def test_boolean_from_binding(self):
+        variables = [{"name": "keep", "value": "false", "scope": "per-run", "type": "boolean"}]
+        # Resolve the binding by name, then coerce per the passed declared_type.
+        assert resolve_typed("keep", "M", variables, {}, "boolean") is False
+
+    def test_number_from_template(self):
+        per_run = {"n": "13.0"}
+        assert resolve_typed("{n}", "M", [], per_run, "number") == 13
+
+    def test_per_model_boolean(self):
+        variables = [{"name": "flag", "value": "yes", "scope": "per-model", "type": "boolean"}]
+        assert resolve_typed("flag", "Bridge-01", variables, {}, "boolean") is True
+
+    def test_invalid_raises_with_var_name(self):
+        with pytest.raises(VariableCoercionError) as exc:
+            resolve_typed("abc", "M", [], {}, "number", var_name_for_error="depth")
+        assert exc.value.var_name == "depth"

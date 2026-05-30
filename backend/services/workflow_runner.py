@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from utils.data_loader import load_naming_data
+from services.type_coercion import coerce_value, VariableCoercionError
 
 # Import command generators
 from commands.metadata import (
@@ -247,6 +248,25 @@ def resolve_variable(
     
     # Return as-is if not found (might be a literal)
     return var_name
+
+
+def resolve_typed(
+    var_name: str,
+    model_name: str,
+    variables: List[Dict[str, Any]],
+    per_run_vars: Dict[str, Any],
+    declared_type: str,
+    *,
+    var_name_for_error: str = "",
+) -> Any:
+    """PC-401 — resolve a variable/template to a string, then coerce it to a
+    declared type (string/number/boolean). resolve_variable is unchanged and
+    still returns str; this is the opt-in typed layer. Raises
+    VariableCoercionError on an uncoercible value (caught by PC-302 per-model
+    isolation). ``var_name_for_error`` only labels the error message.
+    """
+    raw = resolve_variable(var_name, model_name, variables, per_run_vars)
+    return coerce_value(raw, declared_type, var_name=var_name_for_error)
 
 
 def execute_node(
