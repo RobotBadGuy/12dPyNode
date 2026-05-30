@@ -439,6 +439,9 @@ export interface CompiledWorkflow {
     edges: WorkflowEdge[];
     selectedModelNames?: string[];
     modelNames?: string[];
+    // PC-906: the loaded template's name (if any), carried into the stored
+    // session so the run-history view can label the run.
+    templateName?: string;
   };
   variables: VariableBinding[];
 }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CompiledWorkflow, WorkflowNode, WorkflowEdge } from './types';
+import { CompiledWorkflow } from './types';
 
 const API_URL =
   typeof window !== 'undefined'
@@ -10,15 +10,6 @@ const api = axios.create({
   baseURL: `${API_URL}/api`,
   timeout: 300000, // 5 minutes
 });
-
-export interface WorkflowRunRequest {
-  excel_file: File;
-  workflow_graph: {
-    nodes: WorkflowNode[];
-    edges: WorkflowEdge[];
-  };
-  variables: any[];
-}
 
 export interface WorkflowRunResponse {
   session_id: string;

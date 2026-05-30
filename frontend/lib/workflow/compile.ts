@@ -7,7 +7,7 @@ export function compileWorkflow(
   nodes: WorkflowNode[],
   edges: WorkflowEdge[],
   sourceNodeId?: string,
-  options?: { testRun?: boolean; modelSubset?: string[] },
+  options?: { testRun?: boolean; modelSubset?: string[]; templateName?: string },
 ): CompiledWorkflow | { error: ActionableError } {
   const sourceNodes = nodes.filter((n) => SOURCE_NODE_TYPES.has(n.type));
   const sourceNode = sourceNodeId
@@ -102,9 +102,12 @@ export function compileWorkflow(
         ? [source.modelNames[0]]
         : undefined;
 
+  const templateName = options?.templateName?.trim() || undefined;
+
   if (source.kind === 'excel') {
     const graph: CompiledWorkflow['graph'] = { nodes, edges };
     if (selectedSubset) graph.selectedModelNames = selectedSubset;
+    if (templateName) graph.templateName = templateName;
     return {
       excelFile: source.file,
       modelNames: source.modelNames,
@@ -116,6 +119,7 @@ export function compileWorkflow(
 
   const graph: CompiledWorkflow['graph'] = { nodes, edges, modelNames: source.modelNames };
   if (selectedSubset) graph.selectedModelNames = selectedSubset;
+  if (templateName) graph.templateName = templateName;
   return {
     modelNames: source.modelNames,
     graph,

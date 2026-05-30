@@ -23,7 +23,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from threading import RLock
-from typing import Any, Dict, Optional, Protocol
+from typing import Any, Dict, List, Optional, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,8 @@ class SessionStore(Protocol):
     def get(self, session_id: str) -> Optional[Dict[str, Any]]: ...
     def update(self, session_id: str, patch: Dict[str, Any]) -> None: ...
     def delete_older_than(self, ttl_seconds: int) -> int: ...
+    # PC-906 — recent runs, newest first, for the run-history view.
+    def list_recent(self, limit: int = 50) -> List[Dict[str, Any]]: ...
 
 
 def _filter_persisted(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -84,6 +86,13 @@ class InMemorySessionStore:
                 del self._rows[sid]
             return len(stale)
 
+    def list_recent(self, limit: int = 50) -> List[Dict[str, Any]]:
+        with self._lock:
+            rows = sorted(
+                self._rows.values(), key=lambda r: r["created_at"], reverse=True
+            )
+            return [dict(r) for r in rows[: max(0, limit)]]
+
 
 class SupabaseSessionStore:
     """Postgres-backed via the Supabase service role key."""
@@ -123,6 +132,20 @@ class SupabaseSessionStore:
         )
         rows = getattr(resp, "data", None) or []
         return len(rows)
+
+    def list_recent(self, limit: int = 50) -> List[Dict[str, Any]]:
+        # Pull workflow_graph so the endpoint can extract the template name;
+        # variables (large, unused here) are left out. (For a small team the
+        # graph payload over <=200 rows is fine; promote templateName to its own
+        # column if this ever needs trimming — deferred with "no new table".)
+        resp = (
+            self._client.table(TABLE_NAME)
+            .select("id,status,excel_file,workflow_graph,results,error,created_at,updated_at")
+            .order("created_at", desc=True)
+            .limit(max(0, limit))
+            .execute()
+        )
+        return getattr(resp, "data", None) or []
 
 
 def build_session_store() -> SessionStore:

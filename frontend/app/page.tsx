@@ -25,6 +25,7 @@ import { DataMappingModal } from '@/components/workflow/DataMappingModal';
 import { ShortcutsModal } from '@/components/workflow/ShortcutsModal';
 import { LandingPage } from '@/components/LandingPage';
 import { ProfilePage } from '@/components/ProfilePage';
+import { RunsPage } from '@/components/RunsPage';
 import { WorkflowNode, WorkflowEdge, WorkflowTemplate, WorkflowTemplateVersionSnapshot, ExcelModelsNodeData } from '@/lib/workflow/types';
 import { compileWorkflow, validateWorkflow, validateNode } from '@/lib/workflow/compile';
 import { ActionableError, nodeLabel } from '@/lib/workflow/errors';
@@ -164,7 +165,7 @@ export default function WorkspacePage() {
     isOpen: false,
     nodeId: null,
   });
-  const [currentPage, setCurrentPage] = useState<'landing' | 'editor' | 'profile'>('landing');
+  const [currentPage, setCurrentPage] = useState<'landing' | 'editor' | 'profile' | 'runs'>('landing');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -937,7 +938,12 @@ export default function WorkspacePage() {
         );
       }
 
-      const compiled = compileWorkflow(nodes, edges, excelNodeId, runOpts);
+      // PC-906: tag the run with the loaded template's name so the run-history
+      // view can label it.
+      const compiled = compileWorkflow(nodes, edges, excelNodeId, {
+        ...runOpts,
+        templateName: loadedTemplate?.name,
+      });
       if ('error' in compiled) {
         throw new Error(`Compilation failed: ${compiled.error.title}`);
       }
@@ -1171,7 +1177,7 @@ export default function WorkspacePage() {
       // now own the user's attention.
       setRunProgress(null);
     }
-  }, [nodes, edges, selectedSourceNodeIds]);
+  }, [nodes, edges, selectedSourceNodeIds, loadedTemplate]);
 
   const refreshTemplates = useCallback(async () => {
     try {
@@ -1589,7 +1595,7 @@ export default function WorkspacePage() {
   );
 
   const handleNavigate = useCallback((page: string) => {
-    setCurrentPage(page as 'landing' | 'editor' | 'profile');
+    setCurrentPage(page as 'landing' | 'editor' | 'profile' | 'runs');
   }, []);
 
   return (
@@ -1620,6 +1626,12 @@ export default function WorkspacePage() {
         {currentPage === 'profile' && (
           <div className="flex-1 overflow-auto">
             <ProfilePage onNavigate={handleNavigate} />
+          </div>
+        )}
+
+        {currentPage === 'runs' && (
+          <div className="flex-1 overflow-auto">
+            <RunsPage onNavigate={handleNavigate} />
           </div>
         )}
 

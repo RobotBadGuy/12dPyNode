@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User, HelpCircle } from 'lucide-react';
+import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User, HelpCircle, History } from 'lucide-react';
 
 interface TopBarProps {
   onRunChain?: () => void;
@@ -60,6 +60,16 @@ export function TopBar({
           >
             <Home className="w-4 h-4 mr-1.5" />
             Home
+          </Button>
+          <Button
+            onClick={() => onNavigate?.('runs')}
+            variant="ghost"
+            size="sm"
+            className={`text-gray-300 hover:bg-gray-800/50 ${currentPage === 'runs' ? 'bg-gray-800/70 text-white' : ''}`}
+            title="Run history"
+          >
+            <History className="w-4 h-4 mr-1.5" />
+            Runs
           </Button>
           <Button
             onClick={() => onNavigate?.('profile')}

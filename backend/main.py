@@ -42,14 +42,17 @@ import time as _time
 import asyncio
 
 # Maximum age (in seconds) for files in uploads/ and output/ and session rows
-# before they are cleaned up. Default 1 hour; override via CLEANUP_TTL_SECONDS.
-CLEANUP_TTL_SECONDS = int(os.getenv("CLEANUP_TTL_SECONDS", "3600"))
+# before they are cleaned up. PC-906 bumped the default from 1 hour to 7 days so
+# the run-history view keeps both the record AND the re-downloadable ZIP for a
+# useful window; override via CLEANUP_TTL_SECONDS.
+CLEANUP_TTL_SECONDS = int(os.getenv("CLEANUP_TTL_SECONDS", "604800"))
 
 # How often the periodic sweep runs (seconds). Defaults to a quarter of the
-# TTL with a 60-second floor — frequent enough to keep the working set bounded
-# without thrashing the disk. Override via CLEANUP_INTERVAL_SECONDS.
+# TTL, clamped to [60s, 1h] — frequent enough to keep the working set bounded
+# without thrashing the disk, and (PC-906) capped so the bumped 7-day TTL
+# doesn't stretch the sweep to ~42h. Override via CLEANUP_INTERVAL_SECONDS.
 CLEANUP_INTERVAL_SECONDS = int(
-    os.getenv("CLEANUP_INTERVAL_SECONDS", str(max(60, CLEANUP_TTL_SECONDS // 4)))
+    os.getenv("CLEANUP_INTERVAL_SECONDS", str(min(3600, max(60, CLEANUP_TTL_SECONDS // 4))))
 )
 
 
@@ -497,6 +500,56 @@ async def get_workflow_status(session_id: str):
             result["results"] = progress
 
     return result
+
+
+def _iso(value: Any) -> Optional[str]:
+    """Normalize a timestamp to an ISO string (Supabase returns strings already;
+    the in-memory store holds datetimes)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
+
+
+def _run_summary(row: Dict[str, Any]) -> Dict[str, Any]:
+    """PC-906 — slim run-history row from a full session, dropping the heavy
+    workflow_graph / variables blobs the list view doesn't need."""
+    graph = row.get("workflow_graph") if isinstance(row.get("workflow_graph"), dict) else {}
+    results = row.get("results") if isinstance(row.get("results"), dict) else {}
+    summary = results.get("summary") if isinstance(results.get("summary"), dict) else {}
+
+    # excel_file is stored as "<session_id>_<original>.xlsx" under uploads/;
+    # strip the id prefix so the user sees the name they uploaded.
+    excel = row.get("excel_file")
+    source_name = None
+    if excel:
+        base = os.path.basename(excel)
+        prefix = f"{row.get('id')}_"
+        source_name = base[len(prefix):] if base.startswith(prefix) else base
+
+    return {
+        "id": row.get("id"),
+        "status": row.get("status"),
+        "created_at": _iso(row.get("created_at")),
+        "updated_at": _iso(row.get("updated_at")),
+        "templateName": graph.get("templateName"),
+        "sourceName": source_name,
+        "modelCount": summary.get("total_files"),
+        "succeededCount": summary.get("succeeded_count"),
+        "failedCount": summary.get("failed_count"),
+        "error": row.get("error"),
+    }
+
+
+@app.get("/api/workflow/runs")
+async def list_workflow_runs(limit: int = 50):
+    """PC-906 — recent run history, newest first. Slim rows for the Runs view;
+    re-download still goes through /api/workflow/download/{id} (works while the
+    ZIP survives the cleanup TTL)."""
+    capped = max(1, min(limit, 200))
+    rows = session_store.list_recent(capped)
+    return [_run_summary(r) for r in rows]
 
 
 @app.get("/api/workflow/node-xml/{session_id}/{model_name}/{node_id}")
