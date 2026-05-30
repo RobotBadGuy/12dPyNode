@@ -1,6 +1,6 @@
 # PC-401 — Typed Variables — Progress Tracker
 
-**Status: ✅ COMPLETE — merged to main (`90fc5af`) and pushed 2026-05-30.**
+**Status: ✅ COMPLETE — merged to main (merge commit `63e3f1f`) and pushed 2026-05-30.**
 
 **Ticket:** PC-401 (EPIC-04 Variable System) · Mode: superpowers (TDD-first)
 **Spec:** `docs/superpowers/specs/2026-05-30-pc401-typed-variables-design.md`
@@ -22,10 +22,10 @@ editor type dropdown + adaptive input. path/list deferred (YAGNI).
 Python float() hex/binary/octal parity ×2; isolation test now proves a sibling
 succeeds while the bad model fails).
 
-## Commit trail (all on main via merge 90fc5af)
+## Commit trail (all on main via merge 63e3f1f)
 spec 6410085 · plan 2ef0455 · T1 126563a (+b81f9f6) · T2 2237d71 (+b7e50cd) ·
 T3 bf18dcf · T4 ef87131 (+816ed97) · handoff f5b1565 · T5–T8 c763ede ·
-progress e4ce1d3 · review-fixes 76b3f3f · ROADMAP 7a3b3f5 · merge 90fc5af.
+progress e4ce1d3 · review-fixes dda9d11 · ROADMAP 5b5af52 · merge 63e3f1f.
 
 ## ENV NOTES (for future tickets in this repo)
 - `backend/venv` is DEAD (points at C:\Users\d1_s1 / G:\). **Use bare `python`** on
