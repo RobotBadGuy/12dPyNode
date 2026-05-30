@@ -96,7 +96,7 @@ export function LeftSidebar({
     setDragOver(null);
     const files = Array.from(e.dataTransfer.files);
     if (type === 'excel') {
-      const excelFiles = files.filter((f) => f.name.endsWith('.xlsx'));
+      const excelFiles = files.filter((f) => f.name.toLowerCase().endsWith('.xlsx'));
       if (excelFiles.length > 0) {
         onFileUpload('excel', excelFiles);
       }

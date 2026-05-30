@@ -767,36 +767,78 @@ export default function WorkspacePage() {
   );
 
   const handleFileUpload = useCallback(
-    (type: 'excel' | 'model', files: File[]) => {
+    (
+      type: 'excel' | 'model',
+      files: File[],
+      position?: { x: number; y: number },
+      recordHistory = false,
+    ) => {
       if (type === 'excel') {
-        // Always create one ExcelModels node per uploaded Excel file
-        Promise.all(files.map((f) => parseExcelFile(f, 0))).then((results) => {
-          setNodes((nds) => {
-            const newNodes: WorkflowNode[] = [];
-            files.forEach((file, index) => {
-              const { modelNames, columnName, availableColumns } = results[index];
-              const newNode: WorkflowNode = {
-                id: `excelModels_${Date.now()}_${index}`,
-                type: 'excelModels',
-                position: { x: 100 + index * 20, y: 100 + index * 20 },
-                data: {
-                  file,
-                  modelNames,
-                  columnName,
-                  availableColumns,
-                  selectedColumnIndex: 0,
-                } as any,
-              };
-              newNodes.push(newNode);
+        // Always create one ExcelModels node per uploaded Excel file. PC-904: a
+        // canvas drop supplies a position so the node lands where it was dropped
+        // (the sidebar upload omits it and falls back to the staggered default)
+        // and sets recordHistory so the drop is undoable, like a palette add.
+        Promise.all(files.map((f) => parseExcelFile(f, 0)))
+          .then((results) => {
+            setNodes((nds) => {
+              if (recordHistory) {
+                setHistory((prev) => [...prev, { nodes: nds as WorkflowNode[], edges }]);
+                setFuture([]);
+              }
+              const newNodes: WorkflowNode[] = [];
+              files.forEach((file, index) => {
+                const { modelNames, columnName, availableColumns } = results[index];
+                const pos = position
+                  ? { x: position.x + index * 24, y: position.y + index * 24 }
+                  : { x: 100 + index * 20, y: 100 + index * 20 };
+                const newNode: WorkflowNode = {
+                  id: `excelModels_${Date.now()}_${index}`,
+                  type: 'excelModels',
+                  position: pos,
+                  data: {
+                    file,
+                    modelNames,
+                    columnName,
+                    availableColumns,
+                    selectedColumnIndex: 0,
+                  } as any,
+                };
+                newNodes.push(newNode);
+              });
+              return [...nds, ...newNodes];
             });
-            return [...nds, ...newNodes];
+          })
+          .catch((err) => {
+            notify.error('Could not read the Excel file', {
+              description: err instanceof Error ? err.message : String(err),
+            });
           });
-        });
       } else {
         setModelFiles((prev) => [...prev, ...files]);
       }
     },
-    [parseExcelFile]
+    [parseExcelFile, edges]
+  );
+
+  // PC-904: a file dropped onto the canvas. Excel files become a model source at
+  // the drop point; anything else is rejected with a hint toward the File Tray
+  // (DWG/DGN/IFC model files aren't canvas nodes).
+  const handleCanvasFilesDropped = useCallback(
+    (files: File[], position: { x: number; y: number }) => {
+      const excelFiles = files.filter((f) => f.name.toLowerCase().endsWith('.xlsx'));
+      if (excelFiles.length === 0) {
+        notify.error('Only Excel (.xlsx) files can be dropped on the canvas', {
+          description: 'Use the left File Tray for DWG/DGN/IFC model files.',
+        });
+        return;
+      }
+      handleFileUpload('excel', excelFiles, position, true);
+      const skipped = files.length - excelFiles.length;
+      if (skipped > 0) {
+        notify.warning(`Ignored ${skipped} non-Excel file${skipped === 1 ? '' : 's'}`);
+      }
+    },
+    [handleFileUpload],
   );
 
   const handleRunChain = useCallback(async (explicitSourceId?: string, options?: { testRun?: boolean; modelSubset?: string[] }) => {
@@ -1532,6 +1574,7 @@ export default function WorkspacePage() {
                   onNodeContextMenu={handleNodeContextMenu}
                   onAutoLayout={handleAutoLayout}
                   exportFileName={loadedTemplate?.name}
+                  onFilesDropped={handleCanvasFilesDropped}
                   onViewportChange={setViewport}
                   onInit={(instance) => {
                     reactFlowInstanceRef.current = instance;

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,9 +11,10 @@ import {
   Connection,
   Viewport,
   ReactFlowInstance,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, FileSpreadsheet } from 'lucide-react';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { validateConnection } from '@/lib/workflow/edgeRules';
 import { exportCanvasImage, type ExportImageFormat } from '@/lib/workflow/exportImage';
@@ -68,6 +69,8 @@ interface WorkspaceCanvasProps {
   onAutoLayout?: () => void;
   // PC-910 — base name for exported images; falls back to a default when blank.
   exportFileName?: string;
+  // PC-904 — files dropped onto the canvas, with the drop point in flow coords.
+  onFilesDropped?: (files: File[], flowPosition: { x: number; y: number }) => void;
 }
 
 export function WorkspaceCanvas({
@@ -83,7 +86,72 @@ export function WorkspaceCanvas({
   onInit,
   onAutoLayout,
   exportFileName,
+  onFilesDropped,
 }: WorkspaceCanvasProps) {
+  const reactFlow = useReactFlow();
+  // PC-904 — full-canvas file drop. dragDepth counts enter/leave across nested
+  // children so the overlay doesn't flicker when the cursor crosses a node.
+  const [fileDragging, setFileDragging] = useState(false);
+  const dragDepth = useRef(0);
+
+  const dragHasFiles = (e: React.DragEvent): boolean =>
+    Array.from(e.dataTransfer?.types ?? []).includes('Files');
+
+  const handleFileDragEnter = useCallback((e: React.DragEvent) => {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    dragDepth.current += 1;
+    setFileDragging(true);
+  }, []);
+
+  const handleFileDragOver = useCallback((e: React.DragEvent) => {
+    if (!dragHasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleFileDragLeave = useCallback((e: React.DragEvent) => {
+    if (!dragHasFiles(e)) return;
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setFileDragging(false);
+  }, []);
+
+  const handleFileDrop = useCallback(
+    (e: React.DragEvent) => {
+      if (!dragHasFiles(e)) return;
+      e.preventDefault();
+      dragDepth.current = 0;
+      setFileDragging(false);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+      const flowPosition = reactFlow.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      onFilesDropped?.(files, flowPosition);
+    },
+    [reactFlow, onFilesDropped],
+  );
+
+  // Safety net: the enter/leave counter can be left unbalanced when a drag ends
+  // away from the wrapper (ESC-cancel, drop elsewhere, or the cursor leaving the
+  // window), which would otherwise leave the overlay stuck. Force-clear it on
+  // any window-level drag end, and when the drag leaves the window entirely
+  // (dragleave with no relatedTarget).
+  useEffect(() => {
+    const reset = () => {
+      dragDepth.current = 0;
+      setFileDragging(false);
+    };
+    const onWindowDragLeave = (e: DragEvent) => {
+      if (e.relatedTarget === null) reset();
+    };
+    window.addEventListener('drop', reset);
+    window.addEventListener('dragend', reset);
+    window.addEventListener('dragleave', onWindowDragLeave);
+    return () => {
+      window.removeEventListener('drop', reset);
+      window.removeEventListener('dragend', reset);
+      window.removeEventListener('dragleave', onWindowDragLeave);
+    };
+  }, []);
   const nodeTypes = {
     excelModels: ExcelModelsNode,
     manualModels: ManualModelsNode,
@@ -163,7 +231,13 @@ export function WorkspaceCanvas({
   );
 
   return (
-    <div className="w-full h-full relative">
+    <div
+      className="w-full h-full relative"
+      onDragEnter={handleFileDragEnter}
+      onDragOver={handleFileDragOver}
+      onDragLeave={handleFileDragLeave}
+      onDrop={handleFileDrop}
+    >
       <ReactFlow
         nodes={nodes as Node[]}
         edges={coloredEdges}
@@ -242,6 +316,16 @@ export function WorkspaceCanvas({
           </Panel>
         )}
       </ReactFlow>
+      {/* PC-904 — drop overlay. pointer-events-none so the drag/drop events
+          still reach the wrapper's handlers underneath. */}
+      {fileDragging && (
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-emerald-950/40 backdrop-blur-[1px]">
+          <div className="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-emerald-400 bg-gray-900/80 px-8 py-6 text-emerald-200 shadow-2xl">
+            <FileSpreadsheet className="w-8 h-8" />
+            <p className="text-sm font-medium">Drop an Excel (.xlsx) file to add a model source</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
