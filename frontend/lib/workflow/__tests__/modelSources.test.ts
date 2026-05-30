@@ -6,7 +6,6 @@ import {
   isReadySource,
   hasReadyModelSource,
   parseModelList,
-  firstModelForTestRun,
 } from '../modelSources';
 import type { WorkflowNode } from '../types';
 
@@ -65,15 +64,8 @@ describe('isReadySource / hasReadyModelSource', () => {
   });
 });
 
-describe('firstModelForTestRun', () => {
-  it('returns the first name when there is no header', () => {
-    expect(firstModelForTestRun(['A', 'B', 'C'])).toBe('A');
-  });
-  it('skips a common-header first entry (mirrors the backend)', () => {
-    expect(firstModelForTestRun(['Model', 'A', 'B'])).toBe('A');
-    expect(firstModelForTestRun(['Filename', 'X'])).toBe('X');
-  });
-  it('returns undefined for an empty list', () => {
-    expect(firstModelForTestRun([])).toBeUndefined();
-  });
-});
+// PC-704: `firstModelForTestRun` was removed. The Excel parser
+// (lib/workflow/excelPreview.ts → extractModelNames) now drops a header row at
+// parse time to match the backend, so a source's modelNames is header-free and
+// the Test-run target is just modelNames[0] (verified in compile.test.ts). The
+// header-skip parity is covered by excelPreview.test.ts.

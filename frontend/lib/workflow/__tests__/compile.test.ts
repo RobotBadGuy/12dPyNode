@@ -93,7 +93,7 @@ describe('compileWorkflow', () => {
     if ('error' in result) {
       expect(result.error.title).toBe('Excel file has no model column');
       expect(result.error.focusNodeId).toBe('1');
-      expect(result.error.fix).toMatch(/pick the column/i);
+      expect(result.error.fix).toMatch(/pick column|choose the column/i);
     }
   });
 

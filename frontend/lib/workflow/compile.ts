@@ -1,7 +1,7 @@
 import { WorkflowNode, WorkflowEdge, CompiledWorkflow, VariableBinding } from './types';
 import { nodeSchemas, getParamHandleId } from './nodeSchemas';
 import { ActionableError, nodeLabel } from './errors';
-import { SOURCE_NODE_TYPES, getModelSource, firstModelForTestRun } from './modelSources';
+import { SOURCE_NODE_TYPES, getModelSource } from './modelSources';
 
 export function compileWorkflow(
   nodes: WorkflowNode[],
@@ -44,7 +44,7 @@ export function compileWorkflow(
           ? {
               title: 'Excel file has no model column',
               message: `'${nodeLabel(sourceNode)}' loaded a file but no model column was selected.`,
-              fix: 'Open this node and pick the column that contains model names. (PC-704 will improve this.)',
+              fix: 'Click "Pick column" on the node (or in the Properties panel) and choose the column that contains model names.',
               focusNodeId: sourceNode.id,
             }
           : {
@@ -90,19 +90,16 @@ export function compileWorkflow(
 
   // PC-1004/PC-1005: narrow the batch to a subset via the existing
   // selectedModelNames filter. PC-1005 passes an explicit modelSubset (e.g. the
-  // failed models to re-run) and it wins; otherwise PC-1004's "Test run" derives
-  // the first model — header-aware for Excel (mirroring run_workflow's header
-  // skip), verbatim for a manual list. source.modelNames is non-empty here, so a
-  // test-run subset is always one concrete name (never silently a full run).
+  // failed models to re-run) and it wins; otherwise PC-1004's "Test run" takes
+  // the first model. PC-704: `source.modelNames` is now header-free for both
+  // Excel and manual sources (the parser drops a header row to match the
+  // backend), so the first real model is simply `modelNames[0]`. source.modelNames
+  // is non-empty here, so a test-run subset is always one concrete name.
   const selectedSubset =
     options?.modelSubset && options.modelSubset.length > 0
       ? options.modelSubset
       : options?.testRun
-        ? [
-            (source.kind === 'excel'
-              ? firstModelForTestRun(source.modelNames)
-              : undefined) ?? source.modelNames[0],
-          ]
+        ? [source.modelNames[0]]
         : undefined;
 
   if (source.kind === 'excel') {

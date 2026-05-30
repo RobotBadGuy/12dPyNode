@@ -64,14 +64,10 @@ export function parseModelList(text: string): string[] {
     .filter((line) => line.length > 0);
 }
 
-// PC-1004: the model a "Test run" should generate — the first real model name,
-// skipping a header-looking first entry to mirror the backend's header-row skip
-// in run_workflow (so it matches the model the backend would run first).
-// Returns undefined for an empty list.
-const TEST_RUN_HEADER_NAMES = ['filename', 'name', 'model', 'model_name', 'model name'];
-
-export function firstModelForTestRun(modelNames: string[]): string | undefined {
-  if (modelNames.length === 0) return undefined;
-  const start = TEST_RUN_HEADER_NAMES.includes(modelNames[0].trim().toLowerCase()) ? 1 : 0;
-  return modelNames[start];
-}
+// NOTE (PC-704): the old `firstModelForTestRun` header-skip lived here because
+// the Excel parser used to leave the header row in `modelNames`. Now
+// `extractModelNames` (lib/workflow/excelPreview.ts) drops the header at parse
+// time — matching the backend — so a source's `modelNames[0]` is already the
+// first real model. The Test-run target is therefore just `modelNames[0]` for
+// both Excel and manual sources (see compile.ts). Re-skipping here would drop a
+// real model, so the helper was removed.

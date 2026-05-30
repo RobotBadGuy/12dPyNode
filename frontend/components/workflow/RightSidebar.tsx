@@ -22,6 +22,8 @@ interface RightSidebarProps {
   // run has produced any data yet.
   runFileDetails?: FileDetail[];
   runSessionId?: string | null;
+  // PC-704: open the Excel column picker for the given node.
+  onPickColumn?: (nodeId: string) => void;
 }
 
 // Shared outer shell for any of the editor branches that operate on a
@@ -58,6 +60,7 @@ export function RightSidebar({
   onUpdateNode,
   runFileDetails,
   runSessionId,
+  onPickColumn,
 }: RightSidebarProps) {
   // Get all variables from SetVariable nodes for dropdowns
   const allVariables = useMemo(() => {
@@ -151,6 +154,60 @@ export function RightSidebar({
               {modelNames.length} model{modelNames.length === 1 ? '' : 's'}
             </p>
           </div>
+        </div>
+      </EditorShell>
+    );
+  }
+
+  // PC-704: Excel Models editor — file info + the column picker. Without this
+  // branch the panel was blank for this node (empty schema).
+  if (selectedNode.type === 'excelModels') {
+    const file = nodeData.file as File | null | undefined;
+    const columnName = (nodeData.columnName as string) ?? '';
+    const modelNames = (nodeData.modelNames as string[]) ?? [];
+
+    return (
+      <EditorShell
+        selectedNodeId={selectedNode.id}
+        runFileDetails={runFileDetails}
+        runSessionId={runSessionId}
+      >
+        <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Excel file</Label>
+            <p className="text-sm text-gray-400 truncate">
+              {file ? file.name : 'No file uploaded'}
+            </p>
+          </div>
+          {file ? (
+            <div>
+              <Label className="text-sm font-semibold text-gray-300 mb-1 block">Model column</Label>
+              <p className="text-sm text-gray-400 mb-2">
+                {columnName ? (
+                  <>
+                    Reading <span className="text-emerald-300">{modelNames.length}</span> model
+                    {modelNames.length === 1 ? '' : 's'} from{' '}
+                    <span className="text-gray-200">&ldquo;{columnName}&rdquo;</span>
+                  </>
+                ) : (
+                  'No column selected yet.'
+                )}
+              </p>
+              <Button
+                type="button"
+                onClick={() => onPickColumn?.(selectedNode.id)}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white"
+              >
+                Pick column…
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">
+              Upload an Excel file (drag it onto the canvas or use the left panel) to choose a model
+              column.
+            </p>
+          )}
         </div>
       </EditorShell>
     );

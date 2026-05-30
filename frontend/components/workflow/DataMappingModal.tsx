@@ -30,6 +30,7 @@ import {
 } from '@dnd-kit/core';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { nodeSchemas } from '@/lib/workflow/nodeSchemas';
+import { columnLabel } from '@/lib/workflow/excelPreview';
 import { cn } from '@/lib/utils';
 
 interface DataMappingModalProps {
@@ -627,7 +628,7 @@ export function DataMappingModal({
                                             >
                                                 {availableColumns.map((col, idx) => (
                                                     <option key={idx} value={idx} className="bg-slate-900 text-white">
-                                                        Column {String.fromCharCode(65 + idx)}: {col}
+                                                        Column {columnLabel(idx)}: {col}
                                                     </option>
                                                 ))}
                                             </select>

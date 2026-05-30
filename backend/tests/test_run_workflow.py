@@ -347,3 +347,42 @@ def test_manual_model_names_respect_selected_subset(monkeypatch, output_dir):
     generated, _project, details = run_workflow(None, graph, [], str(output_dir))
 
     assert [r["model"] for r in details] == ["B"]
+
+
+def test_normalize_model_key_collapses_numeric_strings():
+    """PC-704: numeric names normalize to one form so the frontend's '13' matches
+    pandas' '13.0'; non-numeric names (and nan/inf) are left untouched."""
+    from services.workflow_runner import _normalize_model_key
+
+    assert _normalize_model_key("13.0") == _normalize_model_key("13") == "13"
+    assert _normalize_model_key("  13.0  ") == "13"  # trimmed
+    assert _normalize_model_key(13.0) == "13"        # non-str input
+    assert _normalize_model_key("12.5") == "12.5"    # genuine decimal preserved
+    assert _normalize_model_key("NWP-01") == "NWP-01"  # non-numeric untouched
+    assert _normalize_model_key("nan") == "nan"        # guarded (int() would raise)
+    assert _normalize_model_key("inf") == "inf"
+
+
+def test_selected_subset_matches_numeric_excel_column(monkeypatch, tmp_path, output_dir):
+    """PC-704: a numeric Excel column stringifies as '13.0' under pandas, while the
+    frontend (SheetJS) sends the subset as '13'. Normalization keeps them matching;
+    without it the run would silently produce zero files."""
+    excel = tmp_path / "numeric.xlsx"
+    # A header-less float column -> pandas reads it as float64 -> '12.5','13.0','14.0'.
+    pd.DataFrame({0: [12.5, 13.0, 14]}).to_excel(
+        excel, index=False, header=False, engine="openpyxl"
+    )
+
+    def fake_generate(model_name, *args, **kwargs):
+        path = str(output_dir / f"{model_name}.chain")
+        Path(path).write_text("<xml/>", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr(workflow_runner, "generate_chain_file", fake_generate)
+
+    graph = {**_minimal_graph(), "selectedModelNames": ["13", "14"]}
+    generated, _project, details = run_workflow(str(excel), graph, [], str(output_dir))
+
+    assert [r["model"] for r in details] == ["13.0", "14.0"]
+    assert all(r["status"] == "success" for r in details)
+    assert len(generated) == 2

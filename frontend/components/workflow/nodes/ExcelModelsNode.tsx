@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { BaseNode } from './BaseNode';
-import { FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, ChevronDown, ChevronRight, Columns3 } from 'lucide-react';
 import { ExcelModelsNodeData } from '@/lib/workflow/types';
 import { nodeSchemas } from '@/lib/workflow/nodeSchemas';
 import { useSourceRunButton } from '@/components/workflow/WorkflowRunContext';
@@ -21,12 +21,9 @@ export function ExcelModelsNode(props: NodeProps) {
   const [expanded, setExpanded] = useState(false);
 
   // PC-1003: inline ▶ run button (runs the chain from this source).
-  const { onRun, onTestRun, runDisabled, runTooltip, testRunTooltip } = useSourceRunButton(
-    id,
-    'excelModels',
-    data,
-    'Load an Excel file first',
-  );
+  // PC-704: onPickColumn opens the column picker for this node.
+  const { onRun, onTestRun, onPickColumn, runDisabled, runTooltip, testRunTooltip } =
+    useSourceRunButton(id, 'excelModels', data, 'Load an Excel file first');
 
   return (
     <BaseNode
@@ -52,9 +49,19 @@ export function ExcelModelsNode(props: NodeProps) {
             <div>
               <p className="font-semibold truncate">{excelData.file.name}</p>
               <p className="text-white/60">{modelNames.length} models</p>
-              {excelData.columnName && (
-                <p className="text-emerald-300/70 text-[11px]">Column: {excelData.columnName}</p>
-              )}
+              {/* PC-704: the column display doubles as the picker trigger. */}
+              <button
+                type="button"
+                className="nodrag mt-0.5 flex items-center gap-1 text-[11px] text-emerald-300/90 hover:text-emerald-100 transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPickColumn();
+                }}
+                title="Choose which column holds the model names"
+              >
+                <Columns3 className="w-3 h-3" />
+                {excelData.columnName ? `Column: ${excelData.columnName}` : 'Pick column'}
+              </button>
             </div>
             {modelNames.length > 0 && (
               <div>

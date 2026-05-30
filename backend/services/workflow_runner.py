@@ -870,6 +870,26 @@ def _read_model_names_from_excel(excel_file_path: str, selected_column_index: in
     return model_names
 
 
+def _normalize_model_key(name: Any) -> str:
+    """PC-704 — canonical key for matching a frontend-selected model name against
+    a backend-parsed one. The frontend (SheetJS) stringifies a numeric cell as
+    '13', while pandas' ``astype(str)`` yields '13.0' for a float-typed column —
+    so an exact-equality subset filter would silently drop every model in a
+    numeric column (PC-1004 Test run / PC-1005 re-run failed produce zero files
+    with no error). Collapse numeric strings to one form (integers without a
+    trailing '.0'); leave non-numeric names (the common case, e.g. 'NWP-01')
+    untouched so exact matching is preserved."""
+    s = str(name).strip()
+    try:
+        f = float(s)
+    except (ValueError, OverflowError):
+        return s
+    # Leave nan/inf as their raw string — int() would raise on them.
+    if f != f or f in (float('inf'), float('-inf')):
+        return s
+    return str(int(f)) if f.is_integer() else str(f)
+
+
 def _clean_manual_model_names(raw_names: List[Any]) -> List[str]:
     """PC-1001 — clean a hand-supplied model-name list: stringify, trim, drop
     blanks and 'nan'. No header-row skipping — a typed list has no header."""
@@ -938,8 +958,10 @@ def run_workflow(
     # Optional subset of model names selected in the frontend
     selected_model_names = workflow_graph.get('selectedModelNames') or []
     if selected_model_names:
-        selected_set = {str(name) for name in selected_model_names}
-        model_names = [m for m in model_names if str(m) in selected_set]
+        # PC-704: normalize both sides so a numeric column ('13.0' from pandas vs
+        # '13' from the frontend) still matches instead of filtering to nothing.
+        selected_set = {_normalize_model_key(name) for name in selected_model_names}
+        model_names = [m for m in model_names if _normalize_model_key(m) in selected_set]
     
     # Build per-run variables
     per_run_vars = {}

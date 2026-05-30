@@ -49,7 +49,8 @@ import { WorkflowRunProvider } from '@/components/workflow/WorkflowRunContext';
 import { notify } from '@/lib/notify';
 import { NodeContextMenu } from '@/components/workflow/NodeContextMenu';
 import { duplicateNode, removeNode, setNodeDisabled } from '@/lib/workflow/nodeOps';
-import * as XLSX from 'xlsx';
+import { parseExcelToRows, extractModelNames, columnHeaders } from '@/lib/workflow/excelPreview';
+import { ExcelColumnPickerModal } from '@/components/workflow/ExcelColumnPickerModal';
 import JSZip from 'jszip';
 
 function sameWarnings(a: string[] | undefined, b: string[] | undefined): boolean {
@@ -194,6 +195,16 @@ export default function WorkspacePage() {
       return rest;
     });
   }, [nodes, edges]);
+
+  // PC-704: Excel column picker modal state. nodeId identifies which ExcelModels
+  // node the picker is configuring.
+  const [columnPicker, setColumnPicker] = useState<{ isOpen: boolean; nodeId: string | null }>({
+    isOpen: false,
+    nodeId: null,
+  });
+  const handlePickColumn = useCallback((nodeId: string) => {
+    setColumnPicker({ isOpen: true, nodeId });
+  }, []);
 
   const handleAutoLayout = useCallback(() => {
     if (nodes.length === 0) {
@@ -702,53 +713,26 @@ export default function WorkspacePage() {
     [edges, viewport]
   );
 
-  // Helper to parse a single Excel file, reading from a specific column index
+  // PC-704: parse via the shared excelPreview helpers so the node's model list
+  // matches the backend byte-for-byte (header-row skip + blank/nan drop).
+  // `availableColumns` is now every column by position (blanks preserved), so a
+  // column index maps to the real sheet column the backend reads.
   const parseExcelFile = useCallback(
-    (file: File, columnIndex: number = 0): Promise<{ modelNames: string[]; columnName: string; availableColumns: string[] }> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = new Uint8Array(e.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-
-            const rows = XLSX.utils.sheet_to_json<any[]>(firstSheet, {
-              header: 1,
-              defval: '',
-            }) as any[][];
-
-            // Extract all column headers from the first row
-            const availableColumns: string[] = [];
-            if (rows.length > 0 && Array.isArray(rows[0])) {
-              rows[0].forEach((cell) => {
-                const header = String(cell ?? '').trim();
-                if (header) availableColumns.push(header);
-              });
-            }
-
-            // Clamp column index to valid range
-            const safeIndex = Math.min(columnIndex, Math.max(0, (rows[0]?.length ?? 1) - 1));
-
-            const modelNames = rows
-              .map((row) => (Array.isArray(row) ? String((row[safeIndex] ?? '')).trim() : ''))
-              .filter((name) => !!name);
-
-            const columnName =
-              rows.length > 0 && Array.isArray(rows[0])
-                ? String((rows[0][safeIndex] ?? '')).trim()
-                : '';
-
-            resolve({ modelNames, columnName, availableColumns });
-          } catch (err) {
-            reject(err);
-          }
-        };
-        reader.onerror = reject;
-        reader.readAsArrayBuffer(file);
-      });
+    async (
+      file: File,
+      columnIndex: number = 0,
+    ): Promise<{ modelNames: string[]; columnName: string; availableColumns: string[] }> => {
+      const rows = await parseExcelToRows(file);
+      const headers = columnHeaders(rows);
+      const safeIndex =
+        headers.length === 0 ? 0 : Math.min(Math.max(columnIndex, 0), headers.length - 1);
+      return {
+        modelNames: extractModelNames(rows, columnIndex),
+        columnName: headers[safeIndex] ?? '',
+        availableColumns: headers,
+      };
     },
-    []
+    [],
   );
 
   // Handle changing the selected Excel column for an ExcelModels node
@@ -812,7 +796,7 @@ export default function WorkspacePage() {
         setModelFiles((prev) => [...prev, ...files]);
       }
     },
-    [nodes]
+    [parseExcelFile]
   );
 
   const handleRunChain = useCallback(async (explicitSourceId?: string, options?: { testRun?: boolean; modelSubset?: string[] }) => {
@@ -1417,10 +1401,11 @@ export default function WorkspacePage() {
       onTestRunFromSource: (nodeId: string) => {
         void handleRunChain(nodeId, { testRun: true });
       },
+      onPickColumn: handlePickColumn,
       canRun,
       isRunning,
     }),
-    [handleRunChain, canRun, isRunning],
+    [handleRunChain, handlePickColumn, canRun, isRunning],
   );
 
   // PC-1003: Ctrl/Cmd+Enter runs the chain (mirrors the toolbar Run button). A
@@ -1557,6 +1542,7 @@ export default function WorkspacePage() {
                 selectedNode={selectedNode}
                 nodes={nodes}
                 edges={edges}
+                onPickColumn={handlePickColumn}
                 runFileDetails={lastRunDetails?.fileDetails}
                 runSessionId={lastRunDetails?.sessionId ?? null}
                 onUpdateNode={(nodeId, data) => {
@@ -1668,6 +1654,26 @@ export default function WorkspacePage() {
               onSave={handleSaveMapping}
               onExcelColumnChange={handleExcelColumnChange}
             />
+            {(() => {
+              // PC-704: feed the picker the target node's file + current column.
+              const pickerNode = columnPicker.nodeId
+                ? nodes.find((n) => n.id === columnPicker.nodeId)
+                : null;
+              const pickerData = (pickerNode?.data ?? {}) as any;
+              const pickerFile = (pickerData.file as File) ?? null;
+              return (
+                <ExcelColumnPickerModal
+                  isOpen={columnPicker.isOpen}
+                  file={pickerFile}
+                  fileName={pickerFile?.name}
+                  selectedColumnIndex={(pickerData.selectedColumnIndex as number) ?? 0}
+                  onClose={() => setColumnPicker({ isOpen: false, nodeId: null })}
+                  onSelect={(idx) => {
+                    if (columnPicker.nodeId) handleExcelColumnChange(columnPicker.nodeId, idx);
+                  }}
+                />
+              );
+            })()}
             <ShortcutsModal
               isOpen={showShortcuts}
               onClose={() => setShowShortcuts(false)}

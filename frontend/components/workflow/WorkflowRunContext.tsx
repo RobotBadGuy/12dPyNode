@@ -16,6 +16,8 @@ export interface WorkflowRunContextValue {
   onRunFromSource: (nodeId: string) => void;
   /** PC-1004: run the chain for just the first model of a source ("Test run"). */
   onTestRunFromSource: (nodeId: string) => void;
+  /** PC-704: open the Excel column picker for a source node. */
+  onPickColumn: (nodeId: string) => void;
   /** Graph-level precondition: a Foreach Model and a Chain File Output exist. */
   canRun: boolean;
   /** A run is currently in flight (global lock — disables every ▶). */
@@ -25,6 +27,7 @@ export interface WorkflowRunContextValue {
 const WorkflowRunContext = createContext<WorkflowRunContextValue>({
   onRunFromSource: () => {},
   onTestRunFromSource: () => {},
+  onPickColumn: () => {},
   canRun: false,
   isRunning: false,
 });
@@ -49,11 +52,12 @@ export function useSourceRunButton(
 ): {
   onRun: () => void;
   onTestRun: () => void;
+  onPickColumn: () => void;
   runDisabled: boolean;
   runTooltip: string;
   testRunTooltip: string;
 } {
-  const { onRunFromSource, onTestRunFromSource, canRun, isRunning } = useWorkflowRun();
+  const { onRunFromSource, onTestRunFromSource, onPickColumn, canRun, isRunning } = useWorkflowRun();
   const ready = isReadySource({ id, type, data } as unknown as WorkflowNode);
   const runDisabled = isRunning || !canRun || !ready;
   // Tooltip order mirrors runDisabled's left-to-right evaluation: the
@@ -74,6 +78,7 @@ export function useSourceRunButton(
   return {
     onRun: () => onRunFromSource(id),
     onTestRun: () => onTestRunFromSource(id),
+    onPickColumn: () => onPickColumn(id),
     runDisabled,
     runTooltip,
     testRunTooltip,
