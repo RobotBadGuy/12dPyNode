@@ -51,6 +51,16 @@ import { NodeContextMenu } from '@/components/workflow/NodeContextMenu';
 import { duplicateNode, removeNode, setNodeDisabled } from '@/lib/workflow/nodeOps';
 import { parseExcelToRows, extractModelNames, columnHeaders } from '@/lib/workflow/excelPreview';
 import { ExcelColumnPickerModal } from '@/components/workflow/ExcelColumnPickerModal';
+import { RestoreDraftModal } from '@/components/workflow/RestoreDraftModal';
+import {
+  loadDraft,
+  saveDraft,
+  clearDraft,
+  serializeDraft,
+  shouldOfferRestore,
+  formatDraftAge,
+  type WorkflowDraft,
+} from '@/lib/workflow/draftStorage';
 import JSZip from 'jszip';
 
 function sameWarnings(a: string[] | undefined, b: string[] | undefined): boolean {
@@ -145,6 +155,11 @@ export default function WorkspacePage() {
   // Captured via WorkspaceCanvas onInit so we can drive the canvas viewport
   // when restoring a template or version.
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
+  // PC-905: the recovered draft offered on load (null = no prompt). Auto-save
+  // stays disarmed until the restore decision is made, so the load-time effects
+  // can't overwrite or clear the draft we're offering.
+  const [draftPrompt, setDraftPrompt] = useState<{ draft: WorkflowDraft; ageLabel: string } | null>(null);
+  const autosaveArmedRef = useRef(false);
   const [mappingModal, setMappingModal] = useState<{ isOpen: boolean; nodeId: string | null }>({
     isOpen: false,
     nodeId: null,
@@ -1239,6 +1254,63 @@ export default function WorkspacePage() {
     []
   );
 
+  // PC-905: on load, offer to restore an unsaved working session. Runs once;
+  // while a prompt is pending, auto-save stays disarmed so it can't clobber the
+  // offered draft. If there's nothing to offer, arm auto-save immediately.
+  useEffect(() => {
+    const draft = loadDraft();
+    if (shouldOfferRestore(draft, nodes.length)) {
+      setDraftPrompt({ draft: draft!, ageLabel: formatDraftAge(draft!.savedAt, Date.now()) });
+    } else {
+      autosaveArmedRef.current = true;
+    }
+    // Mount-only: intentionally reads the initial (empty) canvas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // PC-905: debounced auto-save of the working graph. Disarmed until the
+  // restore decision is made (above). An emptied canvas clears the draft rather
+  // than persisting an empty one.
+  useEffect(() => {
+    if (!autosaveArmedRef.current) return;
+    const timer = setTimeout(() => {
+      if (nodes.length === 0) {
+        clearDraft();
+      } else {
+        saveDraft(serializeDraft(nodes, edges, viewport, loadedTemplate, Date.now()));
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [nodes, edges, viewport, loadedTemplate]);
+
+  const handleRestoreDraft = useCallback(() => {
+    setDraftPrompt((prompt) => {
+      if (prompt) {
+        applySnapshot({
+          nodes: prompt.draft.nodes,
+          edges: prompt.draft.edges,
+          viewport: prompt.draft.viewport,
+        });
+        setLoadedTemplate(prompt.draft.basedOnTemplate);
+        notify.success('Restored your previous session');
+      }
+      autosaveArmedRef.current = true;
+      return null;
+    });
+  }, [applySnapshot]);
+
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft();
+    autosaveArmedRef.current = true;
+    setDraftPrompt(null);
+  }, []);
+
+  // Dismiss (Esc/backdrop): keep the draft for later, just close the prompt.
+  const handleDismissDraft = useCallback(() => {
+    autosaveArmedRef.current = true;
+    setDraftPrompt(null);
+  }, []);
+
   const handleSaveTemplateConfirm = useCallback(
     async (name: string, options: SaveTemplateOptions) => {
       const payload = {
@@ -1258,6 +1330,9 @@ export default function WorkspacePage() {
         // The newly-saved template is now the "current" one, so subsequent
         // saves default to versioning it.
         setLoadedTemplate({ id: saved.id, name: saved.name });
+        // PC-905: work is now safely in Supabase — drop the local draft so the
+        // next load doesn't offer to restore already-saved work.
+        clearDraft();
         await refreshTemplates();
         setTemplateNotification({
           isOpen: true,
@@ -1720,6 +1795,14 @@ export default function WorkspacePage() {
             <ShortcutsModal
               isOpen={showShortcuts}
               onClose={() => setShowShortcuts(false)}
+            />
+            <RestoreDraftModal
+              isOpen={draftPrompt !== null}
+              nodeCount={draftPrompt?.draft.nodes.length ?? 0}
+              ageLabel={draftPrompt?.ageLabel ?? ''}
+              onRestore={handleRestoreDraft}
+              onDiscard={handleDiscardDraft}
+              onDismiss={handleDismissDraft}
             />
           </WorkflowRunProvider>
         )}
