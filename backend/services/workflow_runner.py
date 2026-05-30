@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from utils.data_loader import load_naming_data
-from services.type_coercion import coerce_value, VariableCoercionError
+from services.type_coercion import coerce_value
 
 # Import command generators
 from commands.metadata import (
