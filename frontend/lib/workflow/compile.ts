@@ -2,6 +2,7 @@ import { WorkflowNode, WorkflowEdge, CompiledWorkflow, VariableBinding } from '.
 import { nodeSchemas, getParamHandleId } from './nodeSchemas';
 import { ActionableError, nodeLabel } from './errors';
 import { SOURCE_NODE_TYPES, getModelSource } from './modelSources';
+import { coerceCheck, coerceErrorMessage, type VariableType } from './coerce';
 
 export function compileWorkflow(
   nodes: WorkflowNode[],
@@ -223,6 +224,18 @@ export function validateNode(
     }
     if (!isNonEmptyString(data.projectFolder)) {
       warnings.push('Project folder is required');
+    }
+  }
+
+  // PC-401: a typed variable whose value won't coerce is flagged before a run,
+  // mirroring the backend coercion accept-list (see lib/workflow/coerce.ts).
+  if (node.type === 'setVariable') {
+    const vars = (data.variables ?? []) as VariableBinding[];
+    for (const v of vars) {
+      const t = (v.type ?? 'string') as VariableType;
+      if (t !== 'string' && !coerceCheck(v.value, t)) {
+        warnings.push(coerceErrorMessage(v.name, t, v.value));
+      }
     }
   }
 

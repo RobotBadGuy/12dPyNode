@@ -4,10 +4,13 @@ import { Node, Edge } from '@xyflow/react';
 export type NodeExecutionState = 'idle' | 'running' | 'success' | 'error';
 
 // Variable system
+import type { VariableType } from './coerce';
+
 export interface VariableBinding {
   name: string;
   value: string | number | boolean;
   scope: 'per-run' | 'per-model';
+  type?: VariableType; // PC-401 — absent means 'string' (back-compat, no migration)
   source?: 'excel' | 'manual' | 'computed';
 }
 

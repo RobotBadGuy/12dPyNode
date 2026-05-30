@@ -12,6 +12,30 @@ function makeNode(type: string, data: Record<string, unknown> = {}): WorkflowNod
 }
 
 describe('validateNode', () => {
+  it('setVariable with a value that does not match its type warns', () => {
+    const node = makeNode('setVariable', {
+      variables: [{ name: 'depth', value: 'abc', scope: 'per-run', type: 'number' }],
+    });
+    const warnings = validateNode(node, [node], []);
+    expect(warnings.some((w) => w.includes('depth') && w.includes('number'))).toBe(true);
+  });
+
+  it('setVariable with a matching typed value does not warn', () => {
+    const node = makeNode('setVariable', {
+      variables: [{ name: 'depth', value: '1.5', scope: 'per-run', type: 'number' }],
+    });
+    const warnings = validateNode(node, [node], []);
+    expect(warnings.some((w) => w.includes('depth'))).toBe(false);
+  });
+
+  it('setVariable with no type (legacy) never warns on coercion', () => {
+    const node = makeNode('setVariable', {
+      variables: [{ name: 'x', value: 'anything', scope: 'per-run' }],
+    });
+    const warnings = validateNode(node, [node], []);
+    expect(warnings.some((w) => w.includes('x'))).toBe(false);
+  });
+
   it('warns when excelModels has no file', () => {
     const node = makeNode('excelModels', { file: null });
     expect(validateNode(node, [node], [])).toContain('No Excel file loaded');
