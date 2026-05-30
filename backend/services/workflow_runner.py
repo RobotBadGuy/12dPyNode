@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import pandas as pd
 from utils.data_loader import load_naming_data
+from services.type_coercion import coerce_value
 
 # Import command generators
 from commands.metadata import (
@@ -249,6 +250,25 @@ def resolve_variable(
     return var_name
 
 
+def resolve_typed(
+    var_name: str,
+    model_name: str,
+    variables: List[Dict[str, Any]],
+    per_run_vars: Dict[str, Any],
+    declared_type: str,
+    *,
+    var_name_for_error: str = "",
+) -> Any:
+    """PC-401 — resolve a variable/template to a string, then coerce it to a
+    declared type (string/number/boolean). resolve_variable is unchanged and
+    still returns str; this is the opt-in typed layer. Raises
+    VariableCoercionError on an uncoercible value (caught by PC-302 per-model
+    isolation). ``var_name_for_error`` only labels the error message.
+    """
+    raw = resolve_variable(var_name, model_name, variables, per_run_vars)
+    return coerce_value(raw, declared_type, var_name=var_name_for_error)
+
+
 def execute_node(
     node: Dict[str, Any],
     model_name: str,
@@ -297,7 +317,9 @@ def execute_node(
     elif node_type == 'cleanModel':
         modelName = resolve_variable(data.get('modelName', 'modelName'), model_name, variables, per_run_vars)
         comments = resolve_variable(data.get('comments', 'comments'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', 'True')
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         command_name = resolve_variable(data.get('commandName', 'Clean model'), model_name, variables, per_run_vars)
         
         xml_content.extend(clean_model_command(command_name, modelName, comments, continue_on_failure))
@@ -305,28 +327,36 @@ def execute_node(
     elif node_type == 'createView':
         view_name = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         coordinates = data.get('coordinates', [40, 30, 565, 715])
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(create_view_command(view_name, coordinates=tuple(coordinates), continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'addModelToView':
         model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
         view_name = resolve_variable(data.get('viewName', 'view_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(add_model_to_view_command(model_name, view_name, continue_on_failure, comments))
     
     elif node_type == 'removeModelFromView':
         pattern = data.get('pattern', '*')
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(remove_model_from_view_command(pattern, modified_variable, continue_on_failure, comments))
     
     elif node_type == 'deleteModelsFromView':
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         coordinates = data.get('coordinates', [497, 319])
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(delete_models_from_view_command(modified_variable, coordinates=tuple(coordinates), continue_on_failure=continue_on_failure, comments=comments))
     
@@ -341,7 +371,9 @@ def execute_node(
         view_name = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
         command_name = resolve_variable(data.get('commandName', 'Create Shared Model'), model_name, variables, per_run_vars)
         
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         
         xml_content.extend(create_shared_model_command(command_name, discipline, prefix, description, object_dimension, file_ext, variable, view_name, continue_on_failure, comments))
@@ -353,21 +385,27 @@ def execute_node(
         file_ext = resolve_variable(data.get('fileExt', 'file_ext'), model_name, variables, per_run_vars)
         options_ext = resolve_variable(data.get('optionsExt', 'options_ext'), model_name, variables, per_run_vars)
         discipline = resolve_variable(data.get('discipline', 'discipline'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         
         xml_content.extend(triangulate_manual_option_command(modified_variable, prefix, surface_value, file_ext, options_ext, discipline, continue_on_failure, comments))
     
     elif node_type == 'tinFunction':
         modified_variable = resolve_variable(data.get('modifiedVariable', 'modified_variable'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(tin_function_command(modified_variable, continue_on_failure, comments))
 
     elif node_type == 'runFunction':
         command_name = resolve_variable(data.get('commandName', 'command_name'), model_name, variables, per_run_vars)
         function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(function_command(command_name, function_name, continue_on_failure, comments))
     
@@ -375,14 +413,18 @@ def execute_node(
         function_name = resolve_variable(data.get('functionName', 'function_name'), model_name, variables, per_run_vars)
         pass_action_go_to_label = resolve_variable(data.get('passActionGoToLabel', 'pass_action_go_to_label'), model_name, variables, per_run_vars)
         fail_action_go_to_label = resolve_variable(data.get('failActionGoToLabel', 'fail_action_go_to_label'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(if_function_exists_command(function_name, pass_action_go_to_label, fail_action_go_to_label, continue_on_failure, comments))
     
     elif node_type == 'renameModel':
         pattern_replace_token = data.get('patternReplace', 'pattern_replace')
         pattern_search_token = data.get('patternSearch', 'pattern_search')
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         pattern_replace = resolve_variable(pattern_replace_token, model_name, variables, per_run_vars)
         pattern_search = resolve_variable(pattern_search_token, model_name, variables, per_run_vars)
@@ -398,7 +440,9 @@ def execute_node(
         export_location = resolve_variable(data.get('exportLocation', 'export_location'), model_name, variables, per_run_vars)
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
         polygon_name = resolve_variable(data.get('polygonName', 'polygon_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         command_name = resolve_variable(data.get('commandName', 'Get Total Surface Area'), model_name, variables, per_run_vars)
         
@@ -408,7 +452,9 @@ def execute_node(
         trimesh_name = resolve_variable(data.get('trimeshName', 'trimesh_name'), model_name, variables, per_run_vars)
         output_location = resolve_variable(data.get('outputLocation', 'output_location'), model_name, variables, per_run_vars)
         filename = resolve_variable(data.get('filename', 'filename'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(trimesh_volume_report_command(trimesh_name, output_location, filename, continue_on_failure=continue_on_failure, comments=comments))
     
@@ -417,35 +463,45 @@ def execute_node(
         new_tin_name = resolve_variable(data.get('newTinName', 'new_tin_name'), model_name, variables, per_run_vars)
         output_location = resolve_variable(data.get('outputLocation', 'output_location'), model_name, variables, per_run_vars)
         filename = resolve_variable(data.get('filename', 'filename'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(volume_tin_to_tin_command(original_tin_name, new_tin_name, output_location, filename, continue_on_failure=continue_on_failure, comments=comments))
     
     elif node_type == 'convertLinesToVariable':
         resolved_model_name = resolve_variable(data.get('modelName', 'model_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(convert_lines_to_variable_command(resolved_model_name, continue_on_failure, comments))
     
     elif node_type == 'createContourSmoothLabel':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(create_contour_smooth_label_command(prefix, cell_value, continue_on_failure, comments))
     
     elif node_type == 'drapeToTin':
         data_to_drape = resolve_variable(data.get('dataToDrape', 'data_to_drape'), model_name, variables, per_run_vars)
-        z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
+        z_offset = str(resolve_typed(data.get('zOffset', '0'), model_name, variables, per_run_vars, 'number', var_name_for_error='zOffset'))
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(drape_strings_to_tin_command(data_to_drape, z_offset, tin_name, continue_on_failure, comments))
     
     elif node_type == 'runOrCreateContours':
         prefix = resolve_variable(data.get('prefix', 'prefix'), model_name, variables, per_run_vars)
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(run_or_create_contours_command(prefix, cell_value, continue_on_failure, comments))
     
@@ -454,22 +510,28 @@ def execute_node(
         cell_value = resolve_variable(data.get('cellValue', 'cell_value'), model_name, variables, per_run_vars)
         trimesh_name = resolve_variable(data.get('trimeshName', 'trimesh_name'), model_name, variables, per_run_vars)
         tin_name = resolve_variable(data.get('tinName', 'tin_name'), model_name, variables, per_run_vars)
-        z_offset = resolve_variable(data.get('zOffset', '0'), model_name, variables, per_run_vars)
-        depth = resolve_variable(data.get('depth', '1'), model_name, variables, per_run_vars)
+        z_offset = str(resolve_typed(data.get('zOffset', '0'), model_name, variables, per_run_vars, 'number', var_name_for_error='zOffset'))
+        depth = str(resolve_typed(data.get('depth', '1'), model_name, variables, per_run_vars, 'number', var_name_for_error='depth'))
         colour = resolve_variable(data.get('colour', 'colour'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(create_trimesh_from_tin_command(prefix, cell_value, trimesh_name, tin_name, z_offset, depth, colour, continue_on_failure, comments))
     
     elif node_type == 'addComment':
         comment_name = resolve_variable(data.get('commentName', 'comment_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(add_comment_command(comment_name, continue_on_failure, comments))
     
     elif node_type == 'addLabel':
         label_name = resolve_variable(data.get('labelName', 'label_name'), model_name, variables, per_run_vars)
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(add_label_command(label_name, continue_on_failure, comments))
     
@@ -541,7 +603,9 @@ def execute_node(
             per_run_vars,
         )
 
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         command_name = resolve_variable(data.get('commandName', 'Create MTF file'), model_name, variables, per_run_vars)
 
@@ -571,7 +635,9 @@ def execute_node(
             variables,
             per_run_vars,
         )
-        continue_on_failure = data.get('continueOnFailure', True)
+        continue_on_failure = coerce_value(
+            data.get('continueOnFailure', True), 'boolean', var_name='continueOnFailure'
+        )
         comments = resolve_variable(data.get('comments', ''), model_name, variables, per_run_vars)
         xml_content.extend(apply_mtf_command(function_name, continue_on_failure, comments))
 
@@ -602,9 +668,9 @@ def execute_node(
     elif node_type == 'createTemplateFile':
         # Generate a .tpl file as a side-effect; this does not add XML commands.
         template_name = resolve_variable(data.get('templateName', 'template_name'), model_name, variables, per_run_vars)
-        final_cut_slope = resolve_variable(data.get('finalCutSlope', '2'), model_name, variables, per_run_vars)
-        final_fill_slope = resolve_variable(data.get('finalFillSlope', '2'), model_name, variables, per_run_vars)
-        final_search_distance = resolve_variable(data.get('finalSearchDistance', '100'), model_name, variables, per_run_vars)
+        final_cut_slope = str(resolve_typed(data.get('finalCutSlope', '2'), model_name, variables, per_run_vars, 'number', var_name_for_error='finalCutSlope'))
+        final_fill_slope = str(resolve_typed(data.get('finalFillSlope', '2'), model_name, variables, per_run_vars, 'number', var_name_for_error='finalFillSlope'))
+        final_search_distance = str(resolve_typed(data.get('finalSearchDistance', '100'), model_name, variables, per_run_vars, 'number', var_name_for_error='finalSearchDistance'))
         try:
             create_template(template_name, final_cut_slope, final_fill_slope, final_search_distance, output_dir=output_folder)
         except Exception as e:

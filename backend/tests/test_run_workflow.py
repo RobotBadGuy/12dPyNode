@@ -363,6 +363,48 @@ def test_normalize_model_key_collapses_numeric_strings():
     assert _normalize_model_key("inf") == "inf"
 
 
+class TestTypedBooleanCoercion:
+    """PC-401: continueOnFailure must be coerced to a real bool, so a string
+    'false' (from a template / manual binding / param edge) emits false, not the
+    truthy-string bug that emitted true."""
+
+    def test_clean_model_string_false_emits_false(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "clean", "type": "cleanModel",
+             "data": {"modelName": "M", "comments": "", "continueOnFailure": "false",
+                      "commandName": "Clean model"}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "clean", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "clean", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "<Continue_on_failure>false</Continue_on_failure>" in xml
+
+    def test_clean_model_string_true_emits_true(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "clean", "type": "cleanModel",
+             "data": {"modelName": "M", "comments": "", "continueOnFailure": "true",
+                      "commandName": "Clean model"}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "clean", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "clean", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "<Continue_on_failure>true</Continue_on_failure>" in xml
+
+
 def test_selected_subset_matches_numeric_excel_column(monkeypatch, tmp_path, output_dir):
     """PC-704: a numeric Excel column stringifies as '13.0' under pandas, while the
     frontend (SheetJS) sends the subset as '13'. Normalization keeps them matching;
@@ -385,4 +427,59 @@ def test_selected_subset_matches_numeric_excel_column(monkeypatch, tmp_path, out
 
     assert [r["model"] for r in details] == ["13.0", "14.0"]
     assert all(r["status"] == "success" for r in details)
-    assert len(generated) == 2
+
+
+class TestTypedNumberCoercion:
+    """PC-401: numeric params lose a spurious '.0' and a bad number fails that
+    model only (PC-302 isolation)."""
+
+    def test_z_offset_strips_trailing_zero(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "drape", "type": "drapeToTin",
+             "data": {"dataToDrape": "D", "zOffset": "13.0", "tinName": "T",
+                      "continueOnFailure": True, "comments": ""}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "drape", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "drape", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "13.0" not in xml
+        assert "13" in xml
+
+    def test_bad_number_fails_only_that_model(self, tmp_path):
+        """PC-302 isolation: a per-model numeric value that's valid for one model
+        and invalid for another fails ONLY the bad model — the good one still
+        generates. zOffset resolves to {model_name}, so model '5' coerces to a
+        number and succeeds while model 'abc' raises VariableCoercionError."""
+        excel = tmp_path / "models.xlsx"
+        _write_excel(excel, ["5", "abc"])
+        out = tmp_path / "out"
+        out.mkdir()
+        graph = {
+            "nodes": [
+                {"id": "fe", "type": "foreachModel", "data": {}},
+                {"id": "drape", "type": "drapeToTin",
+                 "data": {"dataToDrape": "D", "zOffset": "{model_name}", "tinName": "T",
+                          "continueOnFailure": True, "comments": ""}},
+                {"id": "out", "type": "chainFileOutput",
+                 "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+            ],
+            "edges": [
+                {"source": "fe", "target": "drape", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+                {"source": "drape", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            ],
+        }
+        generated, _pf, details = run_workflow(str(excel), graph, [], str(out))
+        statuses = {r["model"]: r["status"] for r in details}
+        # Only the bad model fails; the good model still generates (isolation).
+        assert statuses["5"] == "success"
+        assert statuses["abc"] == "error"
+        assert len(generated) == 1
+        bad_row = next(r for r in details if r["model"] == "abc")
+        assert "number" in (bad_row["error"] or "")

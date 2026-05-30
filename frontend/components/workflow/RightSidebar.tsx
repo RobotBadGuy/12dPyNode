@@ -222,6 +222,7 @@ export function RightSidebar({
         name: `var${variables.length + 1}`,
         value: '',
         scope: 'per-run',
+        type: 'string',
       };
       onUpdateNode(selectedNode.id, {
         variables: [...variables, newVar],
@@ -281,13 +282,44 @@ export function RightSidebar({
                       />
                     </div>
                     <div>
+                      <Label className="text-xs text-gray-400 mb-1 block">Type</Label>
+                      <select
+                        value={variable.type ?? 'string'}
+                        onChange={(e) => handleUpdateVariable(index, 'type', e.target.value as 'string' | 'number' | 'boolean')}
+                        className="w-full bg-gray-900 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                      >
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                        <option value="boolean">Boolean</option>
+                      </select>
+                    </div>
+                    <div>
                       <Label className="text-xs text-gray-400 mb-1 block">Value</Label>
-                      <Input
-                        value={String(variable.value)}
-                        onChange={(e) => handleUpdateVariable(index, 'value', e.target.value)}
-                        className="bg-gray-900 border-gray-700 text-white text-sm h-8"
-                        placeholder="value"
-                      />
+                      {(variable.type ?? 'string') === 'boolean' ? (
+                        <select
+                          value={String(variable.value) === 'true' || variable.value === true ? 'true' : 'false'}
+                          onChange={(e) => handleUpdateVariable(index, 'value', e.target.value === 'true')}
+                          className="w-full bg-gray-900 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                        >
+                          <option value="true">true</option>
+                          <option value="false">false</option>
+                        </select>
+                      ) : (variable.type ?? 'string') === 'number' ? (
+                        <Input
+                          type="number"
+                          value={String(variable.value)}
+                          onChange={(e) => handleUpdateVariable(index, 'value', e.target.value)}
+                          className="bg-gray-900 border-gray-700 text-white text-sm h-8"
+                          placeholder="0"
+                        />
+                      ) : (
+                        <Input
+                          value={String(variable.value)}
+                          onChange={(e) => handleUpdateVariable(index, 'value', e.target.value)}
+                          className="bg-gray-900 border-gray-700 text-white text-sm h-8"
+                          placeholder="value"
+                        />
+                      )}
                     </div>
                     <div>
                       <Label className="text-xs text-gray-400 mb-1 block">Scope</Label>
