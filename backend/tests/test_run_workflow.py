@@ -363,6 +363,48 @@ def test_normalize_model_key_collapses_numeric_strings():
     assert _normalize_model_key("inf") == "inf"
 
 
+class TestTypedBooleanCoercion:
+    """PC-401: continueOnFailure must be coerced to a real bool, so a string
+    'false' (from a template / manual binding / param edge) emits false, not the
+    truthy-string bug that emitted true."""
+
+    def test_clean_model_string_false_emits_false(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "clean", "type": "cleanModel",
+             "data": {"modelName": "M", "comments": "", "continueOnFailure": "false",
+                      "commandName": "Clean model"}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "clean", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "clean", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "<Continue_on_failure>false</Continue_on_failure>" in xml
+
+    def test_clean_model_string_true_emits_true(self, tmp_path):
+        from services.workflow_runner import generate_chain_file
+        nodes = [
+            {"id": "fe", "type": "foreachModel", "data": {}},
+            {"id": "clean", "type": "cleanModel",
+             "data": {"modelName": "M", "comments": "", "continueOnFailure": "true",
+                      "commandName": "Clean model"}},
+            {"id": "out", "type": "chainFileOutput",
+             "data": {"modelType": "Model", "projectFolder": "project_folder"}},
+        ]
+        edges = [
+            {"source": "fe", "target": "clean", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+            {"source": "clean", "target": "out", "sourceHandle": "flow:out", "targetHandle": "flow:in"},
+        ]
+        path = generate_chain_file("M", nodes, edges, [], {}, str(tmp_path), "")
+        xml = Path(path).read_text(encoding="utf-8")
+        assert "<Continue_on_failure>true</Continue_on_failure>" in xml
+
+
 def test_selected_subset_matches_numeric_excel_column(monkeypatch, tmp_path, output_dir):
     """PC-704: a numeric Excel column stringifies as '13.0' under pandas, while the
     frontend (SheetJS) sends the subset as '13'. Normalization keeps them matching;
