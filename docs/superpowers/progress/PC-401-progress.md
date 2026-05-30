@@ -5,6 +5,7 @@ pick up exactly where we left off. Updated + committed before starting each task
 
 **Ticket:** PC-401 (EPIC-04 Variable System) · Mode: superpowers (TDD-first)
 **Spec:** `docs/superpowers/specs/2026-05-30-pc401-typed-variables-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-30-pc401-typed-variables.md` (10 tasks, TDD)
 **Branch:** `pc401-typed-variables` (feature branch; push continuously; merge to main when green)
 **Last updated:** 2026-05-30
 
@@ -19,8 +20,8 @@ pick up exactly where we left off. Updated + committed before starting each task
 | 3 | Present design, get approval (4 sections) | ✅ done |
 | 4 | Write design spec | ✅ done (committed: pending) |
 | 5 | Spec self-review | ✅ done (clean) |
-| 6 | User reviews spec | ⏳ awaiting user |
-| 7 | writing-plans → implementation plan | ⬜ not started |
+| 6 | User reviews spec | ✅ approved |
+| 7 | writing-plans → implementation plan | ✅ done |
 | 8 | Implement (TDD): backend coercion | ⬜ not started |
 | 9 | Implement (TDD): execute_node wiring | ⬜ not started |
 | 10 | Implement (TDD): frontend editor + validation | ⬜ not started |
@@ -43,8 +44,9 @@ pick up exactly where we left off. Updated + committed before starting each task
 - Frontend: `types.ts`, `compile.ts` (coerceCheck+validateNode), `RightSidebar.tsx`, new `coerceCheck.test.ts`, `validateNode.test.ts`
 
 ## Resume notes / next action
-> **NEXT:** await user spec review → then invoke `writing-plans` skill to produce the
-> implementation plan. Do not start coding until the plan exists (superpowers flow).
+> **NEXT:** plan written. Execute task-by-task from
+> `docs/superpowers/plans/2026-05-30-pc401-typed-variables.md` (subagent-driven
+> recommended). Start with Task 1 (pure coerce_value, TDD).
 
 ## Gotchas to remember
 - Python `bool` is a subclass of `int` — `coerce_value` must check bool BEFORE numeric
