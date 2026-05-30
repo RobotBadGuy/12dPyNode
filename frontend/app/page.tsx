@@ -1546,6 +1546,7 @@ export default function WorkspacePage() {
                   onNodeDoubleClick={onNodeDoubleClick}
                   onNodeContextMenu={handleNodeContextMenu}
                   onAutoLayout={handleAutoLayout}
+                  exportFileName={loadedTemplate?.name}
                   onViewportChange={setViewport}
                   onInit={(instance) => {
                     reactFlowInstanceRef.current = instance;

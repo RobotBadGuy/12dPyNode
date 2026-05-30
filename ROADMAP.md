@@ -202,8 +202,8 @@ These are the user-facing polish items that turn the tool from "works" into "enj
 - **PC-909** `[P2]` `[Size: M]` `[Mode: regular]` — Onboarding tour for first-time users.
   *Rationale:* Use `driver.js` or `shepherd.js` to walk new users through: upload Excel → drop a node → connect handles → run. Stored "tour completed" flag in localStorage. Removes the "what do I even do here" first impression.
 
-- **PC-910** `[P2]` `[Size: XS]` `[Mode: regular]` — Export workflow canvas as PNG/SVG.
-  *Rationale:* React Flow has an `toPng` helper via `html-to-image`. One-click export for documentation, screenshots, and Slack-shareable workflow diagrams.
+- ✅ **PC-910** — Export workflow canvas as PNG/SVG.
+  *Rationale:* New `frontend/lib/workflow/exportImage.ts` captures the React Flow `.react-flow__viewport` element via the zero-dependency `html-to-image` library (v12 ships no image helper). Three pure, unit-tested helpers do the geometry: `computeNodesBounds` (union of measured/explicit/default node sizes), `computeExportViewport` (native-scale render with a uniform margin, scaling down only when the graph exceeds a 4096px cap), and `buildExportFileName` (sanitises a base name, defaults to `pychain-workflow`). The impure `exportCanvasImage` orchestrator routes PNG→`toPng` / SVG→`toSvg`, paints a solid gray-800 background, and triggers the download; it throws user-facing errors (no nodes / canvas not ready) surfaced as `notify` toasts. UI is a self-dismissing `ExportMenu` dropdown (PNG image / SVG vector) in the canvas top-right `<Panel>` beside Auto-layout (dismissal mirrors `NodeContextMenu`). Exports are named after the loaded template when one is open (`exportFileName` prop threads `loadedTemplate.name`), else the default. Tested in `frontend/lib/workflow/__tests__/exportImage.test.ts` (18 cases: bounds fallbacks, landscape + height-driven fit-to-cap-with-margin, filename sanitisation, and orchestrator format-routing / filename / download-trigger / error paths under jsdom with a mocked `html-to-image`). Verified by vitest + tsc + lint + build; the rendered bitmap itself was not browser-verified (no browser automation in the dev env).
 
 - ✅ **PC-911** — Actionable error messages.
   *Rationale:* `frontend/lib/workflow/errors.ts` introduces the `ActionableError` vocabulary (`title` / `message` / `fix` / `focusNodeId`) and a `nodeLabel(node)` helper that resolves the user-facing name in priority order (`data.label` → `PALETTE_ITEMS` lookup → raw type). `validateWorkflow` and `compileWorkflow` in `compile.ts` now return that shape; every rewritten error names the offending node by label and suggests a concrete next step. `handleRunChain` pre-validates every selected Excel id before entering the run loop, so precondition failures fire a `notify.error` toast with a `Show me` action that scrolls the canvas to the relevant node via `focusNode.ts`. Genuine runtime failures (backend errors after a real run attempt) keep the existing `ErrorModal` but now use node labels and forward a `focusNodeId` so the modal's button is also wired to `focusNode` (the old `[data-node-type=...]` selector was dead code). Five template `notify.error` sites (load / mount-fetch / save / delete / import) gained retry actions or sharpened descriptions. Tested in `frontend/lib/workflow/__tests__/errors.test.ts`, `focusNode.test.ts`, and the rewritten `compile.test.ts`. Phase 2 (item #5) in the Suggested Order of Attack.
@@ -255,7 +255,7 @@ The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rew
 9. ✅ **PC-911** — Actionable error messages. Pairs with PC-901.
 10. ✅ **PC-902** — Mini-map + auto-layout.
 11. ✅ **PC-903** — Right-click context menu.
-12. **PC-910** — Export canvas as PNG. Trivial; useful.
+12. ✅ **PC-910** — Export canvas as PNG/SVG.
 13. **PC-704** — Excel column picker with preview. Removes the single most confusing step in the current flow.
 14. **PC-904** — Drag-and-drop Excel drop zone.
 

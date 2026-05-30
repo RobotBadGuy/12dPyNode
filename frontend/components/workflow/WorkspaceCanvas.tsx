@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   ReactFlow,
   Background,
@@ -16,6 +16,9 @@ import '@xyflow/react/dist/style.css';
 import { LayoutGrid } from 'lucide-react';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { validateConnection } from '@/lib/workflow/edgeRules';
+import { exportCanvasImage, type ExportImageFormat } from '@/lib/workflow/exportImage';
+import { notify } from '@/lib/notify';
+import { ExportMenu } from './ExportMenu';
 import { ExcelModelsNode } from './nodes/ExcelModelsNode';
 import { ManualModelsNode } from './nodes/ManualModelsNode';
 import { ForeachModelNode } from './nodes/ForeachModelNode';
@@ -63,6 +66,8 @@ interface WorkspaceCanvasProps {
   // viewport programmatically (e.g. when restoring a saved template).
   onInit?: (instance: ReactFlowInstance) => void;
   onAutoLayout?: () => void;
+  // PC-910 — base name for exported images; falls back to a default when blank.
+  exportFileName?: string;
 }
 
 export function WorkspaceCanvas({
@@ -77,6 +82,7 @@ export function WorkspaceCanvas({
   onViewportChange,
   onInit,
   onAutoLayout,
+  exportFileName,
 }: WorkspaceCanvasProps) {
   const nodeTypes = {
     excelModels: ExcelModelsNode,
@@ -140,6 +146,22 @@ export function WorkspaceCanvas({
     }));
   }, [edges]);
 
+  // PC-910 — capture the canvas and download it. Read-only (no graph mutation),
+  // so it lives here next to the React Flow DOM rather than in the page handler.
+  const handleExportImage = useCallback(
+    async (format: ExportImageFormat) => {
+      try {
+        await exportCanvasImage(nodes, { format, fileName: exportFileName });
+        notify.success(`Canvas exported as ${format.toUpperCase()}`);
+      } catch (err) {
+        notify.error('Could not export the canvas', {
+          description: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+    [nodes, exportFileName],
+  );
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -200,18 +222,23 @@ export function WorkspaceCanvas({
             }
           }}
         />
-        {onAutoLayout && nodes.length > 0 && (
+        {nodes.length > 0 && (
           <Panel position="top-right">
-            <button
-              type="button"
-              onClick={onAutoLayout}
-              className="flex items-center gap-2 bg-gray-900/80 border border-gray-700 hover:bg-gray-800 text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
-              title="Auto-layout (re-flow the graph)"
-              aria-label="Auto-layout"
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Auto-layout
-            </button>
+            <div className="flex items-center gap-2">
+              {onAutoLayout && (
+                <button
+                  type="button"
+                  onClick={onAutoLayout}
+                  className="flex items-center gap-2 bg-gray-900/80 border border-gray-700 hover:bg-gray-800 text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
+                  title="Auto-layout (re-flow the graph)"
+                  aria-label="Auto-layout"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  Auto-layout
+                </button>
+              )}
+              <ExportMenu onExport={handleExportImage} />
+            </div>
           </Panel>
         )}
       </ReactFlow>
