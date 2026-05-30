@@ -87,8 +87,8 @@ The current compiler handles the happy path (one `foreach` → one `chainFileOut
 
 `resolve_variable` already supports `{token}` templating and per-run / per-model scopes. Extend it rather than rewrite.
 
-- **PC-401** `[P1]` `[Size: M]` `[Mode: superpowers]` — Typed variables (string / number / boolean / path / list).
-  *Rationale:* Everything is coerced to `str` today. A boolean `continueOnFailure` typed as string "True" vs "true" has caused real issues in `clean_model_command`. Add a `type` field to `VariableBinding` and coerce at resolution. Worth doing TDD-first because a regression here corrupts every chain file silently.
+- ✅ **PC-401** — Typed variables (string / number / boolean).
+  *Rationale:* Everything was coerced to `str`, so a boolean `continueOnFailure` arriving as the string `"false"` evaluated truthy and emitted `<Continue_on_failure>true</...>` — the documented `clean_model_command` foot-gun. **Shipped** (brainstorm → spec → plan → TDD; see `docs/superpowers/specs/2026-05-30-pc401-typed-variables-design.md`): a new **pure** `backend/services/type_coercion.py::coerce_value(raw, declared_type, *, var_name="")` (+ `VariableCoercionError`) coerces once with a lenient, well-defined accept-list (bool: `true/false/1/0/yes/no/on/off`; number: int/float incl. `"13.0"`→`13`, scientific, partial decimals; rejects `nan`/`inf`/hex/binary/octal/non-numeric/bool). **Seam decision (low blast radius):** `resolve_variable` is unchanged and still returns `str` — the ~80 XML f-string sites are untouched — and a thin `resolve_typed()` wrapper does resolve-then-coerce. In `execute_node` all 23 `continueOnFailure` extractions now coerce to a real `bool` (the fix) and 6 numeric params (`zOffset`/`depth`/`finalCutSlope`/`finalFillSlope`/`finalSearchDistance`) coerce to number (dropping spurious `.0`). An uncoercible value raises `VariableCoercionError`, caught by PC-302's per-model isolation → that model gets an `error` row in `_summary.txt` while siblings still generate (no silent corruption, no whole-batch abort). **Path/list deferred (YAGNI** — no consumer). Frontend: `VariableBinding.type?` (optional → `'string'`, no migration), a pure `lib/workflow/coerce.ts` mirror (`coerceCheck`/`coerceErrorMessage`) parity-locked to the backend via a shared reject/accept table, a `validateNode` pre-run warning (PC-703 amber badge), and a per-variable **Type** dropdown + adaptive value input (boolean→select, number→number input) in the SetVariable editor. Adversarial 4-lens review (correctness / parity / regression / tests) → 3 confirmed findings fixed (JS `Number()` vs Python `float()` hex/binary/octal parity; the isolation test now proves one-model-fails-while-sibling-succeeds). Verified: backend pytest **295**, frontend vitest **228**, tsc, lint, build all green; the editor UI wasn't browser-clicked (no browser automation here). Tested in `backend/tests/test_type_coercion.py`, `test_resolve_variable.py::TestResolveTyped`, `test_run_workflow.py::{TestTypedBooleanCoercion,TestTypedNumberCoercion}`, `frontend/lib/workflow/__tests__/{coerce,validateNode}.test.ts`.
 
 > ~~PC-402 (expression evaluator / pipe transforms)~~ — **dropped**. The current `{token}` substitution + `modified_variable` covers the real cases; a mini-language is a maintenance liability for one user's edge case. Revisit if multiple users hit the same wall.
 
@@ -268,7 +268,7 @@ The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rew
 19. ✅ **PC-909** — Onboarding tour. Do this after the canvas itself is polished — don't tour an unfinished UI.
 
 ### Phase 5 — Engine quality and safety
-20. **PC-401** — Typed variables. Closes the "True" vs "true" foot-gun class.
+20. ✅ **PC-401** — Typed variables. Closes the "True" vs "true" foot-gun class.
 21. **PC-505** — Playwright golden-path E2E. Locks in everything above.
 22. **PC-705** — Dark/light theme toggle. Save for last; touches everything.
 
