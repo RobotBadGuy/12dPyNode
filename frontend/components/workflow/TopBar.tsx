@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User, HelpCircle, History } from 'lucide-react';
+import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User, HelpCircle, History, GraduationCap } from 'lucide-react';
 
 interface TopBarProps {
   onRunChain?: () => void;
@@ -13,6 +13,7 @@ interface TopBarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onShowShortcuts?: () => void;
+  onStartTour?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
   isRunning?: boolean;
@@ -30,6 +31,7 @@ export function TopBar({
   onUndo,
   onRedo,
   onShowShortcuts,
+  onStartTour,
   canUndo,
   canRedo,
   isRunning,
@@ -144,6 +146,18 @@ export function TopBar({
             <Save className="w-4 h-4 mr-2" />
             Save Template
           </Button>
+          {onStartTour && (
+            <Button
+              onClick={onStartTour}
+              variant="ghost"
+              size="sm"
+              className="text-gray-300 hover:bg-gray-800/50 px-2"
+              title="Take the onboarding tour"
+              aria-label="Take the onboarding tour"
+            >
+              <GraduationCap className="w-4 h-4" />
+            </Button>
+          )}
           <Button
             onClick={onShowShortcuts}
             variant="ghost"
@@ -158,6 +172,7 @@ export function TopBar({
             onClick={onRunChain}
             disabled={!canRun || isRunning}
             size="lg"
+            data-tour-id="run-chain-btn"
             className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold px-8 disabled:opacity-50"
           >
             {isRunning ? (

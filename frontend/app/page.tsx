@@ -63,6 +63,8 @@ import {
   formatDraftAge,
   type WorkflowDraft,
 } from '@/lib/workflow/draftStorage';
+import { startTour } from '@/lib/workflow/tour';
+import { isTourCompleted } from '@/lib/workflow/tourStorage';
 import JSZip from 'jszip';
 
 function sameWarnings(a: string[] | undefined, b: string[] | undefined): boolean {
@@ -1648,6 +1650,38 @@ export default function WorkspacePage() {
     setCurrentPage(page as 'landing' | 'editor' | 'profile' | 'runs');
   }, []);
 
+  // PC-909: launch the onboarding tour (manual trigger + first-visit auto-launch
+  // below). The completion flag is persisted inside startTour, so we only react
+  // to the outcome here.
+  const handleStartTour = useCallback(() => {
+    startTour({
+      onFinish: (completed) => {
+        if (completed) {
+          notify.success("You're all set — happy building!");
+        }
+      },
+    });
+  }, []);
+
+  // First-visit auto-launch: the first time the editor opens for a user who
+  // hasn't seen the tour, kick it off — but never on top of the draft-restore
+  // prompt, and only once per session (the toolbar button replays it after).
+  const tourAutoLaunchedRef = useRef(false);
+  useEffect(() => {
+    if (tourAutoLaunchedRef.current) return;
+    if (currentPage !== 'editor') return;
+    if (isTourCompleted()) {
+      tourAutoLaunchedRef.current = true;
+      return;
+    }
+    if (draftPrompt !== null) return; // wait until the restore decision is made
+    tourAutoLaunchedRef.current = true;
+    // Defer so the editor DOM (palette, canvas, toolbar) is mounted before
+    // driver.js queries the step anchors.
+    const t = setTimeout(() => handleStartTour(), 600);
+    return () => clearTimeout(t);
+  }, [currentPage, draftPrompt, handleStartTour]);
+
   return (
     <ReactFlowProvider>
       <div className="h-screen w-screen flex flex-col bg-gray-900">
@@ -1666,6 +1700,7 @@ export default function WorkspacePage() {
           onNavigate={handleNavigate}
           currentPage={currentPage}
           onShowShortcuts={() => setShowShortcuts(true)}
+          onStartTour={handleStartTour}
         />
         {currentPage === 'landing' && (
           <div className="flex-1 overflow-auto">

@@ -234,6 +234,7 @@ export function WorkspaceCanvas({
 
   return (
     <div
+      data-tour-id="workflow-canvas"
       className="w-full h-full relative"
       onDragEnter={handleFileDragEnter}
       onDragOver={handleFileDragOver}

@@ -133,6 +133,7 @@ export function LeftSidebar({
                 ? 'border-emerald-500 bg-emerald-500/10'
                 : 'border-gray-600/50 hover:border-emerald-500/70'
             }`}
+            data-tour-id="excel-drop-zone"
             onDragOver={(e) => handleDragOver(e, 'excel')}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, 'excel')}
@@ -232,7 +233,7 @@ export function LeftSidebar({
         </div>
 
         {/* Node Palette */}
-        <div className="border-t border-gray-700/50 pt-4">
+        <div data-tour-id="node-palette" className="border-t border-gray-700/50 pt-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Nodes</h3>
 
           {/* Search */}
