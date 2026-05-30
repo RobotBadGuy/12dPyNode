@@ -453,16 +453,19 @@ class TestTypedNumberCoercion:
         assert "13" in xml
 
     def test_bad_number_fails_only_that_model(self, tmp_path):
-        """A coercion failure produces an error row (PC-302), not a crash of the run."""
+        """PC-302 isolation: a per-model numeric value that's valid for one model
+        and invalid for another fails ONLY the bad model — the good one still
+        generates. zOffset resolves to {model_name}, so model '5' coerces to a
+        number and succeeds while model 'abc' raises VariableCoercionError."""
         excel = tmp_path / "models.xlsx"
-        _write_excel(excel, ["Good", "Bad"])
+        _write_excel(excel, ["5", "abc"])
         out = tmp_path / "out"
         out.mkdir()
         graph = {
             "nodes": [
                 {"id": "fe", "type": "foreachModel", "data": {}},
                 {"id": "drape", "type": "drapeToTin",
-                 "data": {"dataToDrape": "D", "zOffset": "abc", "tinName": "T",
+                 "data": {"dataToDrape": "D", "zOffset": "{model_name}", "tinName": "T",
                           "continueOnFailure": True, "comments": ""}},
                 {"id": "out", "type": "chainFileOutput",
                  "data": {"modelType": "Model", "projectFolder": "project_folder"}},
@@ -474,6 +477,9 @@ class TestTypedNumberCoercion:
         }
         generated, _pf, details = run_workflow(str(excel), graph, [], str(out))
         statuses = {r["model"]: r["status"] for r in details}
-        assert statuses["Good"] == "error"
-        assert statuses["Bad"] == "error"
-        assert any("number" in (r["error"] or "") for r in details)
+        # Only the bad model fails; the good model still generates (isolation).
+        assert statuses["5"] == "success"
+        assert statuses["abc"] == "error"
+        assert len(generated) == 1
+        bad_row = next(r for r in details if r["model"] == "abc")
+        assert "number" in (bad_row["error"] or "")

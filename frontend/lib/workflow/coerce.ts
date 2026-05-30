@@ -21,15 +21,21 @@ function canCoerceBool(value: unknown): boolean {
   return BOOL_TRUE.has(text) || BOOL_FALSE.has(text);
 }
 
+// Decimal int/float, optional sign, optional scientific exponent — exactly what
+// Python's float() accepts (minus nan/inf, excluded below). Plain Number() also
+// parses hex/binary/octal literals ('0x10','0b1','0o7') that float() rejects, so
+// gating on this regex keeps the frontend check in parity with the backend.
+const NUMERIC_RE = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
+
 function canCoerceNumber(value: unknown): boolean {
   if (typeof value === 'boolean') return false; // mirror: bool is not a number
   if (typeof value === 'number') return Number.isFinite(value);
   const text = String(value).trim();
   if (text === '') return false;
-  // Number() rejects '1,000' and 'abc' (-> NaN); 'inf'/'nan' -> NaN too (only
-  // 'Infinity' parses, which isFinite then excludes). Whitespace already trimmed.
-  const n = Number(text);
-  return Number.isFinite(n);
+  if (!NUMERIC_RE.test(text)) return false; // rejects 'abc', '1,000', '0x10', 'nan', 'Infinity'
+  // Belt-and-suspenders: an enormous literal like '1e400' matches the regex but
+  // overflows to Infinity — Python float() yields inf there too and is rejected.
+  return Number.isFinite(Number(text));
 }
 
 /** Human-readable parity with the backend VariableCoercionError message. */

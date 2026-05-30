@@ -60,10 +60,23 @@ class TestNumber:
         assert coerce_value(13, "number") == 13
         assert coerce_value(1.5, "number") == 1.5
 
-    @pytest.mark.parametrize("raw", ["abc", "", "1,000", "nan", "inf", "-inf"])
+    # Keep this list in parity with frontend coerce.test.ts. Python float()
+    # rejects hex/binary/octal and underscores; nan/inf parse but are rejected
+    # by the isnan/isinf guard. The frontend mirror must reject all of these too.
+    @pytest.mark.parametrize(
+        "raw",
+        ["abc", "", "1,000", "nan", "inf", "-inf", "Infinity", "0x10", "0b1", "0o10"],
+    )
     def test_invalid_raises(self, raw):
         with pytest.raises(VariableCoercionError):
             coerce_value(raw, "number")
+
+    def test_scientific_and_partial_decimals(self):
+        # In parity with the frontend: float() accepts these and they coerce.
+        assert coerce_value("1e3", "number") == 1000
+        assert coerce_value("1E-2", "number") == 0.01
+        assert coerce_value(".5", "number") == 0.5
+        assert coerce_value("5.", "number") == 5
 
     def test_bool_is_not_a_number(self):
         # bool is an int subclass in Python; a boolean must not silently become 1/0.
