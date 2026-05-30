@@ -21,6 +21,13 @@ export interface NodeSchema {
 }
 
 export const nodeSchemas: Record<string, NodeSchema> = {
+  // PC-908: sticky note — a pure annotation, no parameters and no handles.
+  stickyNote: {
+    parameters: [],
+    flowInputs: [],
+    flowOutputs: [],
+    valueOutputs: [],
+  },
   excelModels: {
     parameters: [],
     flowInputs: [],

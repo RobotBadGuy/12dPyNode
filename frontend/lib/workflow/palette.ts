@@ -49,6 +49,7 @@ export const PALETTE_ITEMS: PaletteItem[] = [
   { type: 'manualModels', label: 'Model List', category: 'core', keywords: ['manual', 'names', 'list', 'typed', 'no excel'] },
   { type: 'foreachModel', label: 'Foreach Model', category: 'core', keywords: ['loop', 'iterate'] },
   { type: 'setVariable', label: 'Set Variable', category: 'core', keywords: ['var'] },
+  { type: 'stickyNote', label: 'Sticky Note', category: 'core', keywords: ['note', 'annotation', 'comment', 'document', 'sticky'] },
 
   // Models
   { type: 'import', label: 'Import', category: 'models', keywords: ['dwg', 'dgn', 'ifc'] },

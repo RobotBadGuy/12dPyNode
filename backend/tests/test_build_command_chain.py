@@ -55,6 +55,23 @@ class TestForeachToChainOutput:
         # Should produce no XML since all nodes are control-flow
         assert len(result) == 0
 
+    def test_sticky_note_emits_nothing(self):
+        """PC-908: a stickyNote in the flow path is skipped (control-flow) and
+        never emits its text into the chain."""
+        nodes = [
+            _make_node("1", "foreachModel"),
+            _make_node("2", "stickyNote", {"text": "high-detail branch only"}),
+            _make_node("3", "chainFileOutput"),
+        ]
+        edges = [
+            _make_edge("1", "2"),
+            _make_edge("2", "3"),
+        ]
+        result = build_command_chain(nodes, edges, "M", [], {})
+        joined = "\n".join(result)
+        assert "high-detail" not in joined
+        assert len(result) == 0
+
 
 class TestFlowEdgeFiltering:
     def test_param_edges_ignored(self):

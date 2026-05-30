@@ -309,6 +309,13 @@ export interface ValidationOutputNodeData {
   [key: string]: unknown;
 }
 
+// PC-908: a sticky note is a pure canvas annotation — no handles, ignored by
+// the compiler. It only carries free text.
+export interface StickyNoteNodeData {
+  text: string;
+  [key: string]: unknown;
+}
+
 // Union type for all node data
 export type WorkflowNodeData =
   | ExcelModelsNodeData
@@ -343,6 +350,7 @@ export type WorkflowNodeData =
   | AddLabelNodeData
   | ChainFileOutputNodeData
   | ValidationOutputNodeData
+  | StickyNoteNodeData
   | { mappings?: Record<string, string> };
 
 // Node type identifiers
@@ -378,7 +386,8 @@ export type NodeType =
   | 'addComment'
   | 'addLabel'
   | 'chainFileOutput'
-  | 'runFunction';
+  | 'runFunction'
+  | 'stickyNote';
 
 // Optional fields that can ride on ANY node's data regardless of node type.
 // PC-903: `disabled` excludes the node from generation while keeping it on the

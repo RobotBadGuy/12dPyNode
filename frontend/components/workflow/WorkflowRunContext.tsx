@@ -18,6 +18,8 @@ export interface WorkflowRunContextValue {
   onTestRunFromSource: (nodeId: string) => void;
   /** PC-704: open the Excel column picker for a source node. */
   onPickColumn: (nodeId: string) => void;
+  /** PC-908: merge a partial data patch into a node (inline editing, e.g. sticky notes). */
+  onUpdateNodeData: (nodeId: string, data: Record<string, unknown>) => void;
   /** Graph-level precondition: a Foreach Model and a Chain File Output exist. */
   canRun: boolean;
   /** A run is currently in flight (global lock — disables every ▶). */
@@ -28,6 +30,7 @@ const WorkflowRunContext = createContext<WorkflowRunContextValue>({
   onRunFromSource: () => {},
   onTestRunFromSource: () => {},
   onPickColumn: () => {},
+  onUpdateNodeData: () => {},
   canRun: false,
   isRunning: false,
 });

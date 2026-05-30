@@ -222,6 +222,25 @@ export default function WorkspacePage() {
     setColumnPicker({ isOpen: true, nodeId });
   }, []);
 
+  // Merge a partial data patch into a node. Shared by the RightSidebar editor and
+  // PC-908 sticky-note inline editing (via WorkflowRunContext). No history push —
+  // matches how sidebar param edits behave.
+  const handleUpdateNodeData = useCallback(
+    (nodeId: string, data: Record<string, unknown>) => {
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node,
+        ),
+      );
+      setSelectedNode((current) =>
+        current && current.id === nodeId
+          ? { ...current, data: { ...current.data, ...data } }
+          : current,
+      );
+    },
+    [],
+  );
+
   const handleAutoLayout = useCallback(() => {
     if (nodes.length === 0) {
       notify.info('Nothing to lay out');
@@ -711,6 +730,8 @@ export default function WorkspacePage() {
         nodeData = { modelName: '', projectFolder: '', modelType: 'Model' };
       } else if (type === 'runFunction') {
         nodeData = { commandName: '', functionName: '' };
+      } else if (type === 'stickyNote') {
+        nodeData = { text: '' };
       }
 
       const newNode: WorkflowNode = {
@@ -1525,10 +1546,11 @@ export default function WorkspacePage() {
         void handleRunChain(nodeId, { testRun: true });
       },
       onPickColumn: handlePickColumn,
+      onUpdateNodeData: handleUpdateNodeData,
       canRun,
       isRunning,
     }),
-    [handleRunChain, handlePickColumn, canRun, isRunning],
+    [handleRunChain, handlePickColumn, handleUpdateNodeData, canRun, isRunning],
   );
 
   // PC-1003: Ctrl/Cmd+Enter runs the chain (mirrors the toolbar Run button). A
@@ -1675,20 +1697,7 @@ export default function WorkspacePage() {
                 onPickColumn={handlePickColumn}
                 runFileDetails={lastRunDetails?.fileDetails}
                 runSessionId={lastRunDetails?.sessionId ?? null}
-                onUpdateNode={(nodeId, data) => {
-                  setNodes((nds) =>
-                    nds.map((node) =>
-                      node.id === nodeId ? { ...node, data: { ...node.data, ...data } } : node
-                    )
-                  );
-                  // Update selectedNode if it's the node being updated
-                  setSelectedNode((current) => {
-                    if (current && current.id === nodeId) {
-                      return { ...current, data: { ...current.data, ...data } };
-                    }
-                    return current;
-                  });
-                }}
+                onUpdateNode={handleUpdateNodeData}
               />
             </div>
             <input

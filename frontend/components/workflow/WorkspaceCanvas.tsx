@@ -52,6 +52,7 @@ import { CreateTemplateFileNode } from './nodes/CreateTemplateFileNode';
 import { AddCommentNode } from './nodes/AddCommentNode';
 import { AddLabelNode } from './nodes/AddLabelNode';
 import { IfFunctionExistsNode } from './nodes/IfFunctionExistsNode';
+import { StickyNoteNode } from './nodes/StickyNoteNode';
 
 interface WorkspaceCanvasProps {
   nodes: WorkflowNode[];
@@ -185,6 +186,7 @@ export function WorkspaceCanvas({
     addComment: AddCommentNode,
     addLabel: AddLabelNode,
     ifFunctionExists: IfFunctionExistsNode,
+    stickyNote: StickyNoteNode,
   };
 
   // Generate a consistent random color for each edge based on its ID
@@ -291,6 +293,8 @@ export function WorkspaceCanvas({
                 return '#3b82f6';
               case 'chainFileOutput':
                 return '#8b5cf6';
+              case 'stickyNote':
+                return '#fbbf24';
               default:
                 return '#6b7280';
             }

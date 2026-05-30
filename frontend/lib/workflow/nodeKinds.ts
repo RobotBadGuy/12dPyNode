@@ -7,6 +7,8 @@ export const CONTROL_FLOW_NODE_TYPES = new Set<string>([
   'foreachModel',
   'chainFileOutput',
   'setVariable',
+  // PC-908: a sticky note emits nothing and can't be disabled meaningfully.
+  'stickyNote',
 ]);
 
 export function isControlFlowNode(type?: string): boolean {

@@ -197,8 +197,8 @@ These are the user-facing polish items that turn the tool from "works" into "enj
 - ✅ **PC-907** `[P1]` — Per-model progress indicator during run.
   *Rationale:* `run_workflow` now accepts an optional `progress_callback` that fires once with every model in `status='queued'` after the Excel parse, then again after each per-model attempt with that row promoted to `'success'` / `'error'`. `run_workflow_job` wires this callback to `session_store.update`, and `/api/workflow/status` surfaces the in-flight `results.file_details` while `status='processing'` (previously empty until completion). On the frontend, `app/page.tsx` keeps a `runProgress` slice updated on every poll tick and renders a new `RunProgressPanel` (floating bottom-right card) that lists every model with a ✓ / ✗ / ⟳ / · icon, a progress bar, and a "completed / total" counter. Multi-Excel runs show "Bridge.xlsx (2/3)" in the header. Tested in `backend/tests/test_run_workflow.py::test_progress_callback_*` and `backend/tests/test_run_workflow_job.py::test_progress_callback_writes_intermediate_results`.
 
-- **PC-908** `[P2]` `[Size: S]` `[Mode: regular]` — Sticky-note / annotation nodes.
-  *Rationale:* Yellow note nodes that don't execute but document the workflow ("This branch only runs for high-detail models"). Big QoL for complex graphs. Implement as a non-flow node type that the compiler ignores.
+- ✅ **PC-908** — Sticky-note / annotation nodes.
+  *Rationale:* A new `stickyNote` node — a yellow, inline-editable annotation with **no handles** that the compiler ignores. Registered across the usual layers: `types.ts` (`StickyNoteNodeData { text }`), `nodeSchemas.ts` (empty params/handles), `palette.ts` (Core), `nodeKinds.ts` (added to `CONTROL_FLOW_NODE_TYPES` so "Disable" is hidden and it mirrors the backend skip), a `StickyNoteNode` component, and `WorkspaceCanvas` (nodeTypes + amber minimap). Because React Flow is controlled, the note can't own its own state — edits round-trip through the page via a new `WorkflowRunContext.onUpdateNodeData(id, data)` (backed by an extracted `handleUpdateNodeData` the RightSidebar editor now shares too). The `nodrag` textarea + `onKeyDown` stopPropagation keep typing from dragging/deleting the node. The compiler ignores it on two fronts: it has no flow handles (so edge rules forbid any connection and the flow-reachability order never includes it), and `stickyNote` was added to **both** `control_flow_types` sets in `build_command_chain` as belt-and-suspenders. Tested in `nodeKinds.test.ts` (sticky = control-flow) and `backend/tests/test_build_command_chain.py` (a note in a foreach→note→output path emits nothing). Adversarial 3-lens review → 0 findings. Verified by vitest 186/186, backend pytest, tsc, lint, build; not browser-clicked (no browser automation here).
 
 - **PC-909** `[P2]` `[Size: M]` `[Mode: regular]` — Onboarding tour for first-time users.
   *Rationale:* Use `driver.js` or `shepherd.js` to walk new users through: upload Excel → drop a node → connect handles → run. Stored "tour completed" flag in localStorage. Removes the "what do I even do here" first impression.
@@ -263,7 +263,7 @@ The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rew
 ### Phase 4 — Bigger UX features that need a bit more care
 15. ✅ **PC-905** — Auto-save / draft recovery.
 16. ✅ **PC-906** — Workflow run history view.
-17. **PC-908** — Sticky-note nodes.
+17. ✅ **PC-908** — Sticky-note nodes.
 18. **PC-304** — Chain XML preview before download (whole-file + per-node). Synergises with PC-906 (re-preview an old run) and PC-1004 (inspect a test run).
 19. **PC-909** — Onboarding tour. Do this after the canvas itself is polished — don't tour an unfinished UI.
 
