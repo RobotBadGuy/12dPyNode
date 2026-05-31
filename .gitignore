@@ -58,6 +58,12 @@ Design Data Mapping Modal/
 backend/uploads/
 backend/output/
 
+# Playwright E2E artifacts (PC-505) — the fixture under e2e/fixtures/ is tracked
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+frontend/playwright/.cache/
+
 # Environment files (contain Supabase service-role keys etc.)
 .env
 .env.local
