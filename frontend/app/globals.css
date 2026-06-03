@@ -626,3 +626,60 @@ body {
 .driver-popover.pychain-tour .driver-popover-arrow-side-bottom.driver-popover-arrow {
   border-bottom-color: #111827;
 }
+
+/* ============================================================
+   PC-705 — Light-theme variants for the hardcoded-dark custom
+   classes. Dark stays the default; these apply only when <html>
+   lacks the `.dark` class (i.e. light mode).
+   ============================================================ */
+
+html:not(.dark) .gradient-bg {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 25%, #ede9fe 50%, #dbeafe 75%, #eff6ff 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 20s ease infinite;
+}
+
+html:not(.dark) .floating-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+html:not(.dark) .floating-card:hover {
+  box-shadow: 0 32px 64px -12px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+html:not(.dark) .grid-pattern {
+  background-image: linear-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+}
+
+html:not(.dark) .workspace-grid {
+  background-image:
+    linear-gradient(30deg, rgba(0, 0, 0, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(0, 0, 0, 0.05) 87.5%, rgba(0, 0, 0, 0.05) 100%),
+    linear-gradient(150deg, rgba(0, 0, 0, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(0, 0, 0, 0.05) 87.5%, rgba(0, 0, 0, 0.05) 100%),
+    linear-gradient(30deg, rgba(0, 0, 0, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(0, 0, 0, 0.05) 87.5%, rgba(0, 0, 0, 0.05) 100%),
+    linear-gradient(150deg, rgba(0, 0, 0, 0.05) 12%, transparent 12.5%, transparent 87%, rgba(0, 0, 0, 0.05) 87.5%, rgba(0, 0, 0, 0.05) 100%);
+}
+
+/* driver.js onboarding tour — light popover (mirrors the dark .pychain-tour) */
+html:not(.dark) .driver-popover.pychain-tour {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-title { color: #111827; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-description { color: #4b5563; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-progress-text { color: #6b7280; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-close-btn { color: #6b7280; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-close-btn:hover { color: #111827; }
+html:not(.dark) .driver-popover.pychain-tour button.driver-popover-prev-btn {
+  background: rgba(229, 231, 235, 0.9);
+  color: #374151;
+}
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: #ffffff; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: #ffffff; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: #ffffff; }
+html:not(.dark) .driver-popover.pychain-tour .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: #ffffff; }
