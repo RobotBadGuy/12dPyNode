@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Play, Save, FolderOpen, Download, Upload, Loader2, RotateCcw, RotateCw, Home, User, HelpCircle, History, GraduationCap } from 'lucide-react';
 
 interface TopBarProps {
@@ -84,6 +85,8 @@ export function TopBar({
             Profile
           </Button>
         </div>
+
+        <ThemeToggle />
       </div>
 
       {currentPage === 'editor' && (
