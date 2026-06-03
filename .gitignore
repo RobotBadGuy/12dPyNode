@@ -51,6 +51,9 @@ Thumbs.db
 
 # Project specific
 *.chain
+# PC-1101: but DO track the committed .chain importer test fixtures (they pin parity)
+!frontend/lib/workflow/__tests__/fixtures/*.chain
+!frontend/e2e/fixtures/*.chain
 ~$*.xlsx
 Design Data Mapping Modal/
 
