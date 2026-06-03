@@ -59,7 +59,7 @@ Request path: `frontend/lib/workflow/run.ts` → `POST /api/workflow/run` (multi
 
 ### Adding a new node parameter
 
-Five layers must stay in sync — see `frontend/adding_node_params.md` for the full walkthrough. Summary:
+Five layers must stay in sync — see `docs/adding-node-params.md` for the full walkthrough (and `scripts/new-node.mjs` to scaffold a brand-new node). Summary:
 
 1. `frontend/lib/workflow/types.ts` — add field to the node's `*NodeData` interface (must keep `[key: string]: unknown`).
 2. `frontend/lib/workflow/nodeSchemas.ts` — add a `ParameterDefinition` with matching camelCase `key`. This auto-generates the `param:<key>` handle and the right-sidebar editor.

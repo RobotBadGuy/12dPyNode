@@ -245,6 +245,17 @@ The legacy batch processing system expects:
 
 The backend uses FastAPI with automatic API documentation available at `http://localhost:8001/docs` when running.
 
+## Contributing
+
+See **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** for the full contributor guide (dev setup, repo layout,
+running the test suite, conventions, and commit style).
+
+- **Add a brand-new node:** run `node scripts/new-node.mjs` (or `npm run scaffold:node` from `frontend/`).
+  It generates the React component + backend command module and prints the snippets for the shared files to
+  wire up.
+- **Add a parameter to an existing node:** follow **[docs/adding-node-params.md](docs/adding-node-params.md)** —
+  a step-by-step walkthrough of the five layers that must stay in sync.
+
 ## Key Features
 
 ### Automatic Chain Scaffolding

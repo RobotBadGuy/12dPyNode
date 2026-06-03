@@ -125,8 +125,8 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 - ✅ **PC-602** `[P2]` — Fix README paths and remove stale instructions.
   *Rationale:* Replaced "Python Scripts" with the correct "Python Projects" path, removed the Legacy API section (those endpoints were killed in PC-101), corrected the templates-storage description to match PC-202, and updated the cleanup-on-startup wording to match PC-204.
 
-- **PC-603** `[P2]` `[Size: S]` `[Mode: regular]` — Contribution guide and node-authoring template.
-  *Rationale:* `frontend/adding_node_params.md` is excellent but hidden. Move to `docs/`, link from README, and add a cookiecutter-style script that scaffolds the 5 files needed for a new node.
+- ✅ **PC-603** — Contribution guide and node-authoring template.
+  *Rationale:* The excellent-but-hidden `frontend/adding_node_params.md` was moved to `docs/adding-node-params.md`. Added `docs/CONTRIBUTING.md` (dev setup, repo layout, test suite, conventions, commit style) and a cookiecutter-style scaffolder `scripts/new-node.mjs` (interactive or flag-driven; also `npm run scaffold:node` from `frontend/`). The scaffolder generates the two NEW files a node needs — the React component (`nodes/<Pascal>Node.tsx`) and the backend command module (`commands/<category>/<snake>.py`) — and prints exact copy-paste snippets + locations for the five shared-file edits it deliberately leaves manual (types.ts interface + union, nodeSchemas.ts entry, palette.ts item, WorkspaceCanvas nodeTypes, and the backend `__init__` re-export + `execute_node` branch). Both `README.md` and `CLAUDE.md` now link the guide + scaffolder. Verified by running the scaffolder (generates correctly-named files, cleaned up after).
 
 - ✅ **PC-604** `[P2]` — Consolidate `start.sh` and `start.bat`, or delete both.
   *Rationale:* Both scripts have been removed. The README and CLAUDE.md document the commands directly.
@@ -273,7 +273,7 @@ The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rew
 22. ✅ **PC-705** — Dark/light theme toggle. Save for last; touches everything.
 
 ### Phase 6 — Devex / docs (low urgency)
-23. **PC-603** — Contribution guide + node scaffold script.
+23. ✅ **PC-603** — Contribution guide + node scaffold script.
 24. **PC-601** — Dockerfile + compose. Helpful for onboarding new contributors.
 
 ### Phase 7 — Production hardening (only if going multi-user)
