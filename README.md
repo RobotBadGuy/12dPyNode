@@ -19,9 +19,8 @@ This application provides a playful, gamified node-based workspace for building 
 ```
 12dPynode/
 ├── backend/                    # FastAPI backend server
-│   ├── main.py                 # API endpoints (legacy + workflow)
+│   ├── main.py                 # API endpoints + background run job
 │   ├── services/               # Core processing logic
-│   │   ├── pychain_service.py  # Legacy batch processing
 │   │   └── workflow_runner.py  # Node workflow execution engine
 │   ├── utils/                  # Utility modules
 │   ├── commands/               # Command generators (XML builders)
@@ -45,7 +44,6 @@ This application provides a playful, gamified node-based workspace for building 
     │       ├── WorkspaceCanvas.tsx # React Flow canvas
     │       └── nodes/          # Custom node components
     └── lib/
-        ├── api.ts              # Legacy API client
         └── workflow/           # Workflow system
             ├── types.ts        # Type definitions
             ├── compile.ts      # Graph compilation
@@ -81,10 +79,10 @@ The steps below run the backend and frontend directly with Python + Node.
 
 ### 1. Backend Setup
 
-Open a terminal and navigate to the project root:
+Open a terminal in the project root and enter the backend directory:
 
 ```bash
-cd "G:\WebDev\Python Projects\12dPynode\backend"
+cd backend
 ```
 
 Create and activate a virtual environment:
@@ -119,10 +117,10 @@ The backend API will be available at `http://localhost:8001`
 
 ### 2. Frontend Setup
 
-Open a **new terminal** (keep the backend running) and navigate to the frontend directory:
+Open a **new terminal** (keep the backend running) and enter the frontend directory:
 
 ```bash
-cd "G:\WebDev\Python Projects\12dPynode\frontend"
+cd frontend
 ```
 
 Install dependencies:
@@ -234,18 +232,7 @@ For the node-based workflow, the Excel file needs at minimum:
 - **First column**: Model names (one per row)
   - Example: `NWP-714-C-NWA-M2D-00-COY-CFN-DE60`
   - Each row becomes a model that the workflow processes
-
-### Extended Format (Legacy System)
-
-The legacy batch processing system expects:
-- **filename**: The base filename (without extension)
-- **discipline**: The discipline code
-- **prefix**: The prefix for the model
-- **description**: Description of the model
-- **object_dimension**: Dimensional information
-- **file_ext**: File extension information
-- **project_folder_path**: The project folder path embedded in chain files
-- **file_mapping_path**: Folder path where DWG/IFC files are located
+- Use the **Excel column picker** (PC-704) on the Excel Models node to choose a different column and preview the parsed model names.
 
 ## Environment Variables
 
