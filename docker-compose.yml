@@ -1,0 +1,47 @@
+# PyChain local dev stack (PC-601).
+#
+#   docker compose up --build
+#
+# Brings up the backend (FastAPI, :8001) and frontend (Next.js, :3000) with the
+# source bind-mounted for live reload. Supabase is OPTIONAL — set SUPABASE_* in a
+# root .env (copy from .env.example) to enable persistence; otherwise the backend
+# falls back to an in-memory store.
+#
+# The browser (on your host) calls the backend at http://localhost:8001 via the
+# published port, so the frontend talks to the backend over localhost — no
+# inter-container DNS needed.
+
+services:
+  backend:
+    build: ./backend
+    working_dir: /app
+    # --reload gives hot reload in dev (overrides the image's `python main.py`).
+    command: uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend:/app
+      # Shadow host virtualenvs so they don't leak into the container.
+      - /app/venv
+      - /app/fastapi-venv
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+
+  frontend:
+    build: ./frontend
+    working_dir: /app
+    command: npm run dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      # Anonymous volume keeps the image's node_modules (don't clobber with host's).
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8001
+      # Polling makes the file watcher reliable across the Docker bind mount.
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend

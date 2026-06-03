@@ -63,6 +63,22 @@ This application provides a playful, gamified node-based workspace for building 
 
 ## Quick Start
 
+### Option A — Docker (one command)
+
+With Docker Desktop installed, from the project root:
+
+```bash
+docker compose up --build
+```
+
+- Backend → `http://localhost:8001` (FastAPI), Frontend → `http://localhost:3000` (Next.js)
+- Source is bind-mounted for live reload. Supabase is optional — copy `.env.example` to `.env` to enable it.
+- Details: [docs/CONTRIBUTING.md → Docker](docs/CONTRIBUTING.md#docker-one-command-dev)
+
+### Option B — Manual setup
+
+The steps below run the backend and frontend directly with Python + Node.
+
 ### 1. Backend Setup
 
 Open a terminal and navigate to the project root:
@@ -244,6 +260,17 @@ The legacy batch processing system expects:
 ## Development
 
 The backend uses FastAPI with automatic API documentation available at `http://localhost:8001/docs` when running.
+
+## Contributing
+
+See **[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)** for the full contributor guide (dev setup, repo layout,
+running the test suite, conventions, and commit style).
+
+- **Add a brand-new node:** run `node scripts/new-node.mjs` (or `npm run scaffold:node` from `frontend/`).
+  It generates the React component + backend command module and prints the snippets for the shared files to
+  wire up.
+- **Add a parameter to an existing node:** follow **[docs/adding-node-params.md](docs/adding-node-params.md)** —
+  a step-by-step walkthrough of the five layers that must stay in sync.
 
 ## Key Features
 

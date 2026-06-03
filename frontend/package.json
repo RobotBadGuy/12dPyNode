@@ -10,7 +10,8 @@
     "test": "vitest run",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
-    "e2e:report": "playwright show-report"
+    "e2e:report": "playwright show-report",
+    "scaffold:node": "node ../scripts/new-node.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
