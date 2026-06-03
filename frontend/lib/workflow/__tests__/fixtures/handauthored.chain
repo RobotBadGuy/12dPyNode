@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<xml12d xmlns="http://www.12d.com/schema/xml12d-10.0">
+<meta_data></meta_data>
+<Chain>
+<version>1</version>
+<Settings></Settings>
+<Commands>
+  <Remove_model_from_view>
+    <Name>Remove model *tin from view Plan</Name>
+    <Active>true</Active>
+    <Continue_on_failure>true</Continue_on_failure>
+    <Model>*tin</Model>
+    <View>Plan</View>
+<Comments></Comments>
+  </Remove_model_from_view>
+  <Manual_option>
+    <Name>Global Model Rename</Name>
+    <Active>true</Active>
+    <Continue_on_failure>false</Continue_on_failure>
+    <Panel_Data><screen_layout><panel><name>Global Model Rename</name></panel></screen_layout></Panel_Data>
+  </Manual_option>
+</Commands>
+</Chain>
+</xml12d>

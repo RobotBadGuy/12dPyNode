@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parseChainXml, chainToGraph } from '../chainImport';
 
 const wrap = (commands: string) =>
@@ -80,5 +82,34 @@ describe('chainToGraph', () => {
     expect(g.edges).toHaveLength(1);
     expect(g.edges[0]).toMatchObject({ source: 'imported-foreach', target: 'imported-output' });
     expect(g.report).toMatchObject({ total: 0, mapped: 0 });
+  });
+});
+
+const fixture = (name: string) => readFileSync(join(__dirname, 'fixtures', name), 'utf8');
+
+describe('round-trip golden fixture', () => {
+  it('imports a generator-produced chain into the expected clean nodes', () => {
+    const parsed = parseChainXml(fixture('clean-view.chain'));
+    if ('error' in parsed) throw new Error(parsed.error);
+    const g = chainToGraph(parsed);
+    const real = g.nodes.filter((n) => !['foreachModel', 'chainFileOutput'].includes(n.type as string));
+    expect(real.map((n) => n.type)).toEqual(['cleanModel', 'createView', 'addModelToView']);
+    expect(g.report).toMatchObject({ total: 3, mapped: 3, placeholders: [] });
+    const clean = real[0].data as Record<string, unknown>;
+    expect(clean.modelName).toBe('Alpha');
+    const view = real[1].data as Record<string, unknown>;
+    expect(view.modifiedVariable).toBe('Alpha View');
+    expect(view.coordinates).toEqual([40, 30, 565, 715]);
+  });
+
+  it('hand-authored chain: maps the known command, placeholders the panel command', () => {
+    const parsed = parseChainXml(fixture('handauthored.chain'));
+    if ('error' in parsed) throw new Error(parsed.error);
+    const g = chainToGraph(parsed);
+    expect(g.report).toMatchObject({
+      total: 2,
+      mapped: 1,
+      placeholders: [{ element: 'Manual_option', count: 1 }],
+    });
   });
 });

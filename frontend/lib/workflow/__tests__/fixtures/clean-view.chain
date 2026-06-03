@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<xml12d xmlns="http://www.12d.com/schema/xml12d-10.0">
+<meta_data></meta_data>
+<Chain><version>1</version><Settings></Settings><Commands>
+<Clean_model><Name>Clean model Alpha</Name><Active>true</Active><Continue_on_failure>true</Continue_on_failure><Uses_parameters>false</Uses_parameters><Interactive>false</Interactive><Comments></Comments><Model_Name>Alpha</Model_Name><Model_ID>0</Model_ID><Raster_Mode>0</Raster_Mode></Clean_model>
+      <Create_view>
+        <Name>Create view Alpha View</Name>
+        <Active>true</Active>
+        <Continue_on_failure>true</Continue_on_failure>
+        <Uses_parameters>false</Uses_parameters>
+        <Interactive>false</Interactive>
+<Comments></Comments>
+        <View>Alpha View</View>
+        <View_Type>2010</View_Type>
+        <View_Engine>GDI_legacy</View_Engine>
+        <Favourite_File></Favourite_File>
+        <Top>40</Top>
+        <Left>30</Left>
+        <Bot>565</Bot>
+        <Right>715</Right>
+        <Exaggeration></Exaggeration>
+        <Use_Draw_Area>0</Use_Draw_Area>
+        <Draw_Area_Width>-2147483648</Draw_Area_Width>
+        <Draw_Area_Height>-2147483648</Draw_Area_Height>
+      </Create_view>
+      <Add_model_to_view>
+        <Name>Add model Alpha to view Alpha View</Name>
+        <Active>true</Active>
+        <Continue_on_failure>true</Continue_on_failure>
+        <Uses_parameters>false</Uses_parameters>
+        <Interactive>false</Interactive>
+<Comments></Comments>
+        <Model>Alpha</Model>
+        <View>Alpha View</View>
+      </Add_model_to_view>
+</Commands></Chain></xml12d>
