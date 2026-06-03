@@ -57,7 +57,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                             <span>Now with AI-powered automation</span>
                         </div>
 
-                        <h1 className="text-6xl font-bold text-white leading-tight">
+                        <h1 className="text-6xl font-bold text-gray-900 dark:text-white leading-tight">
                             Build Powerful Workflows
                             <br />
                             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
@@ -65,7 +65,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                             </span>
                         </h1>
 
-                        <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+                        <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
                             12d Pynode empowers teams to automate complex processes with our visual node-based editor.
                             Map data, transform information, and connect your tools seamlessly.
                         </p>
@@ -80,7 +80,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                             </button>
                             <button
                                 onClick={() => onNavigate('profile')}
-                                className="px-6 py-3 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-white font-medium transition-colors border border-slate-700"
+                                className="px-6 py-3 rounded-lg bg-slate-200/60 dark:bg-slate-800/50 hover:bg-slate-200/60 dark:hover:bg-slate-700/50 text-gray-900 dark:text-white font-medium transition-colors border border-slate-300 dark:border-slate-700"
                             >
                                 View Demo
                             </button>
@@ -92,10 +92,10 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                         {stats.map((stat) => {
                             const Icon = stat.icon;
                             return (
-                                <div key={stat.label} className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 text-center">
+                                <div key={stat.label} className="bg-slate-200/60 dark:bg-slate-800/30 backdrop-blur-sm rounded-xl p-6 border border-slate-300 dark:border-slate-700/50 text-center">
                                     <Icon className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-                                    <div className="text-3xl font-bold text-white mb-1">{stat.value}</div>
-                                    <div className="text-sm text-slate-400">{stat.label}</div>
+                                    <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.value}</div>
+                                    <div className="text-sm text-slate-600 dark:text-slate-400">{stat.label}</div>
                                 </div>
                             );
                         })}
@@ -107,10 +107,10 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             <section className="py-20 px-6">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-white mb-4">
+                        <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
                             Everything you need to automate
                         </h2>
-                        <p className="text-lg text-slate-400">
+                        <p className="text-lg text-slate-600 dark:text-slate-400">
                             Powerful features designed for modern teams
                         </p>
                     </div>
@@ -121,13 +121,13 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                             return (
                                 <div
                                     key={feature.title}
-                                    className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-8 border border-slate-700/50 hover:border-slate-600 transition-all group"
+                                    className="bg-slate-200/60 dark:bg-slate-800/30 backdrop-blur-sm rounded-xl p-8 border border-slate-300 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600 transition-all group"
                                 >
                                     <div className={`w-12 h-12 rounded-lg ${feature.bgColor} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                                         <Icon className={`w-6 h-6 ${feature.color}`} />
                                     </div>
-                                    <h3 className="text-xl font-semibold text-white mb-3">{feature.title}</h3>
-                                    <p className="text-slate-400">{feature.description}</p>
+                                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{feature.title}</h3>
+                                    <p className="text-slate-600 dark:text-slate-400">{feature.description}</p>
                                 </div>
                             );
                         })}
@@ -138,13 +138,13 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             {/* Benefits Section */}
             <section className="py-20 px-6">
                 <div className="max-w-6xl mx-auto">
-                    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-2xl p-12 border border-slate-700/50">
+                    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 rounded-2xl p-12 border border-slate-300 dark:border-slate-700/50">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             <div>
-                                <h2 className="text-3xl font-bold text-white mb-4">
+                                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
                                     Why teams choose 12d Pynode
                                 </h2>
-                                <p className="text-slate-400 mb-8">
+                                <p className="text-slate-600 dark:text-slate-400 mb-8">
                                     Join thousands of teams who have transformed their workflows with our platform.
                                 </p>
                                 <button
@@ -159,7 +159,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                                 {benefits.map((benefit) => (
                                     <div key={benefit} className="flex items-start gap-3">
                                         <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                                        <span className="text-slate-300">{benefit}</span>
+                                        <span className="text-slate-600 dark:text-slate-300">{benefit}</span>
                                     </div>
                                 ))}
                             </div>
@@ -171,10 +171,10 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             {/* CTA Section */}
             <section className="py-20 px-6">
                 <div className="max-w-4xl mx-auto text-center">
-                    <h2 className="text-4xl font-bold text-white mb-4">
+                    <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
                         Ready to get started?
                     </h2>
-                    <p className="text-lg text-slate-400 mb-8">
+                    <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
                         Join thousands of teams already using 12d Pynode to build better workflows.
                     </p>
                     <div className="flex items-center justify-center gap-4">
@@ -184,7 +184,7 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
                         >
                             Start Free Trial
                         </button>
-                        <button className="px-8 py-4 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-white font-medium transition-colors border border-slate-700">
+                        <button className="px-8 py-4 rounded-lg bg-slate-200/60 dark:bg-slate-800/50 hover:bg-slate-200/60 dark:hover:bg-slate-700/50 text-gray-900 dark:text-white font-medium transition-colors border border-slate-300 dark:border-slate-700">
                             Schedule Demo
                         </button>
                     </div>

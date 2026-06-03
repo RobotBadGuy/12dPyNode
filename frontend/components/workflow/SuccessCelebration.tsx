@@ -106,7 +106,7 @@ export function SuccessCelebration({
 
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
         <div
-          className={`bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border-2 ${borderClass} p-8 max-w-md w-full animate-in fade-in zoom-in duration-300`}
+          className={`bg-gradient-to-br from-white via-gray-100 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-2xl shadow-2xl border-2 ${borderClass} p-8 max-w-md w-full animate-in fade-in zoom-in duration-300`}
         >
           <div className="flex justify-center mb-6">
             <div className="relative">
@@ -117,9 +117,9 @@ export function SuccessCelebration({
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-center text-white mb-2">{title}</h2>
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">{title}</h2>
 
-          <p className="text-center text-gray-300 mb-4">{message}</p>
+          <p className="text-center text-gray-700 dark:text-gray-300 mb-4">{message}</p>
 
           {fileCount !== undefined && fileCount > 0 && (
             <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 mb-4">
@@ -145,8 +145,8 @@ export function SuccessCelebration({
               {failuresExpanded && (
                 <ul className="mt-3 space-y-2 max-h-48 overflow-y-auto">
                   {failed.map((f) => (
-                    <li key={f.model} className="text-xs text-gray-200">
-                      <div className="font-semibold text-white">{f.model}</div>
+                    <li key={f.model} className="text-xs text-gray-800 dark:text-gray-200">
+                      <div className="font-semibold text-gray-900 dark:text-white">{f.model}</div>
                       <div className="font-mono text-rose-300 break-all">{f.error ?? '(no error message)'}</div>
                     </li>
                   ))}

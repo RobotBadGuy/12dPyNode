@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Poppins } from 'next/font/google';
-import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/components/ThemeProvider';
+import { ThemedToaster } from '@/components/ThemedToaster';
 import 'driver.js/dist/driver.css';
 import './globals.css';
 
@@ -46,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang='en' className={`${inter.variable} ${poppins.variable}`}>
+    <html lang='en' suppressHydrationWarning className={`${inter.variable} ${poppins.variable}`}>
       <head>
         <link rel='preconnect' href='https://fonts.googleapis.com' />
         <link
@@ -56,13 +57,10 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} antialiased`}>
-        {children}
-        <Toaster
-          theme="dark"
-          richColors
-          position="bottom-right"
-          closeButton
-        />
+        <ThemeProvider>
+          {children}
+          <ThemedToaster />
+        </ThemeProvider>
       </body>
     </html>
   );

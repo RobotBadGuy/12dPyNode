@@ -42,7 +42,7 @@ function EditorShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
+    <div className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-l border-gray-200 dark:border-gray-700/50 h-full overflow-y-auto">
       <NodeRunDetails
         nodeId={selectedNodeId}
         fileDetails={runFileDetails}
@@ -93,9 +93,9 @@ export function RightSidebar({
 
   if (!selectedNode) {
     return (
-      <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full p-4">
-        <h3 className="text-lg font-bold text-white mb-2">Properties</h3>
-        <p className="text-sm text-gray-400">Select a node to edit its properties</p>
+      <div className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-l border-gray-200 dark:border-gray-700/50 h-full p-4">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Properties</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Select a node to edit its properties</p>
       </div>
     );
   }
@@ -103,10 +103,10 @@ export function RightSidebar({
   const schema = nodeSchemas[selectedNode.type as keyof typeof nodeSchemas];
   if (!schema) {
     return (
-      <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-l border-gray-700/50 h-full overflow-y-auto">
+      <div className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-l border-gray-200 dark:border-gray-700/50 h-full overflow-y-auto">
         <div className="p-4">
-          <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
-          <div className="text-sm text-gray-400">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Properties</h3>
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             No schema defined for node type: {selectedNode.type}
           </div>
         </div>
@@ -134,18 +134,18 @@ export function RightSidebar({
         runFileDetails={runFileDetails}
         runSessionId={runSessionId}
       >
-        <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Properties</h3>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node Type</Label>
-            <p className="text-sm text-gray-400">{selectedNode.type}</p>
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Node Type</Label>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{selectedNode.type}</p>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-gray-300 mb-1 block">
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
               Model names (one per line)
             </Label>
             <textarea
-              className="w-full h-48 bg-gray-800 border border-gray-700 rounded-md p-2 text-sm text-gray-200 font-mono resize-y"
+              className="w-full h-48 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-2 text-sm text-gray-800 dark:text-gray-200 font-mono resize-y"
               placeholder={'Model-A\nModel-B\nModel-C'}
               value={rawText}
               onChange={(e) => handleChange(e.target.value)}
@@ -172,23 +172,23 @@ export function RightSidebar({
         runFileDetails={runFileDetails}
         runSessionId={runSessionId}
       >
-        <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Properties</h3>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Excel file</Label>
-            <p className="text-sm text-gray-400 truncate">
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Excel file</Label>
+            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
               {file ? file.name : 'No file uploaded'}
             </p>
           </div>
           {file ? (
             <div>
-              <Label className="text-sm font-semibold text-gray-300 mb-1 block">Model column</Label>
-              <p className="text-sm text-gray-400 mb-2">
+              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Model column</Label>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                 {columnName ? (
                   <>
                     Reading <span className="text-emerald-300">{modelNames.length}</span> model
                     {modelNames.length === 1 ? '' : 's'} from{' '}
-                    <span className="text-gray-200">&ldquo;{columnName}&rdquo;</span>
+                    <span className="text-gray-800 dark:text-gray-200">&ldquo;{columnName}&rdquo;</span>
                   </>
                 ) : (
                   'No column selected yet.'
@@ -250,19 +250,19 @@ export function RightSidebar({
         runFileDetails={runFileDetails}
         runSessionId={runSessionId}
       >
-          <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Properties</h3>
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node Type</Label>
-              <p className="text-sm text-gray-400">{selectedNode.type}</p>
+              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Node Type</Label>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{selectedNode.type}</p>
             </div>
             <div>
-              <Label className="text-sm font-semibold text-gray-300 mb-1 block">Variables</Label>
+              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Variables</Label>
               <div className="space-y-3 mt-2">
                 {variables.map((variable, index) => (
-                  <div key={index} className="p-3 bg-gray-800/50 rounded-lg border border-gray-700 space-y-2">
+                  <div key={index} className="p-3 bg-gray-200/60 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="text-xs text-gray-400">Variable {index + 1}</Label>
+                      <Label className="text-xs text-gray-600 dark:text-gray-400">Variable {index + 1}</Label>
                       <Button
                         variant="ghost"
                         size="icon-sm"
@@ -273,20 +273,20 @@ export function RightSidebar({
                       </Button>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-400 mb-1 block">Name</Label>
+                      <Label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Name</Label>
                       <Input
                         value={variable.name}
                         onChange={(e) => handleUpdateVariable(index, 'name', e.target.value)}
-                        className="bg-gray-900 border-gray-700 text-white text-sm h-8"
+                        className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8"
                         placeholder="variable_name"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-400 mb-1 block">Type</Label>
+                      <Label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Type</Label>
                       <select
                         value={variable.type ?? 'string'}
                         onChange={(e) => handleUpdateVariable(index, 'type', e.target.value as 'string' | 'number' | 'boolean')}
-                        className="w-full bg-gray-900 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8 rounded-md px-2"
                       >
                         <option value="string">String</option>
                         <option value="number">Number</option>
@@ -294,12 +294,12 @@ export function RightSidebar({
                       </select>
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-400 mb-1 block">Value</Label>
+                      <Label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Value</Label>
                       {(variable.type ?? 'string') === 'boolean' ? (
                         <select
                           value={String(variable.value) === 'true' || variable.value === true ? 'true' : 'false'}
                           onChange={(e) => handleUpdateVariable(index, 'value', e.target.value === 'true')}
-                          className="w-full bg-gray-900 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8 rounded-md px-2"
                         >
                           <option value="true">true</option>
                           <option value="false">false</option>
@@ -309,24 +309,24 @@ export function RightSidebar({
                           type="number"
                           value={String(variable.value)}
                           onChange={(e) => handleUpdateVariable(index, 'value', e.target.value)}
-                          className="bg-gray-900 border-gray-700 text-white text-sm h-8"
+                          className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8"
                           placeholder="0"
                         />
                       ) : (
                         <Input
                           value={String(variable.value)}
                           onChange={(e) => handleUpdateVariable(index, 'value', e.target.value)}
-                          className="bg-gray-900 border-gray-700 text-white text-sm h-8"
+                          className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8"
                           placeholder="value"
                         />
                       )}
                     </div>
                     <div>
-                      <Label className="text-xs text-gray-400 mb-1 block">Scope</Label>
+                      <Label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Scope</Label>
                       <select
                         value={variable.scope}
                         onChange={(e) => handleUpdateVariable(index, 'scope', e.target.value as 'per-run' | 'per-model')}
-                        className="w-full bg-gray-900 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                        className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8 rounded-md px-2"
                       >
                         <option value="per-run">Per Run</option>
                         <option value="per-model">Per Model</option>
@@ -338,7 +338,7 @@ export function RightSidebar({
                   variant="outline"
                   size="sm"
                   onClick={handleAddVariable}
-                  className="w-full border-gray-700 text-gray-300 hover:bg-gray-800"
+                  className="w-full border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Add Variable
@@ -360,14 +360,14 @@ export function RightSidebar({
         runFileDetails={runFileDetails}
         runSessionId={runSessionId}
       >
-          <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Properties</h3>
           <div className="space-y-4">
             <div>
-              <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node Type</Label>
-              <p className="text-sm text-gray-400">{selectedNode.type}</p>
+              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Node Type</Label>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{selectedNode.type}</p>
             </div>
             <div>
-              <Label className="text-sm font-semibold text-gray-300 mb-1 block">File Type</Label>
+              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">File Type</Label>
               <select
                 value={nodeData.fileType || 'dwg'}
                 onChange={(e) =>
@@ -375,7 +375,7 @@ export function RightSidebar({
                     fileType: e.target.value as 'ifc' | 'dwg' | 'dgn',
                   } as Partial<WorkflowNodeData>)
                 }
-                className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-9 rounded-md px-3"
+                className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-9 rounded-md px-3"
               >
                 <option value="ifc">IFC</option>
                 <option value="dwg">DWG</option>
@@ -383,7 +383,7 @@ export function RightSidebar({
               </select>
             </div>
             <div>
-              <Label className="text-sm font-semibold text-gray-300 mb-1 block">
+              <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
                 File Path
                 {filePathWired.wired && (
                   <span className="ml-2 text-xs text-blue-400">
@@ -392,7 +392,7 @@ export function RightSidebar({
                 )}
               </Label>
               {filePathWired.wired ? (
-                <div className="p-2 bg-gray-800/50 rounded border border-blue-600/50 text-sm text-gray-400">
+                <div className="p-2 bg-gray-200/60 dark:bg-gray-800/50 rounded border border-blue-600/50 text-sm text-gray-600 dark:text-gray-400">
                   Wired from: <span className="text-blue-400">{filePathWired.sourceToken}</span>
                 </div>
               ) : (
@@ -405,12 +405,12 @@ export function RightSidebar({
                         filePath: e.target.value,
                       } as Partial<WorkflowNodeData>)
                     }
-                    className="bg-gray-800 border-gray-700 text-white text-sm h-9"
+                    className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-9"
                     placeholder="Enter file path or {varName}"
                   />
                   {allVariables.length > 0 && (
                     <div>
-                      <Label className="text-xs text-gray-400 mb-1 block">Or select variable:</Label>
+                      <Label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Or select variable:</Label>
                       <select
                         value=""
                         onChange={(e) => {
@@ -420,7 +420,7 @@ export function RightSidebar({
                             } as Partial<WorkflowNodeData>);
                           }
                         }}
-                        className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8 rounded-md px-2"
                       >
                         <option value="">-- Select Variable --</option>
                         {allVariables.map((v, idx) => (
@@ -446,15 +446,15 @@ export function RightSidebar({
       runFileDetails={runFileDetails}
       runSessionId={runSessionId}
     >
-        <h3 className="text-lg font-bold text-white mb-4">Properties</h3>
+        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Properties</h3>
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node Type</Label>
-            <p className="text-sm text-gray-400">{selectedNode.type}</p>
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Node Type</Label>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{selectedNode.type}</p>
           </div>
           <div>
-            <Label className="text-sm font-semibold text-gray-300 mb-1 block">Node ID</Label>
-            <p className="text-sm text-gray-400 font-mono">{selectedNode.id}</p>
+            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">Node ID</Label>
+            <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">{selectedNode.id}</p>
           </div>
           {schema.parameters.map((param) => {
             const wired = isParamWired(selectedNode.id, param.key);
@@ -462,7 +462,7 @@ export function RightSidebar({
 
             return (
               <div key={param.key}>
-                <Label className="text-sm font-semibold text-gray-300 mb-1 block">
+                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 block">
                   {param.label}
                   {wired.wired && (
                     <span className="ml-2 text-xs text-blue-400">
@@ -471,7 +471,7 @@ export function RightSidebar({
                   )}
                 </Label>
                 {wired.wired ? (
-                  <div className="p-2 bg-gray-800/50 rounded border border-blue-600/50 text-sm text-gray-400">
+                  <div className="p-2 bg-gray-200/60 dark:bg-gray-800/50 rounded border border-blue-600/50 text-sm text-gray-600 dark:text-gray-400">
                     Wired from: <span className="text-blue-400">{wired.sourceToken}</span>
                   </div>
                 ) : param.kind === 'select' ? (
@@ -482,7 +482,7 @@ export function RightSidebar({
                         [param.key]: e.target.value,
                       } as Partial<WorkflowNodeData>)
                     }
-                    className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-9 rounded-md px-3"
+                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-9 rounded-md px-3"
                   >
                     {param.options?.map((opt) => (
                       <option key={opt} value={opt}>
@@ -511,12 +511,12 @@ export function RightSidebar({
                           [param.key]: param.kind === 'number' ? Number(e.target.value) : e.target.value,
                         } as Partial<WorkflowNodeData>)
                       }
-                      className="bg-gray-800 border-gray-700 text-white text-sm h-9"
+                      className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-9"
                       placeholder={param.kind === 'string' ? `Enter value or {varName}` : param.label}
                     />
                     {allVariables.length > 0 && param.kind === 'string' && (
                       <div>
-                        <Label className="text-xs text-gray-400 mb-1 block">Or select variable:</Label>
+                        <Label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Or select variable:</Label>
                         <select
                           value=""
                           onChange={(e) => {
@@ -526,7 +526,7 @@ export function RightSidebar({
                               } as Partial<WorkflowNodeData>);
                             }
                           }}
-                          className="w-full bg-gray-800 border border-gray-700 text-white text-sm h-8 rounded-md px-2"
+                          className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm h-8 rounded-md px-2"
                         >
                           <option value="">-- Select Variable --</option>
                           {allVariables.map((v, idx) => (

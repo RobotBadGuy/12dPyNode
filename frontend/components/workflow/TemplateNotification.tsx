@@ -70,7 +70,7 @@ export function TemplateNotification({
 
       {/* Notification Toast */}
       <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-300">
-        <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-2xl border-2 border-blue-500/50 p-6 max-w-sm w-full backdrop-blur-sm">
+        <div className="bg-gradient-to-br from-white via-gray-100 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-xl shadow-2xl border-2 border-blue-500/50 p-6 max-w-sm w-full backdrop-blur-sm">
           {/* Success Icon */}
           <div className="flex items-start gap-4">
             <div className="relative flex-shrink-0">
@@ -84,21 +84,21 @@ export function TemplateNotification({
               {/* Title */}
               <div className="flex items-center gap-2 mb-1">
                 <FileText className="w-4 h-4 text-blue-400" />
-                <h3 className="text-lg font-bold text-white">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                   Template Loaded!
                 </h3>
               </div>
 
               {/* Template Name */}
               {templateName && (
-                <p className="text-sm font-semibold text-blue-300 mb-2 truncate">
+                <p className="text-sm font-semibold text-blue-600 dark:text-blue-300 mb-2 truncate">
                   {templateName}
                 </p>
               )}
 
               {/* Stats */}
               {(nodeCount !== undefined || edgeCount !== undefined) && (
-                <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
+                <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mb-3">
                   {nodeCount !== undefined && (
                     <span className="flex items-center gap-1">
                       <Sparkles className="w-3 h-3 text-blue-400" />
@@ -115,7 +115,7 @@ export function TemplateNotification({
               )}
 
               {/* Message */}
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
                 Your workflow is ready to use!
               </p>
             </div>
@@ -123,7 +123,7 @@ export function TemplateNotification({
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="flex-shrink-0 text-gray-400 hover:text-white transition-colors"
+              className="flex-shrink-0 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
               aria-label="Close"
             >
               <svg
@@ -141,7 +141,7 @@ export function TemplateNotification({
           </div>
 
           {/* Progress Bar */}
-          <div className="mt-4 h-1 bg-gray-700 rounded-full overflow-hidden">
+          <div className="mt-4 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full animate-progress"
               style={{

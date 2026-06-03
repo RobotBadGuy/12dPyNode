@@ -122,20 +122,20 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
           <button
             type="button"
             onClick={() => onNavigate('editor')}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             aria-label="Back to editor"
             title="Back to editor"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <History className="w-6 h-6 text-emerald-400" />
-          <h1 className="text-2xl font-bold text-white">Run History</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Run History</h1>
         </div>
         <button
           type="button"
           onClick={() => void refresh()}
           disabled={loading}
-          className="flex items-center gap-2 bg-gray-800/60 border border-gray-700 hover:bg-gray-800 disabled:opacity-50 text-gray-200 text-sm px-3 py-1.5 rounded-md transition-colors"
+          className="flex items-center gap-2 bg-gray-200/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 text-gray-800 dark:text-gray-200 text-sm px-3 py-1.5 rounded-md transition-colors"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
@@ -152,14 +152,14 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by template or file…"
             aria-label="Search runs"
-            className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+            className="w-full pl-8 pr-3 py-1.5 text-sm bg-gray-200/60 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-md text-gray-800 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           aria-label="Filter by status"
-          className="text-sm bg-gray-800/50 border border-gray-700/50 rounded-md text-gray-200 px-2 py-1.5 focus:outline-none focus:border-emerald-500/50"
+          className="text-sm bg-gray-200/60 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-md text-gray-800 dark:text-gray-200 px-2 py-1.5 focus:outline-none focus:border-emerald-500/50"
         >
           <option value="all">All statuses</option>
           <option value="completed">Completed</option>
@@ -170,13 +170,13 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
 
       {/* Body */}
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-gray-400">
+        <div className="flex items-center justify-center py-16 text-gray-600 dark:text-gray-400">
           <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading runs…
         </div>
       ) : error ? (
         <div className="text-center py-16">
           <AlertCircle className="w-10 h-10 mx-auto mb-3 text-rose-400/70" />
-          <p className="text-gray-300">{error}</p>
+          <p className="text-gray-700 dark:text-gray-300">{error}</p>
           <button
             type="button"
             onClick={() => void refresh()}
@@ -186,7 +186,7 @@ export function RunsPage({ onNavigate }: RunsPageProps) {
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-gray-600 dark:text-gray-400">
           <History className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p>{runs.length === 0 ? 'No runs yet.' : 'No runs match your filters.'}</p>
         </div>
@@ -261,8 +261,8 @@ function RunRow({ run, now, downloading, onDownload, onPreview }: RunRowProps) {
   };
 
   return (
-    <li className="bg-gray-800/60 border border-gray-700 rounded-lg overflow-hidden">
-      <div className="hover:bg-gray-800 transition-colors p-3 flex items-start justify-between gap-4">
+    <li className="bg-gray-200/60 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div className="hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors p-3 flex items-start justify-between gap-4">
         <button
           type="button"
           onClick={canInspect ? toggle : undefined}
@@ -271,19 +271,19 @@ function RunRow({ run, now, downloading, onDownload, onPreview }: RunRowProps) {
         >
           {canInspect ? (
             expanded ? (
-              <ChevronDown className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400 mt-0.5 shrink-0" />
             ) : (
-              <ChevronRight className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />
+              <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400 mt-0.5 shrink-0" />
             )
           ) : (
             <span className="w-4 shrink-0" />
           )}
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-white font-semibold truncate">{title}</span>
+              <span className="text-gray-900 dark:text-white font-semibold truncate">{title}</span>
               <StatusBadge status={run.status} />
             </div>
-            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
               <span>{formatRelativeTime(run.created_at, now)}</span>
               {duration && <span>· {duration}</span>}
               {run.sourceName && run.templateName && (
@@ -308,7 +308,7 @@ function RunRow({ run, now, downloading, onDownload, onPreview }: RunRowProps) {
               )}
             </div>
             {run.status === 'error' && run.error && (
-              <p className="text-xs font-mono text-rose-300/90 mt-1 break-all">{run.error}</p>
+              <p className="text-xs font-mono text-rose-600 dark:text-rose-300/90 mt-1 break-all">{run.error}</p>
             )}
           </div>
         </button>
@@ -331,14 +331,14 @@ function RunRow({ run, now, downloading, onDownload, onPreview }: RunRowProps) {
       </div>
 
       {expanded && (
-        <div className="border-t border-gray-700/50 bg-gray-900/40 px-3 py-2">
+        <div className="border-t border-gray-200 dark:border-gray-700/50 bg-white/40 dark:bg-gray-900/40 px-3 py-2">
           {detail.kind === 'loading' && (
-            <div className="flex items-center gap-2 text-xs text-gray-400 py-2">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 py-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading models…
             </div>
           )}
           {detail.kind === 'error' && (
-            <p className="text-xs text-rose-300 py-2">{detail.message}</p>
+            <p className="text-xs text-rose-600 dark:text-rose-300 py-2">{detail.message}</p>
           )}
           {detail.kind === 'loaded' && detail.models.length === 0 && (
             <p className="text-xs text-gray-500 py-2">No per-model details for this run.</p>
@@ -355,12 +355,12 @@ function RunRow({ run, now, downloading, onDownload, onPreview }: RunRowProps) {
                     ) : (
                       <XCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                     )}
-                    <span className="text-gray-200 truncate flex-1">{model ?? '(unnamed)'}</span>
+                    <span className="text-gray-800 dark:text-gray-200 truncate flex-1">{model ?? '(unnamed)'}</span>
                     {ok && model && (
                       <button
                         type="button"
                         onClick={() => onPreview(run, model)}
-                        className="shrink-0 inline-flex items-center gap-1 text-blue-300 hover:text-blue-200"
+                        className="shrink-0 inline-flex items-center gap-1 text-blue-600 dark:text-blue-300 hover:text-blue-700 dark:hover:text-blue-200"
                         title="Preview the generated chain"
                       >
                         <FileCode2 className="w-3.5 h-3.5" />

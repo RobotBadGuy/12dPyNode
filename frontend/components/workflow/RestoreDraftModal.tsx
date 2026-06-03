@@ -46,28 +46,28 @@ export function RestoreDraftModal({
       aria-label="Restore previous session"
     >
       <div
-        className="w-full max-w-md mx-4 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+        className="w-full max-w-md mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700/50">
           <div className="flex items-center gap-2">
             <History className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-lg font-bold text-white">Restore previous session?</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Restore previous session?</h2>
           </div>
           <button
             type="button"
             onClick={onDismiss}
             aria-label="Dismiss"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="px-5 py-5">
-          <p className="text-sm text-gray-300">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             We found unsaved work from{' '}
-            <span className="text-gray-100">{ageLabel}</span> —{' '}
+            <span className="text-gray-900 dark:text-gray-100">{ageLabel}</span> —{' '}
             <span className="text-emerald-300 font-semibold">{nodeCount}</span> node
             {nodeCount === 1 ? '' : 's'}. Restore it to the canvas?
           </p>
@@ -76,7 +76,7 @@ export function RestoreDraftModal({
           </p>
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-700/50">
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-200 dark:border-gray-700/50">
           <button
             type="button"
             onClick={onDiscard}

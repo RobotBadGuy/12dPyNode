@@ -38,7 +38,7 @@ export function ExportMenu({ onExport, disabled }: ExportMenuProps) {
   };
 
   const itemClass =
-    'w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors';
+    'w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors';
 
   return (
     <div ref={ref} className="relative">
@@ -46,7 +46,7 @@ export function ExportMenu({ onExport, disabled }: ExportMenuProps) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
-        className="flex items-center gap-2 bg-gray-900/80 border border-gray-700 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
+        className="flex items-center gap-2 bg-white/80 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-800 dark:text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
         title="Export the canvas as an image"
         aria-label="Export canvas as image"
         aria-haspopup="menu"
@@ -59,7 +59,7 @@ export function ExportMenu({ onExport, disabled }: ExportMenuProps) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 mt-1 w-44 py-1 rounded-md border border-gray-700/50 bg-gray-900/95 backdrop-blur-xl shadow-xl"
+          className="absolute right-0 mt-1 w-44 py-1 rounded-md border border-gray-200 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-xl"
         >
           <button
             type="button"
