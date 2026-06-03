@@ -78,3 +78,6 @@ test cols.xlsx
 workflow-template*.json
 backend/fastapi-venv/
 backend/venv/
+# PC-106 (finished): untracked clutter kept on disk but out of the repo
+Feature.md
+/Node-based Workflow UI Design/
