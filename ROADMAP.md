@@ -119,8 +119,8 @@ The project has zero tests (backend and frontend) and no CI. Every change ships 
 
 ## EPIC-06 — Developer Experience
 
-- **PC-601** `[P2]` `[Size: S]` `[Mode: regular]` — Dockerfile + docker-compose for local dev.
-  *Rationale:* Windows venv + Node setup is brittle (see README using wrong path `Python Scripts` instead of `Python Projects`). One `docker compose up` removes the onboarding friction.
+- ✅ **PC-601** — Dockerfile + docker-compose for local dev.
+  *Rationale:* `docker compose up --build` now brings up the whole stack — `backend/Dockerfile` (Python 3.12-slim, FastAPI on :8001) + `frontend/Dockerfile` (Node 20-alpine, Next.js dev on :3000) wired by a root `docker-compose.yml`. Source is bind-mounted for live reload (backend overrides CMD to `uvicorn main:app --reload`; frontend keeps the image's `node_modules` via an anonymous volume and uses `WATCHPACK_POLLING` so the watcher works across the mount). The browser reaches the backend at `http://localhost:8001` via the published port, so no inter-container DNS is needed; CORS already allows `localhost:3000`. Supabase stays optional via `${SUPABASE_*:-}` passthrough (in-memory fallback when blank). Added `.dockerignore` for both contexts (never copy host venvs/`node_modules`) and `.env.example` at the root (for compose) **and** `backend/.env.example` (the previously-missing file the `copy .env.example .env` flow referenced). Documented in the README Quick Start ("Option A — Docker") and `docs/CONTRIBUTING.md`. **Not build-tested locally** — Docker isn't installed in the authoring environment; the compose YAML was validated and `uvicorn main:app` confirmed against `main.py:148`, but a real `docker compose up` should be smoke-tested on a Docker host.
 
 - ✅ **PC-602** `[P2]` — Fix README paths and remove stale instructions.
   *Rationale:* Replaced "Python Scripts" with the correct "Python Projects" path, removed the Legacy API section (those endpoints were killed in PC-101), corrected the templates-storage description to match PC-202, and updated the cleanup-on-startup wording to match PC-204.
@@ -274,7 +274,7 @@ The plan: finish the in-flight EPIC-03 work, then ship the EPIC-10 run-entry rew
 
 ### Phase 6 — Devex / docs (low urgency)
 23. ✅ **PC-603** — Contribution guide + node scaffold script.
-24. **PC-601** — Dockerfile + compose. Helpful for onboarding new contributors.
+24. ✅ **PC-601** — Dockerfile + compose. Helpful for onboarding new contributors.
 
 ### Phase 7 — Production hardening (only if going multi-user)
 25. **PC-802** — File size and rate limits.

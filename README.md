@@ -63,6 +63,22 @@ This application provides a playful, gamified node-based workspace for building 
 
 ## Quick Start
 
+### Option A — Docker (one command)
+
+With Docker Desktop installed, from the project root:
+
+```bash
+docker compose up --build
+```
+
+- Backend → `http://localhost:8001` (FastAPI), Frontend → `http://localhost:3000` (Next.js)
+- Source is bind-mounted for live reload. Supabase is optional — copy `.env.example` to `.env` to enable it.
+- Details: [docs/CONTRIBUTING.md → Docker](docs/CONTRIBUTING.md#docker-one-command-dev)
+
+### Option B — Manual setup
+
+The steps below run the backend and frontend directly with Python + Node.
+
 ### 1. Backend Setup
 
 Open a terminal and navigate to the project root:

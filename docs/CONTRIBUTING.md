@@ -24,6 +24,25 @@ Supabase is optional for dev: without `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KE
 to an in-memory store (fine for local work; data is lost on restart). Prefer not to fuss with venv/Node at
 all? Use Docker — see **[Docker](#docker-one-command-dev)** below.
 
+## Docker (one-command dev)
+
+If you have Docker Desktop, you can skip the Python/Node setup entirely:
+
+```bash
+cp .env.example .env        # optional — only needed to enable Supabase
+docker compose up --build
+```
+
+This builds and runs both services with the source **bind-mounted for live reload**:
+
+- **backend** → http://localhost:8001 (FastAPI, `uvicorn --reload`)
+- **frontend** → http://localhost:3000 (Next.js dev server)
+
+The browser talks to the backend over `http://localhost:8001` (a published port), so no inter-container
+networking is involved. Supabase stays optional — leave the `SUPABASE_*` values in `.env` blank to use the
+in-memory store. Stop with `Ctrl+C` (or `docker compose down`). Files are at `backend/Dockerfile`,
+`frontend/Dockerfile`, and `docker-compose.yml`.
+
 ## Repository layout
 
 ```
