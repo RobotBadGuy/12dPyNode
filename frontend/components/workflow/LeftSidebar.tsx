@@ -75,7 +75,7 @@ export function LeftSidebar({
       onClick={() => onAddNode(item.type, { x: 0, y: 0 })}
       variant="outline"
       size="sm"
-      className="w-full justify-start border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+      className="w-full justify-start border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
     >
       <FileText className="w-4 h-4 mr-2" />
       {item.label}
@@ -118,28 +118,28 @@ export function LeftSidebar({
   };
 
   return (
-    <div className="w-80 bg-gray-900/95 backdrop-blur-xl border-r border-gray-700/50 h-full overflow-y-auto">
+    <div className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700/50 h-full overflow-y-auto">
       <div className="p-4">
-        <h2 className="text-lg font-bold text-white mb-4">File Tray</h2>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">File Tray</h2>
 
         {/* Excel Upload */}
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-300 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Excel Models
           </label>
           <div
             className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
               dragOver === 'excel'
                 ? 'border-emerald-500 bg-emerald-500/10'
-                : 'border-gray-600/50 hover:border-emerald-500/70'
+                : 'border-gray-300 dark:border-gray-600/50 hover:border-emerald-500/70'
             }`}
             data-tour-id="excel-drop-zone"
             onDragOver={(e) => handleDragOver(e, 'excel')}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, 'excel')}
           >
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-xs text-gray-400 mb-2">Drop Excel file here</p>
+            <Upload className="w-8 h-8 text-gray-600 dark:text-gray-400 mx-auto mb-2" />
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Drop Excel file here</p>
             <input
               type="file"
               accept=".xlsx"
@@ -152,7 +152,7 @@ export function LeftSidebar({
               <Button
                 variant="outline"
                 size="sm"
-                className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
                 asChild
               >
                 <span>Choose File</span>
@@ -161,16 +161,16 @@ export function LeftSidebar({
           </div>
           {excelNodes.length > 0 && (
             <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-              <div className="text-xs text-gray-400 mb-1">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
                 {excelNodes.length} Excel workflow{excelNodes.length !== 1 ? 's' : ''} loaded
               </div>
               {excelNodes.map((node) => (
                 <div
                   key={node.id}
-                  className="flex items-center gap-2 p-2 bg-gray-800/50 rounded-lg"
+                  className="flex items-center gap-2 p-2 bg-gray-200/60 dark:bg-gray-800/50 rounded-lg"
                 >
                   <FileText className="w-4 h-4 text-green-400" />
-                  <span className="text-xs text-gray-300 truncate flex-1">
+                  <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
                     {node.fileName}
                   </span>
                 </div>
@@ -181,21 +181,21 @@ export function LeftSidebar({
 
         {/* Model Files Upload */}
         <div className="mb-6">
-          <label className="block text-sm font-semibold text-gray-300 mb-2">
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Model Files (DWG/DGN/IFC)
           </label>
           <div
             className={`border-2 border-dashed rounded-xl p-4 text-center transition-all ${
               dragOver === 'model'
                 ? 'border-indigo-500 bg-indigo-500/10'
-                : 'border-gray-600/50 hover:border-indigo-500/70'
+                : 'border-gray-300 dark:border-gray-600/50 hover:border-indigo-500/70'
             }`}
             onDragOver={(e) => handleDragOver(e, 'model')}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, 'model')}
           >
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-xs text-gray-400 mb-2">Drop files here</p>
+            <Upload className="w-8 h-8 text-gray-600 dark:text-gray-400 mx-auto mb-2" />
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Drop files here</p>
             <input
               type="file"
               accept=".dwg,.dgn,.ifc"
@@ -208,7 +208,7 @@ export function LeftSidebar({
               <Button
                 variant="outline"
                 size="sm"
-                className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+                className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
                 asChild
               >
                 <span>Choose Files</span>
@@ -220,10 +220,10 @@ export function LeftSidebar({
               {modelFiles.map((file, idx) => (
                 <div
                   key={idx}
-                  className="flex items-center gap-2 p-2 bg-gray-800/50 rounded-lg"
+                  className="flex items-center gap-2 p-2 bg-gray-200/60 dark:bg-gray-800/50 rounded-lg"
                 >
                   <FileText className="w-4 h-4 text-indigo-400" />
-                  <span className="text-xs text-gray-300 truncate flex-1">
+                  <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">
                     {file.name}
                   </span>
                 </div>
@@ -233,8 +233,8 @@ export function LeftSidebar({
         </div>
 
         {/* Node Palette */}
-        <div data-tour-id="node-palette" className="border-t border-gray-700/50 pt-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Nodes</h3>
+        <div data-tour-id="node-palette" className="border-t border-gray-200 dark:border-gray-700/50 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Add Nodes</h3>
 
           {/* Search */}
           <div className="relative mb-3">
@@ -244,14 +244,14 @@ export function LeftSidebar({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search nodes…"
-              className="w-full pl-8 pr-8 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-md text-gray-200 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
+              className="w-full pl-8 pr-8 py-1.5 text-sm bg-gray-200/60 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-md text-gray-800 dark:text-gray-200 placeholder-gray-500 focus:outline-none focus:border-emerald-500/50"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -271,7 +271,7 @@ export function LeftSidebar({
                   if (!items || items.length === 0) return null;
                   return (
                     <div key={cat}>
-                      <div className="text-xs font-semibold text-gray-400 mb-1">
+                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">
                         {CATEGORY_LABELS[cat]}
                       </div>
                       <div className="space-y-2">{items.map(renderNodeButton)}</div>
@@ -292,7 +292,7 @@ export function LeftSidebar({
                     <button
                       type="button"
                       onClick={() => toggleSection(cat)}
-                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-300 mt-4 mb-2 hover:text-gray-200 transition-colors"
+                      className="w-full flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
                     >
                       <span>{CATEGORY_LABELS[cat]}</span>
                       <span className="text-gray-500 text-lg">{isOpen ? '−' : '+'}</span>

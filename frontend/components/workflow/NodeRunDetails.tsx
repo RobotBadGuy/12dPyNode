@@ -28,10 +28,10 @@ export function NodeRunDetails({ nodeId, fileDetails, sessionId }: NodeRunDetail
   const failed = events.filter((e) => e.status === 'error').length;
 
   return (
-    <div className="border-b border-gray-700/50 px-4 py-3 bg-gray-900/40">
+    <div className="border-b border-gray-200 dark:border-gray-700/50 px-4 py-3 bg-white/40 dark:bg-gray-900/40">
       <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-semibold text-white">Run Details</h4>
-        <div className="text-xs text-gray-400">
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Run Details</h4>
+        <div className="text-xs text-gray-600 dark:text-gray-400">
           {succeeded} ✓
           {failed > 0 && <span className="text-rose-400 ml-2">{failed} ✗</span>}
         </div>
@@ -87,23 +87,23 @@ function ModelRow({ model, status, error, nodeId, sessionId }: ModelRowProps) {
   const isError = status === 'error';
 
   return (
-    <li className="rounded border border-gray-700/40 bg-gray-800/40">
+    <li className="rounded border border-gray-200 dark:border-gray-700/40 bg-gray-200/60 dark:bg-gray-800/40">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-gray-800/60 transition-colors"
+        className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-gray-200/60 dark:hover:bg-gray-800/60 transition-colors"
       >
         {expanded ? (
-          <ChevronDown className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          <ChevronDown className="w-3 h-3 text-gray-600 dark:text-gray-400 flex-shrink-0" />
         ) : (
-          <ChevronRight className="w-3 h-3 text-gray-400 flex-shrink-0" />
+          <ChevronRight className="w-3 h-3 text-gray-600 dark:text-gray-400 flex-shrink-0" />
         )}
         {isError ? (
           <XCircle className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" />
         ) : (
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
         )}
-        <span className="text-xs text-gray-200 truncate flex-1">{model}</span>
+        <span className="text-xs text-gray-800 dark:text-gray-200 truncate flex-1">{model}</span>
       </button>
 
       {expanded && (
@@ -126,13 +126,13 @@ function ModelRow({ model, status, error, nodeId, sessionId }: ModelRowProps) {
                 </button>
               )}
               {xmlState.kind === 'loading' && (
-                <span className="text-xs text-gray-400 inline-flex items-center gap-1">
+                <span className="text-xs text-gray-600 dark:text-gray-400 inline-flex items-center gap-1">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   Loading…
                 </span>
               )}
               {xmlState.kind === 'loaded' && (
-                <pre className="text-[10px] font-mono text-gray-200 bg-gray-950/70 border border-gray-700 rounded p-2 max-h-48 overflow-auto whitespace-pre">
+                <pre className="text-[10px] font-mono text-gray-800 dark:text-gray-200 bg-white/70 dark:bg-gray-950/70 border border-gray-200 dark:border-gray-700 rounded p-2 max-h-48 overflow-auto whitespace-pre">
                   {xmlState.text || '(no XML emitted by this node)'}
                 </pre>
               )}

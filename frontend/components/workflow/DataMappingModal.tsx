@@ -496,7 +496,7 @@ export function DataMappingModal({
             case 'number': return <Hash className="w-4 h-4 text-purple-400" />;
             case 'array': return <List className="w-4 h-4 text-orange-400" />;
             case 'object': return <Brackets className="w-4 h-4 text-green-400" />;
-            default: return <Database className="w-4 h-4 text-slate-400" />;
+            default: return <Database className="w-4 h-4 text-slate-600 dark:text-slate-400" />;
         }
     };
 
@@ -514,17 +514,17 @@ export function DataMappingModal({
                 />
 
                 {/* Modal */}
-                <div className="relative bg-[#0f111a] rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col border border-slate-700/50 overflow-hidden ring-1 ring-white/10">
+                <div className="relative bg-[#0f111a] rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col border border-slate-300 dark:border-slate-700/50 overflow-hidden ring-1 ring-white/10">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/50 bg-[#161b2e]">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-slate-300 dark:border-slate-700/50 bg-[#161b2e]">
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded bg-blue-500/10 border border-blue-500/20">
                                 <Layers className="w-5 h-5 text-blue-400" />
                             </div>
                             <div>
-                                <h2 className="text-lg text-white font-semibold tracking-tight">Configure Node</h2>
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <span className="font-mono text-slate-300">{targetNode.id}</span>
+                                <h2 className="text-lg text-gray-900 dark:text-white font-semibold tracking-tight">Configure Node</h2>
+                                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                                    <span className="font-mono text-slate-600 dark:text-slate-300">{targetNode.id}</span>
                                     <span>•</span>
                                     <span>{nodeSchemas[targetNode.type]?.parameters.length || 0} Parameters</span>
                                 </div>
@@ -532,18 +532,18 @@ export function DataMappingModal({
                         </div>
                         <button
                             onClick={onClose}
-                            className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700/50 rounded-lg"
+                            className="text-slate-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors p-2 hover:bg-slate-200/60 dark:hover:bg-slate-700/50 rounded-lg"
                         >
                             <X className="w-5 h-5" />
                         </button>
                     </div>
 
                     {/* Body */}
-                    <div className="flex-1 flex overflow-hidden text-slate-200">
+                    <div className="flex-1 flex overflow-hidden text-slate-800 dark:text-slate-200">
                         {/* Left Panel - Source Data (Input) */}
-                        <div className="w-1/4 border-r border-slate-700/50 flex flex-col bg-[#111420]">
-                            <div className="px-4 py-3 border-b border-slate-700/30 bg-[#161b2e]/50">
-                                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <div className="w-1/4 border-r border-slate-300 dark:border-slate-700/50 flex flex-col bg-[#111420]">
+                            <div className="px-4 py-3 border-b border-slate-300 dark:border-slate-700/30 bg-[#161b2e]/50">
+                                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 flex items-center gap-2">
                                     <Database className="w-4 h-4 text-emerald-400" />
                                     Input Data
                                 </h3>
@@ -570,7 +570,7 @@ export function DataMappingModal({
                                             <div key={node.id} className="space-y-1.5">
                                                 <button
                                                     onClick={() => toggleGroup(node.id)}
-                                                    className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-slate-800/50 transition-colors group"
+                                                    className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-slate-200/60 dark:hover:bg-slate-800/50 transition-colors group"
                                                 >
                                                     <div className="flex items-center gap-1.5 min-w-0">
                                                         {isExpanded
@@ -595,8 +595,8 @@ export function DataMappingModal({
 
                         {/* Center Panel - Target Parameters */}
                         <div className="w-2/4 flex flex-col bg-[#0f111a]">
-                            <div className="px-5 py-3 border-b border-slate-700/30 bg-[#161b2e]/50">
-                                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <div className="px-5 py-3 border-b border-slate-300 dark:border-slate-700/30 bg-[#161b2e]/50">
+                                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 flex items-center gap-2">
                                     <List className="w-4 h-4 text-blue-400" />
                                     Parameters
                                 </h3>
@@ -613,8 +613,8 @@ export function DataMappingModal({
                                     const selectedColumnIndex: number = excelData.selectedColumnIndex ?? 0;
                                     if (availableColumns.length <= 1) return null;
                                     return (
-                                        <div className="mb-6 p-4 rounded-lg bg-slate-800/40 border border-slate-700/50">
-                                            <label className="text-sm font-medium text-slate-300 mb-2 block">Read From Column</label>
+                                        <div className="mb-6 p-4 rounded-lg bg-slate-200/60 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50">
+                                            <label className="text-sm font-medium text-slate-600 dark:text-slate-300 mb-2 block">Read From Column</label>
                                             <select
                                                 value={selectedColumnIndex}
                                                 onChange={(e) => {
@@ -623,11 +623,11 @@ export function DataMappingModal({
                                                         onExcelColumnChange(nodeId, newIndex);
                                                     }
                                                 }}
-                                                className="w-full h-10 px-3 rounded-lg bg-slate-900/50 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
+                                                className="w-full h-10 px-3 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all appearance-none cursor-pointer"
                                                 style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
                                             >
                                                 {availableColumns.map((col, idx) => (
-                                                    <option key={idx} value={idx} className="bg-slate-900 text-white">
+                                                    <option key={idx} value={idx} className="bg-white dark:bg-slate-900 text-gray-900 dark:text-white">
                                                         Column {columnLabel(idx)}: {col}
                                                     </option>
                                                 ))}
@@ -650,7 +650,7 @@ export function DataMappingModal({
                                     ))}
 
                                     {targetParams.length === 0 && (
-                                        <div className="text-center py-10 border-2 border-dashed border-slate-800 rounded-lg">
+                                        <div className="text-center py-10 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-lg">
                                             <p className="text-slate-500">This node has no configurable parameters.</p>
                                         </div>
                                     )}
@@ -659,9 +659,9 @@ export function DataMappingModal({
                         </div>
 
                         {/* Right Panel - Output Data */}
-                        <div className="w-1/4 border-l border-slate-700/50 flex flex-col bg-[#111420]">
-                            <div className="px-4 py-3 border-b border-slate-700/30 bg-[#161b2e]/50">
-                                <h3 className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                        <div className="w-1/4 border-l border-slate-300 dark:border-slate-700/50 flex flex-col bg-[#111420]">
+                            <div className="px-4 py-3 border-b border-slate-300 dark:border-slate-700/30 bg-[#161b2e]/50">
+                                <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300 flex items-center gap-2">
                                     <ArrowRightFromLine className="w-4 h-4 text-violet-400" />
                                     Output Data
                                 </h3>
@@ -688,13 +688,13 @@ export function DataMappingModal({
                                                     .map(item => (
                                                         <div
                                                             key={item.id}
-                                                            className="flex flex-col gap-1 px-3 py-2.5 rounded-lg bg-slate-800/40 border border-slate-700/50"
+                                                            className="flex flex-col gap-1 px-3 py-2.5 rounded-lg bg-slate-200/60 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50"
                                                         >
                                                             <div className="flex items-center gap-2">
                                                                 <div className="p-1 rounded bg-violet-500/10 border border-violet-500/20">
                                                                     <ArrowRightFromLine className="w-3 h-3 text-violet-400" />
                                                                 </div>
-                                                                <span className="text-slate-200 text-sm font-medium truncate">{item.label}</span>
+                                                                <span className="text-slate-800 dark:text-slate-200 text-sm font-medium truncate">{item.label}</span>
                                                             </div>
                                                             <span className="text-[10px] text-violet-300/60 font-mono truncate pl-7">{item.value}</span>
                                                         </div>
@@ -705,7 +705,7 @@ export function DataMappingModal({
                                         {/* Parameter Preview */}
                                         {outputData.filter(d => d.type === 'parameter').length > 0 && (
                                             <div className="space-y-1.5">
-                                                <p className="text-xs font-semibold text-slate-400/80 uppercase tracking-wider px-2 mt-2">
+                                                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400/80 uppercase tracking-wider px-2 mt-2">
                                                     Parameters
                                                 </p>
                                                 {outputData
@@ -713,10 +713,10 @@ export function DataMappingModal({
                                                     .map(item => (
                                                         <div
                                                             key={item.id}
-                                                            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg bg-slate-800/30 border border-slate-700/30"
+                                                            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg bg-slate-200/60 dark:bg-slate-800/30 border border-slate-300 dark:border-slate-700/30"
                                                         >
-                                                            <span className="text-xs text-slate-400 font-medium">{item.label}</span>
-                                                            <span className="text-xs text-slate-300 font-mono truncate">
+                                                            <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">{item.label}</span>
+                                                            <span className="text-xs text-slate-600 dark:text-slate-300 font-mono truncate">
                                                                 {item.value || <span className="text-slate-600 italic">empty</span>}
                                                             </span>
                                                         </div>
@@ -730,10 +730,10 @@ export function DataMappingModal({
                     </div>
 
                     {/* Footer */}
-                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-700/50 bg-[#161b2e]">
+                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-300 dark:border-slate-700/50 bg-[#161b2e]">
                         <button
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors text-sm font-medium"
+                            className="px-4 py-2 rounded-lg text-slate-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50 transition-colors text-sm font-medium"
                         >
                             Cancel
                         </button>
@@ -750,8 +750,8 @@ export function DataMappingModal({
             <DragOverlay>
                 {activeItem ? (
                     <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#2a3044] border border-blue-500/50 shadow-2xl scale-105 cursor-grabbing ring-2 ring-blue-500/30 z-[60]">
-                        <GripVertical className="w-4 h-4 text-slate-400" />
-                        <span className="text-white text-sm font-medium">{activeItem.label}</span>
+                        <GripVertical className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                        <span className="text-gray-900 dark:text-white text-sm font-medium">{activeItem.label}</span>
                     </div>
                 ) : null}
             </DragOverlay>
@@ -772,17 +772,17 @@ function SourceVariableItem({ item, icon }: { item: DataItem, icon: React.ReactN
             {...attributes}
             className={cn(
                 "flex items-center gap-3 px-3 py-3 rounded-lg cursor-grab group",
-                "bg-slate-800/40 border border-slate-700/50 hover:border-slate-600 transition-all",
-                "hover:bg-slate-800 hover:shadow-md",
+                "bg-slate-200/60 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600 transition-all",
+                "hover:bg-slate-200 dark:hover:bg-slate-800 hover:shadow-md",
                 isDragging ? "opacity-40 grayscale" : "opacity-100"
             )}
         >
-            <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" />
-            <div className="p-1.5 rounded bg-slate-900/50 border border-slate-700/50 group-hover:border-slate-600 transition-colors">
+            <GripVertical className="w-4 h-4 text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors" />
+            <div className="p-1.5 rounded bg-white/80 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700/50 group-hover:border-slate-400 dark:group-hover:border-slate-600 transition-colors">
                 {icon}
             </div>
             <div className="flex flex-col min-w-0">
-                <span className="text-slate-200 text-sm font-medium truncate">{item.label}</span>
+                <span className="text-slate-800 dark:text-slate-200 text-sm font-medium truncate">{item.label}</span>
                 <span className="text-[10px] text-slate-500 font-mono truncate max-w-[150px]">{item.token}</span>
             </div>
         </div>
@@ -808,14 +808,14 @@ function DroppableParameter({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-300 pl-1">{param.label}</label>
+                <label className="text-sm font-medium text-slate-600 dark:text-slate-300 pl-1">{param.label}</label>
                 <div className="flex items-center gap-2">
                     {hasTokens && (
-                        <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                        <span className="text-[10px] text-blue-600 dark:text-blue-400 flex items-center gap-1">
                             <Brackets className="w-3 h-3" /> Expresion
                         </span>
                     )}
-                    <span className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider bg-slate-800/50 px-2 py-0.5 rounded border border-slate-700/50">
+                    <span className="text-[10px] uppercase text-slate-500 font-semibold tracking-wider bg-slate-200/60 dark:bg-slate-800/50 px-2 py-0.5 rounded border border-slate-300 dark:border-slate-700/50">
                         {param.type}
                     </span>
                 </div>
@@ -834,10 +834,10 @@ function DroppableParameter({
                         value={param.currentValue}
                         onChange={(e) => onValueChange(e.target.value)}
                         className={cn(
-                            "w-full h-12 px-4 rounded-lg bg-slate-900/50 border border-slate-700 text-sm text-white placeholder-slate-600 transition-all font-mono",
+                            "w-full h-12 px-4 rounded-lg bg-white/80 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 text-sm text-gray-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-600 transition-all font-mono",
                             "focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50",
-                            "group-hover:border-slate-600",
-                            hasTokens ? "text-blue-300" : ""
+                            "group-hover:border-slate-400 dark:group-hover:border-slate-600",
+                            hasTokens ? "text-blue-700 dark:text-blue-300" : ""
                         )}
                         placeholder="Enter value or drop variable..."
                     />

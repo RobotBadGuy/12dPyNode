@@ -105,7 +105,7 @@ export function SaveTemplateModal({
         onClick={onClose}
       >
         <div
-          className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border-2 border-blue-500/50 p-8 max-w-md w-full animate-in fade-in zoom-in duration-300"
+          className="bg-gradient-to-br from-white via-gray-100 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-2xl shadow-2xl border-2 border-blue-500/50 p-8 max-w-md w-full animate-in fade-in zoom-in duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Icon */}
@@ -119,12 +119,12 @@ export function SaveTemplateModal({
           </div>
 
           {/* Title */}
-          <h2 className="text-3xl font-bold text-center text-white mb-2">
+          <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">
             💾 Save Template
           </h2>
 
           {/* Description */}
-          <p className="text-center text-gray-300 mb-6">
+          <p className="text-center text-gray-700 dark:text-gray-300 mb-6">
             {loadedTemplate
               ? <>Save changes to <span className="text-blue-300 font-semibold">{loadedTemplate.name}</span> or fork it as a new template.</>
               : 'Give your workflow template a memorable name'}
@@ -132,11 +132,11 @@ export function SaveTemplateModal({
 
           {/* Input */}
           <div className="space-y-2 mb-4">
-            <Label htmlFor="template-name" className="text-sm font-semibold text-gray-300">
+            <Label htmlFor="template-name" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Template Name
             </Label>
             <div className="relative">
-              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600 dark:text-gray-400" />
               <Input
                 id="template-name"
                 value={templateName}
@@ -146,7 +146,7 @@ export function SaveTemplateModal({
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="My Awesome Workflow"
-                className="bg-gray-800 border-gray-700 text-white text-base h-12 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-base h-12 pl-10 pr-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 autoFocus
               />
             </div>
@@ -160,7 +160,7 @@ export function SaveTemplateModal({
 
           {/* Optional commit message — surfaces as the version's note in history */}
           <div className="space-y-2 mb-4">
-            <Label htmlFor="template-note" className="text-sm font-semibold text-gray-300">
+            <Label htmlFor="template-note" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Note <span className="text-gray-500 font-normal">(optional)</span>
             </Label>
             <textarea
@@ -170,7 +170,7 @@ export function SaveTemplateModal({
               onKeyDown={handleKeyDown}
               placeholder="What changed in this version?"
               rows={2}
-              className="w-full px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none"
+              className="w-full px-3 py-2 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-sm placeholder:text-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 resize-none"
             />
           </div>
 
@@ -189,7 +189,7 @@ export function SaveTemplateModal({
             <Button
               onClick={onClose}
               variant="outline"
-              className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+              className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel

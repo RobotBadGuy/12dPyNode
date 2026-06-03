@@ -178,11 +178,11 @@ export function LoadTemplateModal({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <FolderOpen className="w-6 h-6 text-blue-400" />
-            <h2 className="text-2xl font-bold text-white">Load Template</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Load Template</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -191,12 +191,12 @@ export function LoadTemplateModal({
 
         <div className="flex-1 overflow-y-auto -mx-2 px-2">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12 text-gray-400">
+            <div className="flex items-center justify-center py-12 text-gray-600 dark:text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               Loading templates…
             </div>
           ) : templates.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
+            <div className="text-center py-12 text-gray-600 dark:text-gray-400">
               <FileText className="w-10 h-10 mx-auto mb-3 opacity-50" />
               <p>No templates saved yet.</p>
               <p className="text-sm mt-1">
@@ -213,12 +213,12 @@ export function LoadTemplateModal({
                 return (
                   <li
                     key={template.id}
-                    className="group bg-gray-800/60 hover:bg-gray-800 border border-gray-700 rounded-lg p-3 transition-colors"
+                    className="group bg-gray-200/60 dark:bg-gray-800/60 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="text-white font-semibold truncate">{template.name}</div>
-                        <div className="text-xs text-gray-400 mt-0.5">
+                        <div className="text-gray-900 dark:text-white font-semibold truncate">{template.name}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                           Updated {formatRelative(template.updatedAt)} ·{' '}
                           {template.nodes?.length ?? 0} node
                           {(template.nodes?.length ?? 0) !== 1 ? 's' : ''}
@@ -230,7 +230,7 @@ export function LoadTemplateModal({
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                             onClick={() => setPendingDeleteId(null)}
                             disabled={isDeleting}
                           >
@@ -263,7 +263,7 @@ export function LoadTemplateModal({
                             className={`p-2 transition-colors ${
                               isHistoryOpen
                                 ? 'text-blue-300'
-                                : 'text-gray-400 hover:text-blue-300'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-blue-300'
                             }`}
                             aria-label={`${isHistoryOpen ? 'Hide' : 'Show'} version history of ${template.name}`}
                             title="Version history"
@@ -276,7 +276,7 @@ export function LoadTemplateModal({
                           </button>
                           <button
                             onClick={() => setPendingDeleteId(template.id)}
-                            className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-red-400 transition-colors"
                             aria-label={`Delete ${template.name}`}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -288,7 +288,7 @@ export function LoadTemplateModal({
                     {isHistoryOpen && (
                       <div className="mt-3 pl-3 border-l-2 border-blue-500/30 space-y-1">
                         {historyState.loading ? (
-                          <div className="flex items-center text-xs text-gray-400 py-2">
+                          <div className="flex items-center text-xs text-gray-600 dark:text-gray-400 py-2">
                             <Loader2 className="w-3 h-3 animate-spin mr-2" />
                             Loading history…
                           </div>
@@ -307,23 +307,23 @@ export function LoadTemplateModal({
                                 className="flex items-start justify-between gap-2 py-1.5 text-xs"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <div className="text-gray-200">
+                                  <div className="text-gray-800 dark:text-gray-200">
                                     <span className="text-blue-300 font-mono">
                                       v{version.versionNumber}
                                     </span>
                                     <span className="text-gray-500"> · </span>
-                                    <span className="text-gray-400">
+                                    <span className="text-gray-600 dark:text-gray-400">
                                       {formatRelative(version.createdAt)}
                                     </span>
                                     {version.author && (
                                       <>
                                         <span className="text-gray-500"> · </span>
-                                        <span className="text-gray-400">{version.author}</span>
+                                        <span className="text-gray-600 dark:text-gray-400">{version.author}</span>
                                       </>
                                     )}
                                   </div>
                                   {version.message && (
-                                    <div className="text-gray-400 mt-0.5 truncate">
+                                    <div className="text-gray-600 dark:text-gray-400 mt-0.5 truncate">
                                       {version.message}
                                     </div>
                                   )}

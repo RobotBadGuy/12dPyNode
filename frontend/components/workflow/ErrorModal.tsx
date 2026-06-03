@@ -32,7 +32,7 @@ export function ErrorModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl shadow-2xl border-2 border-red-500/50 p-8 max-w-md w-full animate-in fade-in zoom-in duration-300">
+      <div className="bg-gradient-to-br from-white via-gray-100 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 rounded-2xl shadow-2xl border-2 border-red-500/50 p-8 max-w-md w-full animate-in fade-in zoom-in duration-300">
         <div className="flex justify-center mb-6">
           <div className="relative">
             <div className="absolute inset-0 bg-red-500/20 rounded-full animate-ping" />
@@ -42,11 +42,11 @@ export function ErrorModal({
           </div>
         </div>
 
-        <h2 className="text-3xl font-bold text-center text-white mb-2">
+        <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-2">
           {isExcelError ? '📊 Oops!' : '⚠️ Error'}
         </h2>
 
-        <p className="text-center text-gray-300 mb-6 leading-relaxed">
+        <p className="text-center text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
           {message}
         </p>
 
@@ -80,7 +80,7 @@ export function ErrorModal({
           <Button
             onClick={onClose}
             variant="outline"
-            className="flex-1 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+            className="flex-1 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
           >
             <X className="w-4 h-4 mr-2" />
             Close

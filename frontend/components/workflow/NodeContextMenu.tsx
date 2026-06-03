@@ -66,13 +66,13 @@ export function NodeContextMenu({
   };
 
   const itemClass =
-    'w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-200 hover:bg-gray-800 transition-colors';
+    'w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors';
 
   return (
     <div
       ref={ref}
       role="menu"
-      className="fixed z-50 py-1 rounded-md border border-gray-700/50 bg-gray-900/95 backdrop-blur-xl shadow-xl"
+      className="fixed z-50 py-1 rounded-md border border-gray-200 dark:border-gray-700/50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-xl"
       style={{ left, top, width: MENU_WIDTH }}
     >
       <button type="button" role="menuitem" className={itemClass} onClick={run(onDuplicate)}>
@@ -92,11 +92,11 @@ export function NodeContextMenu({
           <FileCode2 className="w-4 h-4" /> Show generated XML
         </button>
       )}
-      <div className="my-1 border-t border-gray-700/50" />
+      <div className="my-1 border-t border-gray-200 dark:border-gray-700/50" />
       <button
         type="button"
         role="menuitem"
-        className={`${itemClass} text-rose-300 hover:bg-rose-500/10`}
+        className={`${itemClass} text-rose-600 dark:text-rose-300 hover:bg-rose-500/10`}
         onClick={run(onDelete)}
       >
         <Trash2 className="w-4 h-4" /> Delete

@@ -129,15 +129,15 @@ export function ChainPreviewModal({
       <div
         ref={containerRef}
         tabIndex={-1}
-        className="w-full max-w-3xl mx-4 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] focus:outline-none"
+        className="w-full max-w-3xl mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700/50">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700/50">
           <div className="flex items-center gap-2 min-w-0">
             <FileCode2 className="w-5 h-5 text-emerald-400 shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-white truncate">{title}</h2>
-              {subtitle && <p className="text-xs text-gray-400 truncate">{subtitle}</p>}
+              <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">{title}</h2>
+              {subtitle && <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{subtitle}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -145,7 +145,7 @@ export function ChainPreviewModal({
               type="button"
               onClick={handleCopy}
               disabled={!hasText}
-              className="flex items-center gap-1 text-xs text-gray-300 hover:text-white disabled:opacity-40 px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-40 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               title="Copy to clipboard"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
@@ -155,7 +155,7 @@ export function ChainPreviewModal({
               type="button"
               onClick={handleDownload}
               disabled={!hasText}
-              className="flex items-center gap-1 text-xs text-gray-300 hover:text-white disabled:opacity-40 px-2 py-1 rounded hover:bg-gray-800 transition-colors"
+              className="flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white disabled:opacity-40 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               title="Download"
             >
               <Download className="w-4 h-4" />
@@ -165,7 +165,7 @@ export function ChainPreviewModal({
               type="button"
               onClick={onClose}
               aria-label="Close preview"
-              className="text-gray-400 hover:text-white transition-colors ml-1"
+              className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors ml-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -174,7 +174,7 @@ export function ChainPreviewModal({
 
         <div className="overflow-auto p-4">
           {state.kind === 'loading' && (
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-400 py-10">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400 py-10">
               <Loader2 className="w-4 h-4 animate-spin" /> Loading…
             </div>
           )}
@@ -182,7 +182,7 @@ export function ChainPreviewModal({
             <p className="text-sm text-rose-300 py-10 text-center">{state.message}</p>
           )}
           {state.kind === 'loaded' && (
-            <pre className="text-[11px] font-mono text-gray-200 whitespace-pre overflow-auto">
+            <pre className="text-[11px] font-mono text-gray-800 dark:text-gray-200 whitespace-pre overflow-auto">
               {text || '(no content)'}
             </pre>
           )}

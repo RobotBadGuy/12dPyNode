@@ -41,10 +41,10 @@ export function TopBar({
   currentPage = 'editor',
 }: TopBarProps) {
   return (
-    <div className="h-16 bg-gray-900/95 backdrop-blur-xl border-b border-gray-700/50 flex items-center justify-between px-6 shadow-lg">
+    <div className="h-16 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200 dark:border-gray-700/50 flex items-center justify-between px-6 shadow-lg">
       <div className="flex items-center gap-4">
         <h1
-          className="text-xl font-bold text-white cursor-pointer"
+          className="text-xl font-bold text-gray-900 dark:text-white cursor-pointer"
           onClick={() => onNavigate?.('landing')}
         >
           12d Pynode.{' '}
@@ -58,7 +58,7 @@ export function TopBar({
             onClick={() => onNavigate?.('landing')}
             variant="ghost"
             size="sm"
-            className={`text-gray-300 hover:bg-gray-800/50 ${currentPage === 'landing' ? 'bg-gray-800/70 text-white' : ''}`}
+            className={`text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50 ${currentPage === 'landing' ? 'bg-gray-200/70 dark:bg-gray-800/70 text-gray-900 dark:text-white' : ''}`}
             title="Home"
           >
             <Home className="w-4 h-4 mr-1.5" />
@@ -68,7 +68,7 @@ export function TopBar({
             onClick={() => onNavigate?.('runs')}
             variant="ghost"
             size="sm"
-            className={`text-gray-300 hover:bg-gray-800/50 ${currentPage === 'runs' ? 'bg-gray-800/70 text-white' : ''}`}
+            className={`text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50 ${currentPage === 'runs' ? 'bg-gray-200/70 dark:bg-gray-800/70 text-gray-900 dark:text-white' : ''}`}
             title="Run history"
           >
             <History className="w-4 h-4 mr-1.5" />
@@ -78,7 +78,7 @@ export function TopBar({
             onClick={() => onNavigate?.('profile')}
             variant="ghost"
             size="sm"
-            className={`text-gray-300 hover:bg-gray-800/50 ${currentPage === 'profile' ? 'bg-gray-800/70 text-white' : ''}`}
+            className={`text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50 ${currentPage === 'profile' ? 'bg-gray-200/70 dark:bg-gray-800/70 text-gray-900 dark:text-white' : ''}`}
             title="Profile"
           >
             <User className="w-4 h-4 mr-1.5" />
@@ -96,7 +96,7 @@ export function TopBar({
             disabled={!canUndo}
             variant="outline"
             size="sm"
-            className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+            className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
             title="Undo (Ctrl+Z)"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
@@ -107,7 +107,7 @@ export function TopBar({
             disabled={!canRedo}
             variant="outline"
             size="sm"
-            className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+            className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
             title="Redo (Ctrl+Y)"
           >
             <RotateCw className="w-4 h-4 mr-2" />
@@ -117,7 +117,7 @@ export function TopBar({
             onClick={onImportTemplate}
             variant="outline"
             size="sm"
-            className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+            className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
           >
             <Upload className="w-4 h-4 mr-2" />
             Import
@@ -126,7 +126,7 @@ export function TopBar({
             onClick={onExportTemplate}
             variant="outline"
             size="sm"
-            className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+            className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
           >
             <Download className="w-4 h-4 mr-2" />
             Export
@@ -135,7 +135,7 @@ export function TopBar({
             onClick={onLoadTemplate}
             variant="outline"
             size="sm"
-            className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+            className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
           >
             <FolderOpen className="w-4 h-4 mr-2" />
             Load
@@ -144,7 +144,7 @@ export function TopBar({
             onClick={onSaveTemplate}
             variant="outline"
             size="sm"
-            className="border-gray-600/50 text-gray-300 hover:bg-gray-800/50"
+            className="border-gray-300 dark:border-gray-600/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50"
           >
             <Save className="w-4 h-4 mr-2" />
             Save Template
@@ -154,7 +154,7 @@ export function TopBar({
               onClick={onStartTour}
               variant="ghost"
               size="sm"
-              className="text-gray-300 hover:bg-gray-800/50 px-2"
+              className="text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50 px-2"
               title="Take the onboarding tour"
               aria-label="Take the onboarding tour"
             >
@@ -165,7 +165,7 @@ export function TopBar({
             onClick={onShowShortcuts}
             variant="ghost"
             size="sm"
-            className="text-gray-300 hover:bg-gray-800/50 px-2"
+            className="text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800/50 px-2"
             title="Keyboard shortcuts (?)"
             aria-label="Show keyboard shortcuts"
           >

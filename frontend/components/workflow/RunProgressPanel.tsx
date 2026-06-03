@@ -40,18 +40,18 @@ export function RunProgressPanel({
     : excelLabel;
 
   return (
-    <div className="fixed bottom-4 right-4 z-30 w-96 max-w-[calc(100vw-2rem)] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-30 w-96 max-w-[calc(100vw-2rem)] bg-gradient-to-br from-white via-gray-100 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden">
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-800/50 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-200/60 dark:hover:bg-gray-800/50 transition-colors"
         aria-expanded={!collapsed}
       >
         <div className="flex items-center gap-2 min-w-0">
           <Loader2 className="w-4 h-4 text-blue-400 animate-spin flex-shrink-0" />
           <div className="text-left min-w-0">
-            <div className="text-sm font-semibold text-white truncate">{headerLabel}</div>
-            <div className="text-xs text-gray-400">
+            <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{headerLabel}</div>
+            <div className="text-xs text-gray-600 dark:text-gray-400">
               {completed} / {total} models
               {failed > 0 && (
                 <span className="text-rose-400 ml-1">· {failed} failed</span>
@@ -60,14 +60,14 @@ export function RunProgressPanel({
           </div>
         </div>
         {collapsed ? (
-          <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <ChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400 flex-shrink-0" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <ChevronDown className="w-4 h-4 text-gray-600 dark:text-gray-400 flex-shrink-0" />
         )}
       </button>
 
       <div
-        className="h-1 bg-gray-800 overflow-hidden"
+        className="h-1 bg-gray-100 dark:bg-gray-800 overflow-hidden"
         role="progressbar"
         aria-valuenow={percent}
         aria-valuemin={0}
@@ -90,7 +90,7 @@ export function RunProgressPanel({
               >
                 <RowIcon status={row.status} inProgress={isInProgress} />
                 <div className="min-w-0 flex-1">
-                  <div className="text-gray-200 truncate">{row.model ?? '(unknown)'}</div>
+                  <div className="text-gray-800 dark:text-gray-200 truncate">{row.model ?? '(unknown)'}</div>
                   {row.status === 'error' && row.error && (
                     <div className="text-xs font-mono text-rose-300 break-all mt-0.5">
                       {row.error}
@@ -104,7 +104,7 @@ export function RunProgressPanel({
       )}
 
       {!collapsed && total > 0 && (
-        <div className="px-4 py-2 border-t border-gray-700/50 text-xs text-gray-400 flex justify-between">
+        <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700/50 text-xs text-gray-600 dark:text-gray-400 flex justify-between">
           <span>{succeeded} succeeded</span>
           <span>{total - completed} queued</span>
         </div>

@@ -114,22 +114,22 @@ export function ExcelColumnPickerModal({
       aria-label="Pick model column"
     >
       <div
-        className="w-full max-w-3xl mx-4 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+        className="w-full max-w-3xl mx-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700/50">
           <div className="flex items-center gap-2 min-w-0">
             <Table2 className="w-5 h-5 text-emerald-400 shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-white">Pick model column</h2>
-              {fileName && <p className="text-xs text-gray-400 truncate">{fileName}</p>}
+              <h2 className="text-base font-bold text-gray-900 dark:text-white">Pick model column</h2>
+              {fileName && <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{fileName}</p>}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close column picker"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -137,7 +137,7 @@ export function ExcelColumnPickerModal({
 
         <div className="px-5 py-4 overflow-auto">
           {loading && (
-            <div className="flex items-center gap-2 text-sm text-gray-400 py-8 justify-center">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 py-8 justify-center">
               <Loader2 className="w-4 h-4 animate-spin" /> Reading spreadsheet…
             </div>
           )}
@@ -145,31 +145,31 @@ export function ExcelColumnPickerModal({
             <p className="text-sm text-rose-300 py-8 text-center">{error}</p>
           )}
           {!loading && !error && rows && headers.length === 0 && (
-            <p className="text-sm text-gray-400 py-8 text-center">This sheet appears to be empty.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 py-8 text-center">This sheet appears to be empty.</p>
           )}
           {!loading && !error && rows && headers.length > 0 && (
             <>
-              <p className="text-xs text-gray-400 mb-2">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                 Click a column header to use it for model names.
               </p>
-              <div className="overflow-x-auto rounded-md border border-gray-700/50">
+              <div className="overflow-x-auto rounded-md border border-gray-200 dark:border-gray-700/50">
                 <table className="text-[11px] border-collapse w-full">
                   <thead>
                     <tr>
-                      <th className="px-2 py-1.5 text-gray-500 font-medium border-b border-gray-700/50 sticky left-0 bg-gray-900">
+                      <th className="px-2 py-1.5 text-gray-500 font-medium border-b border-gray-200 dark:border-gray-700/50 sticky left-0 bg-white dark:bg-gray-900">
                         #
                       </th>
                       {headers.map((h, i) => {
                         const isSel = i === pending;
                         return (
-                          <th key={i} className="border-b border-gray-700/50 p-0">
+                          <th key={i} className="border-b border-gray-200 dark:border-gray-700/50 p-0">
                             <button
                               type="button"
                               onClick={() => setPending(i)}
                               className={`w-full h-full px-3 py-1.5 text-left transition-colors ${
                                 isSel
                                   ? 'bg-emerald-500/20 text-emerald-200'
-                                  : 'text-gray-300 hover:bg-gray-800'
+                                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                               }`}
                               title={`Use column ${columnLabel(i)}${h ? ` (${h})` : ''}`}
                             >
@@ -191,10 +191,10 @@ export function ExcelColumnPickerModal({
                       return (
                         <tr
                           key={r}
-                          className={skipped ? 'opacity-50' : 'hover:bg-gray-800/40'}
+                          className={skipped ? 'opacity-50' : 'hover:bg-gray-200/60 dark:hover:bg-gray-800/40'}
                         >
                           <td
-                            className={`px-2 py-1 text-right tabular-nums border-b border-gray-800/60 sticky left-0 bg-gray-900 ${
+                            className={`px-2 py-1 text-right tabular-nums border-b border-gray-200 dark:border-gray-800/60 sticky left-0 bg-white dark:bg-gray-900 ${
                               skipped ? 'text-amber-300/70' : 'text-gray-500'
                             }`}
                             title={skipped ? 'Header row — skipped' : undefined}
@@ -204,10 +204,10 @@ export function ExcelColumnPickerModal({
                           {headers.map((_, i) => (
                             <td
                               key={i}
-                              className={`px-3 py-1 border-b border-gray-800/60 truncate max-w-[200px] ${
+                              className={`px-3 py-1 border-b border-gray-200 dark:border-gray-800/60 truncate max-w-[200px] ${
                                 i === pending
                                   ? 'bg-emerald-500/10 text-emerald-100'
-                                  : 'text-gray-300'
+                                  : 'text-gray-700 dark:text-gray-300'
                               } ${skipped ? 'line-through' : ''}`}
                             >
                               {row[i] ?? ''}
@@ -228,13 +228,13 @@ export function ExcelColumnPickerModal({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-gray-700/50">
-          <p className="text-sm text-gray-300">
+        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700/50">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             {rows && headers.length > 0 ? (
               <>
                 <span className="text-emerald-300 font-semibold">{modelCount}</span> model
                 {modelCount === 1 ? '' : 's'} from{' '}
-                <span className="text-gray-100">&ldquo;{selectedLabel}&rdquo;</span>
+                <span className="text-gray-800 dark:text-gray-100">&ldquo;{selectedLabel}&rdquo;</span>
               </>
             ) : (
               <span className="text-gray-500">&nbsp;</span>
@@ -244,7 +244,7 @@ export function ExcelColumnPickerModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-3 py-1.5 rounded-md text-sm text-gray-300 hover:bg-gray-800 transition-colors"
+              className="px-3 py-1.5 rounded-md text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
