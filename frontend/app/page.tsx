@@ -1684,7 +1684,7 @@ export default function WorkspacePage() {
 
   return (
     <ReactFlowProvider>
-      <div className="h-screen w-screen flex flex-col bg-gray-900">
+      <div className="h-screen w-screen flex flex-col bg-white dark:bg-gray-900">
         <TopBar
           onRunChain={handleRunChain}
           onSaveTemplate={handleSaveTemplate}
