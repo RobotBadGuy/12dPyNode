@@ -32,6 +32,8 @@ import { ActionableError, nodeLabel } from '@/lib/workflow/errors';
 import { focusNode } from '@/lib/workflow/focusNode';
 import { runWorkflow, getWorkflowStatus, getWorkflowDownloadUrl, getNodeXml } from '@/lib/workflow/run';
 import { ChainPreviewModal } from '@/components/workflow/ChainPreviewModal';
+import { parseChainXml, chainToGraph, type ChainImportReport as ChainReport } from '@/lib/workflow/chainImport';
+import { ChainImportReport } from '@/components/workflow/ChainImportReport';
 import type { FileDetail } from '@/lib/workflow/run';
 import { RunProgressPanel } from '@/components/workflow/RunProgressPanel';
 import { aggregateNodeStates, eventsForNode } from '@/lib/workflow/runStatus';
@@ -106,6 +108,8 @@ export default function WorkspacePage() {
   // PC-1005: source node id of the last single-source run, so the success modal's
   // "Re-run failed" can target the same source. null for multi-source runs.
   const [lastRunSourceId, setLastRunSourceId] = useState<string | null>(null);
+  // PC-1101: summary modal shown after a .chain import.
+  const [chainReport, setChainReport] = useState<{ report: ChainReport; fileName: string } | null>(null);
   const [modelFiles, setModelFiles] = useState<File[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -1507,6 +1511,22 @@ export default function WorkspacePage() {
     fileInputRef.current.click();
   }, []);
 
+  // PC-1101: reconstruct a graph from an existing .chain file (client-side).
+  const handleImportChain = useCallback(
+    (text: string, fileName: string) => {
+      const parsed = parseChainXml(text);
+      if ('error' in parsed) {
+        notify.error("Couldn't import chain", { description: parsed.error });
+        return;
+      }
+      const { nodes: importedNodes, edges: importedEdges, report } = chainToGraph(parsed);
+      applySnapshot({ nodes: importedNodes, edges: importedEdges });
+      setLoadedTemplate(null);
+      setChainReport({ report, fileName });
+    },
+    [applySnapshot]
+  );
+
   const handleImportFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -1515,7 +1535,15 @@ export default function WorkspacePage() {
       const reader = new FileReader();
       reader.onload = (event) => {
         try {
-          const json = event.target?.result as string;
+          const text = event.target?.result as string;
+          // PC-1101: route .chain files to the chain importer; .json stays the template path.
+          const isChain =
+            file.name.toLowerCase().endsWith('.chain') || /<xml12d[\s>]/.test(text.slice(0, 500));
+          if (isChain) {
+            handleImportChain(text, file.name);
+            return;
+          }
+          const json = text;
           const template = importTemplate(json);
           const importedNodes = template.nodes as WorkflowNode[];
           const importedEdges = template.edges as WorkflowEdge[];
@@ -1556,7 +1584,7 @@ export default function WorkspacePage() {
       };
       reader.readAsText(file);
     },
-    [applySnapshot]
+    [applySnapshot, handleImportChain]
   );
 
   const canRun =
@@ -1766,7 +1794,7 @@ export default function WorkspacePage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
+              accept=".json,.chain"
               onChange={handleImportFile}
               className="hidden"
             />
@@ -1902,6 +1930,13 @@ export default function WorkspacePage() {
               downloadFileName={chainPreview?.downloadFileName}
               onClose={() => setChainPreview(null)}
             />
+            {chainReport && (
+              <ChainImportReport
+                report={chainReport.report}
+                fileName={chainReport.fileName}
+                onClose={() => setChainReport(null)}
+              />
+            )}
           </WorkflowRunProvider>
         )}
       </div>
