@@ -14,6 +14,7 @@ import {
   useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useTheme } from 'next-themes';
 import { LayoutGrid, FileSpreadsheet } from 'lucide-react';
 import { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
 import { validateConnection } from '@/lib/workflow/edgeRules';
@@ -90,6 +91,12 @@ export function WorkspaceCanvas({
   onFilesDropped,
 }: WorkspaceCanvasProps) {
   const reactFlow = useReactFlow();
+  // PC-705 — drive React Flow's native colorMode + our explicit overrides from
+  // the resolved theme. Before mount resolvedTheme is undefined; default to dark
+  // to match the default theme and avoid a light flash on first paint.
+  const { resolvedTheme } = useTheme();
+  const isLight = resolvedTheme === 'light';
+  const flowColorMode = isLight ? 'light' : 'dark';
   // PC-904 — full-canvas file drop. dragDepth counts enter/leave across nested
   // children so the overlay doesn't flicker when the cursor crosses a node.
   const [fileDragging, setFileDragging] = useState(false);
@@ -272,18 +279,19 @@ export function WorkspaceCanvas({
         deleteKeyCode={['Backspace', 'Delete']}
         nodeTypes={nodeTypes}
         fitView
-        className="bg-gray-800"
+        colorMode={flowColorMode}
+        className="bg-gray-100 dark:bg-gray-800"
       >
         <Background
           gap={20}
           size={1}
           lineWidth={0.5}
-          color="rgba(255, 255, 255, 0.1)"
+          color={isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.1)'}
           className="workspace-grid"
         />
-        <Controls className="bg-gray-900/80 border-gray-700" />
+        <Controls className="bg-white/80 border-gray-200 dark:bg-gray-900/80 dark:border-gray-700" />
         <MiniMap
-          className="bg-gray-900/80 border-gray-700"
+          className="bg-white/80 border-gray-200 dark:bg-gray-900/80 dark:border-gray-700"
           nodeColor={(node) => {
             switch (node.type) {
               case 'excelModels':
@@ -308,7 +316,7 @@ export function WorkspaceCanvas({
                 <button
                   type="button"
                   onClick={onAutoLayout}
-                  className="flex items-center gap-2 bg-gray-900/80 border border-gray-700 hover:bg-gray-800 text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
+                  className="flex items-center gap-2 bg-white/80 border border-gray-200 hover:bg-gray-100 text-gray-700 dark:bg-gray-900/80 dark:border-gray-700 dark:hover:bg-gray-800 dark:text-gray-200 text-sm font-medium px-3 py-2 rounded-md shadow"
                   title="Auto-layout (re-flow the graph)"
                   aria-label="Auto-layout"
                 >
