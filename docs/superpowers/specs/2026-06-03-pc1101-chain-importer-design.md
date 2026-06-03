@@ -90,13 +90,38 @@ intended values and import faithfully.
 
 ## Coverage for v1
 
-**Mapped (structurally-simple, single-element commands):** `cleanModel`, `renameModel`, `createView`,
-`addModelToView`, `removeModelFromView`, `deleteModelsFromView`, `createSharedModel`, `import` (common
-DWG/DGN/IFC case), `triangulateManualOption`, `tinFunction`, `runFunction`, `ifFunctionExists`,
-`getTotalSurfaceArea`, `trimeshVolumeReport`, `volumeTinToTin`, `convertLinesToVariable`,
-`createContourSmoothLabel`, `drapeToTin`, `runOrCreateContours`, `createTrimeshFromTin`, `addComment`,
-`addLabel`, `applyMtf`. The exact element name + param sub-elements for each are produced by the plan's
-first task (a workflow fan-out over `backend/commands/`), yielding the inverse-map table.
+A workflow fan-out extracted each generator's emitted XML + param mapping (the full table is the plan's
+reference). The finding **narrowed the realistic scope**: the element name alone is NOT a reliable node-type
+key (`<Run_option>` is emitted by 9 node types, `<Manual_option>` by 3, `<Function>` by 3), and most
+commands bury their params inside hardcoded `<SLF_data>`/`<Panel_Data>` blobs as `<value>` tags keyed only
+by a sibling `<name>` string, often concatenated (`{prefix}/{cellValue}`) and lossy to split. Several emit
+multi-element groups (`runOrCreateContours` = 5 elements/node) or drop fields entirely (`createSharedModel`
+drops 6; `continueOnFailure` is hardcoded/phantom in `triangulate`/`tinFunction`/`runOrCreateContours`).
+
+**Mapped in v1 (clean inversion only):**
+
+| node type | root element | params (sub-element -> node-data field) |
+|---|---|---|
+| `cleanModel` | `Clean_model` | `Name`->commandName, `Model_Name`->modelName, `Comments`->comments, `Continue_on_failure`->continueOnFailure(bool) |
+| `createView` | `Create_view` | `View`->modifiedVariable, `Top`/`Left`/`Bot`/`Right`->coordinates(4-tuple), `Continue_on_failure`->continueOnFailure, `Comments`->comments |
+| `addModelToView` | `Add_model_to_view` | `Model`->modelName, `View`->viewName, `Continue_on_failure`->continueOnFailure, `Comments`->comments |
+| `removeModelFromView` | `Remove_model_from_view` | `Model`->pattern, `View`->modifiedVariable, `Continue_on_failure`->continueOnFailure, `Comments`->comments |
+| `addComment` | `Comment` | `Name`->commentName, `Continue_on_failure`->continueOnFailure, `Comments`->comments |
+| `addLabel` | `Label` *(standalone only)* | `Name`->labelName, `Continue_on_failure`->continueOnFailure, `Comments`->comments |
+
+The first four have **unique** root elements. `Comment` is unique at command level. `Label` collides with the
+group-leader `<Label>` that `tinFunction`/`triangulate`/`runOrCreateContours` emit, so `addLabel` matches
+**only a standalone `<Label>`** (not immediately followed by a `<Function>`/`<Manual_option>` forming a known
+group); a group-leader `<Label>` falls through to the placeholder path with its group.
+
+**Everything else -> placeholders** (raw XML preserved + counted in the report): all `<Run_option>` and
+`<Manual_option>` panel commands, the `<Function>`-family collisions (runFunction/applyMtf/tinFunction),
+`<If_function_exists>`, multi-element groups, the side-effect-file commands, and every unknown 12d command.
+**No fragile guessing in v1** -- if it isn't in the table above, it's a placeholder.
+
+**Fast-follow (out of v1, same framework):** the `<Function>`-family disambiguation (runFunction/applyMtf via
+the `Recalc ` Name-prefix heuristic) and name-keyed panel-blob extraction for the highest-value
+`<Run_option>` commands (import, deleteModelsFromView).
 
 **Deferred to placeholders:** `createMtfFile`, `createTemplateFile` (emit external files — can't round-trip
 from one `.chain`); and every unknown 12d command (`Manual_option`, `Run_option`, …). Ambiguous `import`
@@ -137,7 +162,8 @@ variables and attach a model source to re-template."
 
 ## Implementation flow
 
-1. **Inverse-map extraction (workflow fan-out):** one agent per `backend/commands/` generator extracts
+1. **Inverse-map extraction — DONE** (workflow fan-out, captured in this spec's Coverage table + the plan):
+   one agent per `backend/commands/` generator extracted
    `(node_type, root XML element, [sub-element → node-data field], param types)`. Produces the inverse-map
    table that seeds `chainCommandMap.ts`. Cross-checked against `execute_node` (the forward data→param map).
 2. **TDD core:** `chainCommandMap.ts` + `chainImport.ts` against the per-command and round-trip tests.
